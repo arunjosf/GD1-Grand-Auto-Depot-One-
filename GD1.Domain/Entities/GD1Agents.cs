@@ -23,6 +23,5 @@ namespace GD1.Domain.Entities
 
         public ICollection<InspectionReport> InspectionReports { get; set; } = [];
        
-
     }
 }

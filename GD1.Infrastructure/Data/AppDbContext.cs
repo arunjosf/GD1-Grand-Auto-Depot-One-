@@ -42,7 +42,7 @@ namespace GD1.Infrastructure.Data
                 .HasIndex(u => u.GoogleId);
 
             mb.Entity<RefreshToken>()
-                .HasOne(rt => rt.user)
+                .HasOne(rt => rt.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(rt => rt.UserId)
                 .OnDelete(DeleteBehavior.Cascade);

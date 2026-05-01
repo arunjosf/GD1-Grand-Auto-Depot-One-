@@ -9,7 +9,7 @@ namespace GD1.Domain.Entities
 {
     public class LotSlot : BaseEntity
     {
-        public Guid LotId { get; set; }
+        public long LotId { get; set; }
         public string SlotNumber { get; set; } = string.Empty;
         public string SlotType { get; set; } = string.Empty;
 

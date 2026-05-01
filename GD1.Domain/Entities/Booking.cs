@@ -9,10 +9,10 @@ namespace GD1.Domain.Entities
 {
     public class Booking : BaseEntity   
     {
-        public Guid VehicleId { get; set; }
-        public Guid LotId { get; set; }
-        public Guid SlotId { get; set; }
-        public Guid OwnerId { get; set; }
+        public long VehicleId { get; set; }
+        public long LotId { get; set; }
+        public long SlotId { get; set; }
+        public long OwnerId { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public string Plan { get; set; } = "Basic";

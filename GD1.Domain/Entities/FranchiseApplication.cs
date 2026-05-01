@@ -9,7 +9,7 @@ namespace GD1.Domain.Entities
 {
     public class FranchiseApplication : BaseEntity
     {
-        public Guid ApplicantId { get; set; }
+        public long ApplicantId { get; set; }
         public string ApplicationType { get; set; } = string.Empty;
         public string BusinessName { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
@@ -24,7 +24,7 @@ namespace GD1.Domain.Entities
         public string? PropertyProofUrl { get; set; }
         public string Status { get; set; } = "Pending";
         public string? AdminNotes { get; set; }
-        public Guid? ReviewedBy { get; set; }
+        public long? ReviewedBy { get; set; }
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }

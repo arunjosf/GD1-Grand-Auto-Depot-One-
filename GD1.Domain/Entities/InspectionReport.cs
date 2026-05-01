@@ -9,10 +9,10 @@ namespace GD1.Domain.Entities
 {
     public class InspectionReport : BaseEntity
     {
-        public Guid ApplicationId { get; set; }
-        public Guid LotUnitId { get; set; }
-        public Guid AgentId { get; set; }
-        public Guid AssignedBy { get; set; }
+        public long ApplicationId { get; set; }
+        public long LotUnitId { get; set; }
+        public long AgentId { get; set; }
+        public long AssignedBy { get; set; }
 
         public string AccessToken { get; set; } = string.Empty; 
         public string PasscodeHash { get; set; } = string.Empty; 

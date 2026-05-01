@@ -15,7 +15,8 @@ namespace GD1.Infrastructure.Migrations
                 name: "GD1Agents",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -37,7 +38,8 @@ namespace GD1.Infrastructure.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -59,8 +61,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "Notifications",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<long>(type: "bigint", nullable: false),
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Body = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsRead = table.Column<bool>(type: "bit", nullable: false),
@@ -83,8 +86,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "RefreshTokens",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<long>(type: "bigint", nullable: false),
                     Token = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsRevoked = table.Column<bool>(type: "bit", nullable: false),
@@ -107,8 +111,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "ServiceCenters",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AdminId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AdminId = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -141,8 +146,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "StorageLots",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LotOwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    LotOwnerId = table.Column<long>(type: "bigint", nullable: false),
                     LotCode = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -180,8 +186,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "Vehicles",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    OwnerId = table.Column<long>(type: "bigint", nullable: false),
                     Brand = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Model = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Year = table.Column<int>(type: "int", nullable: false),
@@ -214,8 +221,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "Mechanics",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ServiceCenterId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ServiceCenterId = table.Column<long>(type: "bigint", nullable: false),
                     FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IdProofUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -239,10 +247,11 @@ namespace GD1.Infrastructure.Migrations
                 name: "LotManagers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ManagerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AddedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    LotId = table.Column<long>(type: "bigint", nullable: false),
+                    ManagerId = table.Column<long>(type: "bigint", nullable: false),
+                    AddedBy = table.Column<long>(type: "bigint", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -268,8 +277,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "LotSlots",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    LotId = table.Column<long>(type: "bigint", nullable: false),
                     SlotNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     SlotType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsOccupied = table.Column<bool>(type: "bit", nullable: false),
@@ -292,9 +302,10 @@ namespace GD1.Infrastructure.Migrations
                 name: "Reviews",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ReviewerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    LotId = table.Column<long>(type: "bigint", nullable: false),
+                    ReviewerId = table.Column<long>(type: "bigint", nullable: false),
                     Rating = table.Column<int>(type: "int", nullable: false),
                     Comment = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     SentimentScore = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -322,11 +333,12 @@ namespace GD1.Infrastructure.Migrations
                 name: "Bookings",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    SlotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OwnerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    VehicleId = table.Column<long>(type: "bigint", nullable: false),
+                    LotId = table.Column<long>(type: "bigint", nullable: false),
+                    SlotId = table.Column<long>(type: "bigint", nullable: false),
+                    OwnerId = table.Column<long>(type: "bigint", nullable: false),
                     StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Plan = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -371,9 +383,10 @@ namespace GD1.Infrastructure.Migrations
                 name: "Handoffs",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    RequestedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BookingId = table.Column<long>(type: "bigint", nullable: false),
+                    RequestedBy = table.Column<long>(type: "bigint", nullable: false),
                     PersonName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PersonPhone = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PersonIdUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -400,11 +413,12 @@ namespace GD1.Infrastructure.Migrations
                 name: "ServiceRequests",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ServiceCenterId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MechanicId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    RequestedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BookingId = table.Column<long>(type: "bigint", nullable: false),
+                    ServiceCenterId = table.Column<long>(type: "bigint", nullable: false),
+                    MechanicId = table.Column<long>(type: "bigint", nullable: true),
+                    RequestedBy = table.Column<long>(type: "bigint", nullable: false),
                     ServiceType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -445,13 +459,14 @@ namespace GD1.Infrastructure.Migrations
                 name: "VehicleJourneyEvents",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    VehicleId = table.Column<long>(type: "bigint", nullable: false),
+                    BookingId = table.Column<long>(type: "bigint", nullable: true),
                     EventType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PhotoUrls = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TriggeredBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    TriggeredBy = table.Column<long>(type: "bigint", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -475,8 +490,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "DamageReports",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    HandoffId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    HandoffId = table.Column<long>(type: "bigint", nullable: false),
                     DamageImages = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     AIFindings = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsConfirmed = table.Column<bool>(type: "bit", nullable: false),
@@ -500,8 +516,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "FranchiseApplications",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ApplicantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ApplicantId = table.Column<long>(type: "bigint", nullable: false),
                     ApplicationType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     BusinessName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OwnerName = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -516,10 +533,10 @@ namespace GD1.Infrastructure.Migrations
                     PropertyProofUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AdminNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ReviewedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ReviewedBy = table.Column<long>(type: "bigint", nullable: true),
                     Latitude = table.Column<double>(type: "float", nullable: true),
                     Longitude = table.Column<double>(type: "float", nullable: true),
-                    InspectionReportId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    InspectionReportId = table.Column<long>(type: "bigint", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -538,8 +555,9 @@ namespace GD1.Infrastructure.Migrations
                 name: "LotUnits",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    FranchiseApplicationId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FranchiseApplicationId = table.Column<long>(type: "bigint", nullable: false),
                     Label = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Capacity = table.Column<int>(type: "int", nullable: false),
                     HasCCTV = table.Column<bool>(type: "bit", nullable: false),
@@ -568,11 +586,12 @@ namespace GD1.Infrastructure.Migrations
                 name: "InspectionReports",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ApplicationId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LotUnitId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AgentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AssignedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ApplicationId = table.Column<long>(type: "bigint", nullable: false),
+                    LotUnitId = table.Column<long>(type: "bigint", nullable: false),
+                    AgentId = table.Column<long>(type: "bigint", nullable: false),
+                    AssignedBy = table.Column<long>(type: "bigint", nullable: false),
                     AccessToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PasscodeHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: false),

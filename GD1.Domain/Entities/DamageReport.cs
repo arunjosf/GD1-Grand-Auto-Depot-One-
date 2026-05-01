@@ -9,7 +9,7 @@ namespace GD1.Domain.Entities
 {
     public class DamageReport : BaseEntity
     {
-        public Guid HandoffId { get; set; }
+        public long HandoffId { get; set; }
 
         public string? DamageImages { get; set; }
 
