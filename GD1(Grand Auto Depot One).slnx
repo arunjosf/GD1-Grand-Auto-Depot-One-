@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="GD1.Api/GD1.Api.csproj" />
+  <Project Path="GD1.Application/GD1.Application.csproj" />
+  <Project Path="GD1.Domain/GD1.Domain.csproj" />
+  <Project Path="GD1.Infrastructure/GD1.Infrastructure.csproj" />
+</Solution>

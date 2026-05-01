@@ -1,0 +1,40 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using GD1.Domain.Entities.Base;
+
+namespace GD1.Domain.Entities
+{
+    public class FranchiseApplication : BaseEntity
+    {
+        public Guid ApplicantId { get; set; }
+        public string ApplicationType { get; set; } = string.Empty;
+        public string BusinessName { get; set; } = string.Empty;
+        public string OwnerName { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; }
+        public string State { get; set; } = string.Empty;
+        public string Country { get; set; } = "India";
+        public string AddressLine { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string? BusinessRegistrationUrl { get; set; }
+        public string? LicenseDocumentUrl { get; set; }
+        public string? OwnerIdProofUrl { get; set; }
+        public string? PropertyProofUrl { get; set; }
+        public string Status { get; set; } = "Pending";
+        public string? AdminNotes { get; set; }
+        public Guid? ReviewedBy { get; set; }
+
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+
+        public User Applicant { get; set; } = null!;
+        public InspectionReport? InspectionReport { get; set; }
+
+        public ICollection<LotUnit> LotUnits { get; set; } = [];
+        public ICollection<InspectionReport> InspectionReports { get; set; } = [];
+
+
+    }
+}

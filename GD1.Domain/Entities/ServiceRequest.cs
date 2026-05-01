@@ -1,0 +1,35 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using GD1.Domain.Entities.Base;
+
+namespace GD1.Domain.Entities
+{
+    public class ServiceRequest : BaseEntity
+    {
+        public Guid BookingId { get; set; }
+        public Guid ServiceCenterId { get; set; }
+        public Guid? MechanicId { get; set; }
+        public Guid RequestedBy { get; set; }
+        public string ServiceType { get; set; } = string.Empty;
+        public string? Notes { get; set; }
+        public string Status { get; set; } = "Pending";
+
+        public DateTime? ScheduledDate { get; set; }
+        public string? CancellationReason { get; set; }
+        public bool? IsCompleted { get; set; }
+        public string? CompletionNotes { get; set; }
+        public string? CompletionPhotos { get; set; }
+        public decimal ServiceCost { get; set; }
+        public decimal PlatformFee { get; set; }
+        public decimal CenterEarning { get; set; }
+
+
+        public Booking Booking { get; set; } = null!;
+        public ServiceCenter ServiceCenter { get; set; } = null!;
+        public Mechanics? Mechanic { get; set; }
+
+    }
+}
