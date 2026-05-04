@@ -49,6 +49,15 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<long>("OwnerId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("PickupAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("PickupLatitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("PickupLongitude")
+                        .HasColumnType("float");
+
                     b.Property<string>("Plan")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -57,15 +66,14 @@ namespace GD1.Infrastructure.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<long>("SlotId")
+                    b.Property<long?>("SlotId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("TotalCost")
                         .HasPrecision(10, 2)
@@ -148,6 +156,10 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<long>("ApplicantId")
                         .HasColumnType("bigint");
 
+                    b.Property<decimal>("ApplicationFee")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<string>("ApplicationType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -163,6 +175,10 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Country")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -170,8 +186,12 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<long?>("InspectionReportId")
-                        .HasColumnType("bigint");
+                    b.Property<string>("FeeStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FeeTransactionId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("float");
@@ -196,6 +216,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("PropertyProofUrl")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<long?>("ReviewedBy")
                         .HasColumnType("bigint");
 
@@ -213,8 +236,6 @@ namespace GD1.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicantId");
-
-                    b.HasIndex("InspectionReportId");
 
                     b.ToTable("FranchiseApplications");
                 });
@@ -245,7 +266,7 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsAvailable")
+                    b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<double?>("Latitude")
@@ -334,7 +355,7 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<string>("AccessToken")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("AdminDecision")
                         .HasColumnType("nvarchar(max)");
@@ -342,19 +363,10 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("AdminRemarks")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("AgentExtraImages")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AgentFullPropertyImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<long>("AgentId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("AgentLotFrontImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AgentWorkshopImageUrl")
+                    b.Property<string>("AgentRemarks")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("ApplicationId")
@@ -373,6 +385,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DecisionAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -389,6 +404,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("ScheduledDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -397,6 +415,9 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccessToken")
+                        .IsUnique();
 
                     b.HasIndex("AgentId");
 
@@ -488,11 +509,17 @@ namespace GD1.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("AssignedLotCode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("FranchiseApplicationId")
                         .HasColumnType("bigint");
@@ -503,6 +530,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("HasSecurity")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("HasWashingArea")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("HasWorkshop")
                         .HasColumnType("bit");
 
@@ -510,19 +540,11 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("OwnerExtraImages")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OwnerFullPropertyImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OwnerLotFrontImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OwnerWorkshopImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Tier")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -615,6 +637,100 @@ namespace GD1.Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.PickupRequest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BookingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsApprovedByLotOwner")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOtpVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ManagerArrivalTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("ManagerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("OtpExpiry")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OtpHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestedPickupTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("ManagerId");
+
+                    b.ToTable("PickupRequests");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.PropertyImage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ApplicationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("LotUnitId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploadedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.HasIndex("LotUnitId");
+
+                    b.ToTable("PropertyImages");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<long>("Id")
@@ -637,7 +753,7 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<string>("Token")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -646,6 +762,9 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -866,6 +985,12 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ExtraImageUrls")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FrontImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("HasCCTV")
                         .HasColumnType("bit");
 
@@ -880,6 +1005,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("float");
+
+                    b.Property<string>("LeftSideImageUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double?>("Longitude")
                         .HasColumnType("float");
@@ -898,6 +1026,12 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<decimal>("PricePerDay")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("RearImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RightSideImageUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("State")
                         .IsRequired()
@@ -1004,20 +1138,11 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("DocumentUrls")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ExtraImages")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FrontImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("FuelType")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("HealthScore")
                         .HasColumnType("int");
-
-                    b.Property<string>("LeftImageUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Model")
                         .IsRequired()
@@ -1026,15 +1151,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<long>("OwnerId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("RearImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("RegistrationNo")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("RightImageUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1056,6 +1175,50 @@ namespace GD1.Infrastructure.Migrations
                     b.ToTable("Vehicles");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleImage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("EventId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploadedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("VehicleId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("VehicleImages");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.VehicleJourneyEvent", b =>
                 {
                     b.Property<long>("Id")
@@ -1075,9 +1238,6 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<string>("EventType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhotoUrls")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long?>("TriggeredBy")
@@ -1115,8 +1275,7 @@ namespace GD1.Infrastructure.Migrations
                     b.HasOne("GD1.Domain.Entities.LotSlot", "Slot")
                         .WithMany()
                         .HasForeignKey("SlotId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("GD1.Domain.Entities.Vehicle", "Vehicle")
                         .WithMany("Bookings")
@@ -1152,13 +1311,7 @@ namespace GD1.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("GD1.Domain.Entities.InspectionReport", "InspectionReport")
-                        .WithMany()
-                        .HasForeignKey("InspectionReportId");
-
                     b.Navigation("Applicant");
-
-                    b.Navigation("InspectionReport");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Handoff", b =>
@@ -1177,7 +1330,7 @@ namespace GD1.Infrastructure.Migrations
                     b.HasOne("GD1.Domain.Entities.GD1Agents", "Agent")
                         .WithMany("InspectionReports")
                         .HasForeignKey("AgentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("GD1.Domain.Entities.FranchiseApplication", "Application")
@@ -1189,7 +1342,7 @@ namespace GD1.Infrastructure.Migrations
                     b.HasOne("GD1.Domain.Entities.LotUnit", "LotUnit")
                         .WithMany("InspectionReports")
                         .HasForeignKey("LotUnitId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Agent");
@@ -1260,6 +1413,41 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.PickupRequest", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.LotManager", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Manager");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.PropertyImage", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.FranchiseApplication", "Application")
+                        .WithMany("PropertyImages")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.LotUnit", "LotUnit")
+                        .WithMany("Images")
+                        .HasForeignKey("LotUnitId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Application");
+
+                    b.Navigation("LotUnit");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.RefreshToken", b =>
@@ -1350,16 +1538,35 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleImage", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.VehicleJourneyEvent", "Event")
+                        .WithMany("Images")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("GD1.Domain.Entities.Vehicle", "Vehicle")
+                        .WithMany("Images")
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Vehicle");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.VehicleJourneyEvent", b =>
                 {
                     b.HasOne("GD1.Domain.Entities.Booking", "Booking")
                         .WithMany("JourneyEvents")
-                        .HasForeignKey("BookingId");
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("GD1.Domain.Entities.Vehicle", "Vehicle")
                         .WithMany()
                         .HasForeignKey("VehicleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Booking");
@@ -1381,6 +1588,8 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("InspectionReports");
 
                     b.Navigation("LotUnits");
+
+                    b.Navigation("PropertyImages");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.GD1Agents", b =>
@@ -1395,6 +1604,8 @@ namespace GD1.Infrastructure.Migrations
 
             modelBuilder.Entity("GD1.Domain.Entities.LotUnit", b =>
                 {
+                    b.Navigation("Images");
+
                     b.Navigation("InspectionReports");
                 });
 
@@ -1435,6 +1646,13 @@ namespace GD1.Infrastructure.Migrations
             modelBuilder.Entity("GD1.Domain.Entities.Vehicle", b =>
                 {
                     b.Navigation("Bookings");
+
+                    b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleJourneyEvent", b =>
+                {
+                    b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
         }

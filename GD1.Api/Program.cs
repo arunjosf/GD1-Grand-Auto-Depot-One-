@@ -1,43 +1,28 @@
 using GD1.Api.Middleware;
+using GD1.Application.Common;
 using GD1.Application.Features.Auth.Commands;
 using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
+using GD1.Infrastructure;
 using GD1.Infrastructure.Data;
 using GD1.Infrastructure.Repositories;
 using GD1.Infrastructure.Services;
+using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Data;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddScoped<IDbConnection>(sp =>
-    new SqlConnection(builder.Configuration
-        .GetConnectionString("DefaultConnection")));
-
-builder.Services.AddScoped(
-    typeof(IGenericRepository<>),
-    typeof(GenericRepository<>));
-
-builder.Services.AddScoped<IUserReadRepository, UserReadRepository>();
-
-builder.Services.AddScoped<IAuthService, AuthService>();
-
-builder.Services.AddScoped<RegisterCommandHandler>();
-builder.Services.AddScoped<LoginCommandHandler>();
-builder.Services.AddScoped<GoogleLoginCommandHandler>();
-builder.Services.AddScoped<RefreshTokenCommandHandler>();
-builder.Services.AddScoped<LogoutCommandHandler>();
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(ApplicationAssemblyMarker).Assembly));
 
 
 var jwtKey = builder.Configuration["Jwt:SecretKey"]
@@ -71,6 +56,8 @@ builder.Services.AddCors(opt =>
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyHeader()
               .AllowAnyMethod()));
+
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
