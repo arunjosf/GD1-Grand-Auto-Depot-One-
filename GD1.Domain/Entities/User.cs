@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Enums;
 
 namespace GD1.Domain.Entities
 {
@@ -15,7 +16,7 @@ namespace GD1.Domain.Entities
         public string? PasswordHash { get; set; }
         public string? GoogleId { get; set; }
         public string? AvatarUrl { get; set; }
-        public int Role { get; set; }
+        public UserRole Role { get; set; } = UserRole.VehicleOwner;
         public bool IsActive { get; set; } = true;
         public bool IsEmailVerified { get; set; } = false;
 

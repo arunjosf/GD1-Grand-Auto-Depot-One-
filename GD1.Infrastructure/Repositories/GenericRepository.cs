@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Interfaces;
+using GD1.Domain.Interfaces;
 using GD1.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
@@ -37,6 +37,12 @@ namespace GD1.Infrastructure.Repositories
 
         public async Task<bool> ExistsAsync(long id)
             => await _db.Set<T>().FindAsync(id) is not null;
+
+        public async Task<IEnumerable<T>> GetAllAsync()
+        {
+            // Simple generic get all, in a real scenario might need AsNoTracking or pagination
+            return await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(_db.Set<T>());
+        }
     }
 
     }

@@ -1,4 +1,4 @@
-﻿using GD1.Application.Common;
+using GD1.Application.Common;
 using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Domain.Interfaces;
 using System;
@@ -7,15 +7,29 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using MediatR;
+using FluentValidation;
+
 namespace GD1.Application.Features.FranchiseApplication.Commands
 {
-    public class SubmitApplicationCommand
+    public class SubmitApplicationCommand : IRequest<BaseResponse<long>>
     {
         public SubmitApplicationRequest Request { get; set; } = null!;
         public long ApplicantId { get; set; }
     }
 
-    public class SubmitApplicationCommandHandler
+    public class SubmitApplicationCommandValidator : AbstractValidator<SubmitApplicationCommand>
+    {
+        public SubmitApplicationCommandValidator()
+        {
+            RuleFor(x => x.ApplicantId).GreaterThan(0);
+            RuleFor(x => x.Request.BusinessName).NotEmpty();
+            RuleFor(x => x.Request.ContactEmail).NotEmpty().EmailAddress();
+            RuleFor(x => x.Request.LotUnits).NotEmpty();
+        }
+    }
+
+    public class SubmitApplicationCommandHandler : IRequestHandler<SubmitApplicationCommand, BaseResponse<long>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.LotUnit> _unitRepo;
@@ -31,13 +45,24 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             _imageRepo = imageRepo;
         }
 
-        public async Task<BaseResponse<long>> HandleAsync(SubmitApplicationCommand cmd)
+        public async Task<BaseResponse<long>> Handle(SubmitApplicationCommand cmd, CancellationToken cancellationToken)
         {
             var req = cmd.Request;
 
             if (req.LotUnits is null || req.LotUnits.Count == 0)
                 throw new InvalidOperationException(
                     "At least one lot unit is required.");
+
+            // Check if there is a previously rejected application for this
+            var previousApps = await _appRepo.GetAllAsync();
+            var prevRejected = previousApps.FirstOrDefault(a => 
+                a.IsDeleted && 
+                (a.BusinessName.ToLower() == req.BusinessName.ToLower() || 
+                 a.AddressLine.ToLower() == req.AddressLine.ToLower()));
+
+            var adminNotes = prevRejected != null 
+                ? $"WARNING: Previously rejected application found. Previous App ID: {prevRejected.Id}." 
+                : null;
 
             var application = new GD1.Domain.Entities.FranchiseApplication
             {
@@ -57,21 +82,22 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                 PropertyProofUrl = req.PropertyProofUrl,
                 ApplicationFee = 2000,
                 FeeStatus = "Pending",
-                Status = "Pending"
+                Status = "Pending",
+                AdminNotes = adminNotes
             };
 
             await _appRepo.AddAsync(application);
 
-            foreach (var img in req.OverallImages)
+            foreach (var imgUrl in req.OverallImages)
             {
                 await _imageRepo.AddAsync(new GD1.Domain.Entities.PropertyImage
                 {
                     ApplicationId = application.Id,
                     LotUnitId = null,
                     UploadedBy = "Owner",
-                    Label = img.Label,
-                    ImageUrl = img.ImageUrl,
-                    Remark = img.Remark
+                    Label = "Overall Property View",
+                    ImageUrl = imgUrl,
+                    Remark = null
                 });
             }
 

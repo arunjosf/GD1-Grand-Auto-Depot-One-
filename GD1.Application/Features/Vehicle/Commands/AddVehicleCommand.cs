@@ -1,4 +1,4 @@
-﻿using GD1.Application.Common;
+using GD1.Application.Common;
 using GD1.Application.Features.Vehicle.DTOs;
 using GD1.Domain.Interfaces;
 using System;
@@ -7,15 +7,30 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using MediatR;
+using FluentValidation;
+
 namespace GD1.Application.Features.Vehicle.Commands
 {
-    public class AddVehicleCommand
+    public class AddVehicleCommand : IRequest<BaseResponse<long>>
     {
         public AddVehicleRequest Request { get; set; } = null!;
         public long OwnerId { get; set; }
     }
 
-    public class AddVehicleCommandHandler
+    public class AddVehicleCommandValidator : AbstractValidator<AddVehicleCommand>
+    {
+        public AddVehicleCommandValidator()
+        {
+            RuleFor(x => x.OwnerId).GreaterThan(0);
+            RuleFor(x => x.Request.Brand).NotEmpty();
+            RuleFor(x => x.Request.Model).NotEmpty();
+            RuleFor(x => x.Request.RegistrationNo).NotEmpty();
+            RuleFor(x => x.Request.Images).NotEmpty();
+        }
+    }
+
+    public class AddVehicleCommandHandler : IRequestHandler<AddVehicleCommand, BaseResponse<long>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.VehicleImage> _imageRepo;
@@ -28,7 +43,7 @@ namespace GD1.Application.Features.Vehicle.Commands
             _imageRepo = imageRepo;
         }
 
-        public async Task<BaseResponse<long>> HandleAsync(AddVehicleCommand cmd)
+        public async Task<BaseResponse<long>> Handle(AddVehicleCommand cmd, CancellationToken cancellationToken)
         {
             var req = cmd.Request;
             var labels = req.Images.Select(i => i.Label).ToList();

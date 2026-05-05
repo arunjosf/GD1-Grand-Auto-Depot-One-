@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities;
+using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
 using MediatR;
@@ -8,9 +8,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using FluentValidation;
+
 namespace GD1.Application.Features.Pickup.Commands
 {
     public record CompletePickupCommand(long PickupRequestId) : IRequest<string>;
+
+    public class CompletePickupCommandValidator : AbstractValidator<CompletePickupCommand>
+    {
+        public CompletePickupCommandValidator()
+        {
+            RuleFor(x => x.PickupRequestId).GreaterThan(0);
+        }
+    }
 
     public class CompletePickupCommandHandler
         : IRequestHandler<CompletePickupCommand, string>

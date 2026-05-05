@@ -1,4 +1,4 @@
-﻿using GD1.Application.Common;
+using GD1.Application.Common;
 using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
@@ -10,9 +10,12 @@ using System.Text;
 using System.Threading.Tasks;
 using BCrypt;
 
+using MediatR;
+using FluentValidation;
+
 namespace GD1.Application.Features.FranchiseApplication.Commands
 {
-    public class AssignAgentCommand
+    public class AssignAgentCommand : IRequest<BaseResponse<string>>
     {
         public long ApplicationId { get; set; }
         public long AgentId { get; set; }
@@ -20,7 +23,18 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         public long AdminId { get; set; }
     }
 
-    public class AssignAgentCommandHandler
+    public class AssignAgentCommandValidator : AbstractValidator<AssignAgentCommand>
+    {
+        public AssignAgentCommandValidator()
+        {
+            RuleFor(x => x.ApplicationId).GreaterThan(0);
+            RuleFor(x => x.AgentId).GreaterThan(0);
+            RuleFor(x => x.ScheduledDate).GreaterThan(DateTime.UtcNow.AddDays(-1));
+            RuleFor(x => x.AdminId).GreaterThan(0);
+        }
+    }
+
+    public class AssignAgentCommandHandler : IRequestHandler<AssignAgentCommand, BaseResponse<string>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.InspectionReport> _reportRepo;
@@ -45,7 +59,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             _email = email;
         }
 
-        public async Task<BaseResponse<string>> HandleAsync(AssignAgentCommand cmd)
+        public async Task<BaseResponse<string>> Handle(AssignAgentCommand cmd, CancellationToken cancellationToken)
         {
             var application = await _appRepo.GetByIdAsync(cmd.ApplicationId);
             if (application is null)

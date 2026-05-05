@@ -1,4 +1,4 @@
-﻿using GD1.Application.Common;
+using GD1.Application.Common;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
 using System;
@@ -7,9 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using MediatR;
+using FluentValidation;
+
 namespace GD1.Application.Features.FranchiseApplication.Commands
 {
-    public class ReviewInspectionCommand
+    public class ReviewInspectionCommand : IRequest<BaseResponse<string>>
     {
         public long ReportId { get; set; }
         public long AdminId { get; set; }
@@ -17,7 +20,18 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         public string? AdminRemarks { get; set; }
     }
 
-    public class ReviewInspectionCommandHandler
+    public class ReviewInspectionCommandValidator : AbstractValidator<ReviewInspectionCommand>
+    {
+        public ReviewInspectionCommandValidator()
+        {
+            RuleFor(x => x.ReportId).GreaterThan(0);
+            RuleFor(x => x.AdminId).GreaterThan(0);
+            RuleFor(x => x.Decision).NotEmpty().Must(x => new[] { "Approve", "Conditional", "Reject" }.Contains(x))
+                .WithMessage("Decision must be Approve, Conditional, or Reject.");
+        }
+    }
+
+    public class ReviewInspectionCommandHandler : IRequestHandler<ReviewInspectionCommand, BaseResponse<string>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.InspectionReport> _reportRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
@@ -39,7 +53,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             _franchiseRead = franchiseRead;
         }
 
-        public async Task<BaseResponse<string>> HandleAsync(ReviewInspectionCommand cmd)
+        public async Task<BaseResponse<string>> Handle(ReviewInspectionCommand cmd, CancellationToken cancellationToken)
         {
             var valid = new[] { "Approve", "Conditional", "Reject" };
             if (!valid.Contains(cmd.Decision))
@@ -107,6 +121,23 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                     if (allReports.All(r => r.Status == "Approved"))
                     {
                         app.Status = "Approved";
+                        app.ReviewedBy = cmd.AdminId;
+                        app.ReviewedAt = DateTime.UtcNow;
+                        await _appRepo.UpdateAsync(app);
+                    }
+                }
+            }
+            else if (cmd.Decision == "Reject")
+            {
+                var app = await _appRepo.GetByIdAsync(report.ApplicationId);
+                if (app is not null)
+                {
+                    var allReports = await _franchiseRead.GetReportsByApplicationIdAsync(app.Id);
+                    // If all reports are rejected, or this was the deciding one
+                    if (allReports.All(r => r.Status == "Rejected" || r.Status == "Submitted"))
+                    {
+                        app.Status = "Rejected";
+                        app.IsDeleted = true; // Soft delete
                         app.ReviewedBy = cmd.AdminId;
                         app.ReviewedAt = DateTime.UtcNow;
                         await _appRepo.UpdateAsync(app);

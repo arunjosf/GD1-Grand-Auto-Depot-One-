@@ -30,6 +30,9 @@ namespace GD1.Infrastructure.Data
         public DbSet<GD1Agents> GD1Agents { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Complaint> Complaints { get; set; }
+        public DbSet<TermsAndConditions> TermsAndConditions { get; set; }
+        public DbSet<DigitalAgreement> DigitalAgreements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -236,6 +239,36 @@ namespace GD1.Infrastructure.Data
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<Complaint>()
+    .HasOne(c => c.Complainant)
+    .WithMany()
+    .HasForeignKey(c => c.ComplainantId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+            mb.Entity<Complaint>()
+                .HasOne(c => c.Lot)
+                .WithMany()
+                .HasForeignKey(c => c.LotId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            mb.Entity<Complaint>()
+                .HasOne(c => c.Booking)
+                .WithMany()
+                .HasForeignKey(c => c.BookingId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            mb.Entity<DigitalAgreement>()
+                .HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            mb.Entity<DigitalAgreement>()
+                .HasOne(d => d.Terms)
+                .WithMany()
+                .HasForeignKey(d => d.TermsId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

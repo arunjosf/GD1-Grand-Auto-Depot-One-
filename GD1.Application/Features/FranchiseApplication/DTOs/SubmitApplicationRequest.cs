@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +21,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string? LicenseDocumentUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? PropertyProofUrl { get; set; }
-        public List<PropertyImageRequest> OverallImages { get; set; } = [];
+        public List<string> OverallImages { get; set; } = [];
         public List<LotUnitRequest> LotUnits { get; set; } = [];
     }
 }

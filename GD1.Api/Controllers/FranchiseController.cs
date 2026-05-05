@@ -1,5 +1,7 @@
-﻿using GD1.Application.Features.FranchiseApplication.Commands;
+using GD1.Application.Features.FranchiseApplication.Commands;
 using GD1.Application.Features.FranchiseApplication.DTOs;
+using GD1.Application.Features.GD1Admin.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,21 +12,11 @@ namespace GD1.Api.Controllers
     [ApiController]
     public class FranchiseController : ControllerBase
     {
-        private readonly SubmitApplicationCommandHandler _submit;
-        private readonly AssignAgentCommandHandler _assign;
-        private readonly SubmitInspectionCommandHandler _inspect;
-        private readonly ReviewInspectionCommandHandler _review;
+        private readonly IMediator _mediator;
 
-        public FranchiseController(
-            SubmitApplicationCommandHandler submit,
-            AssignAgentCommandHandler assign,
-            SubmitInspectionCommandHandler inspect,
-            ReviewInspectionCommandHandler review)
+        public FranchiseController(IMediator mediator)
         {
-            _submit = submit;
-            _assign = assign;
-            _inspect = inspect;
-            _review = review;
+            _mediator = mediator;
         }
 
         [HttpPost("apply")]
@@ -32,7 +24,7 @@ namespace GD1.Api.Controllers
         public async Task<IActionResult> Apply(
             [FromBody] SubmitApplicationRequest req)
         {
-            var result = await _submit.HandleAsync(
+            var result = await _mediator.Send(
                 new SubmitApplicationCommand
                 {
                     Request = req,
@@ -42,11 +34,11 @@ namespace GD1.Api.Controllers
         }
 
         [HttpPost("{id}/assign-agent")]
-        [Authorize]
+        [Authorize(Roles = "GD1Admin")]
         public async Task<IActionResult> AssignAgent(
             long id, [FromBody] AssignAgentRequest req)
         {
-            var result = await _assign.HandleAsync(new AssignAgentCommand
+            var result = await _mediator.Send(new AssignAgentCommand
             {
                 ApplicationId = id,
                 AgentId = req.AgentId,
@@ -56,12 +48,26 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("applications")]
+        public async Task<IActionResult> GetAllApplications([FromQuery] string? search, [FromQuery] string? sortBy = "CreatedAt", [FromQuery] bool descending = true)
+        {
+            var result = await _mediator.Send(new GetAllApplicationsQuery { SearchTerm = search, SortBy = sortBy, Descending = descending });
+            return Ok(result);
+        }
+
+        [HttpGet("applications/{id}/nearby-agents")]
+        public async Task<IActionResult> GetNearbyAgents(long id)
+        {
+            var result = await _mediator.Send(new GetNearbyAgentsQuery { ApplicationId = id });
+            return Ok(result);
+        }
+
         [HttpPost("inspect/{token}")]
         [AllowAnonymous]
         public async Task<IActionResult> SubmitInspection(
             string token, [FromBody] SubmitInspectionRequest req)
         {
-            var result = await _inspect.HandleAsync(
+            var result = await _mediator.Send(
                 new SubmitInspectionCommand
                 {
                     AccessToken = token,
@@ -71,11 +77,11 @@ namespace GD1.Api.Controllers
         }
 
         [HttpPost("reports/{id}/review")]
-        [Authorize]
+        [Authorize(Roles = "GD1Admin")]
         public async Task<IActionResult> ReviewInspection(
             long id, [FromBody] ReviewInspectionRequest req)
         {
-            var result = await _review.HandleAsync(new ReviewInspectionCommand
+            var result = await _mediator.Send(new ReviewInspectionCommand
             {
                 ReportId = id,
                 AdminId = GetUserId(),
@@ -105,4 +111,3 @@ namespace GD1.Api.Controllers
         public string? AdminRemarks { get; set; }
     }
 }
-

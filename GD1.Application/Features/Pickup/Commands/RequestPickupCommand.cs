@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities;
+using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
 using MediatR;
@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 
+using FluentValidation;
+
 namespace GD1.Application.Features.Pickup.Commands
 {
     public record RequestPickupCommand(
@@ -18,6 +20,16 @@ namespace GD1.Application.Features.Pickup.Commands
         double Latitude,
         double Longitude
     ) : IRequest<long>;
+
+    public class RequestPickupCommandValidator : AbstractValidator<RequestPickupCommand>
+    {
+        public RequestPickupCommandValidator()
+        {
+            RuleFor(x => x.BookingId).GreaterThan(0);
+            RuleFor(x => x.RequestedPickupTime).GreaterThanOrEqualTo(DateTime.UtcNow.AddMinutes(-5));
+            RuleFor(x => x.PickupAddress).NotEmpty();
+        }
+    }
 
     public class RequestPickupCommandHandler
         : IRequestHandler<RequestPickupCommand, long>

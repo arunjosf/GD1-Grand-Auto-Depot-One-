@@ -1,4 +1,4 @@
-﻿using GD1.Application.Interfaces;
+using GD1.Application.Interfaces;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
@@ -9,12 +9,23 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using FluentValidation;
+
 namespace GD1.Application.Features.Pickup.Commands
 {
     public record VerifyOtpCommand(
         long PickupRequestId,
         string Otp
     ) : IRequest<string>;
+
+    public class VerifyOtpCommandValidator : AbstractValidator<VerifyOtpCommand>
+    {
+        public VerifyOtpCommandValidator()
+        {
+            RuleFor(x => x.PickupRequestId).GreaterThan(0);
+            RuleFor(x => x.Otp).NotEmpty();
+        }
+    }
 
     public class VerifyOtpCommandHandler
         : IRequestHandler<VerifyOtpCommand, string>

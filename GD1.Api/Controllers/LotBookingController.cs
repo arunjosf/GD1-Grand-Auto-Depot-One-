@@ -1,6 +1,7 @@
-﻿using GD1.Application.Features.LotBooking.Commands;
+using GD1.Application.Features.LotBooking.Commands;
 using GD1.Application.Features.LotBooking.DTOs;
 using GD1.Application.Features.LotBooking.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,24 +11,17 @@ namespace GD1.Api.Controllers
     [ApiController]
     public class LotBookingController : ControllerBase
     {
-        private readonly CreateBookingCommandHandler _create;
-        private readonly GetMyBookingsQueryHandler _myBookings;
-        private readonly GetBookingDetailQueryHandler _detail;
+        private readonly IMediator _mediator;
 
-        public LotBookingController(
-            CreateBookingCommandHandler create,
-            GetMyBookingsQueryHandler myBookings,
-            GetBookingDetailQueryHandler detail)
+        public LotBookingController(IMediator mediator)
         {
-            _create = create;
-            _myBookings = myBookings;
-            _detail = detail;
+            _mediator = mediator;
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateBookingRequest req)
         {
-            var result = await _create.HandleAsync(
+            var result = await _mediator.Send(
                 new CreateBookingCommand { Request = req, OwnerId = GetUserId() });
             return Ok(result);
         }
@@ -35,7 +29,7 @@ namespace GD1.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMy()
         {
-            var result = await _myBookings.HandleAsync(
+            var result = await _mediator.Send(
                 new GetMyBookingsQuery { OwnerId = GetUserId() });
             return Ok(result);
         }
@@ -43,7 +37,7 @@ namespace GD1.Api.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetDetail(long id)
         {
-            var result = await _detail.HandleAsync(
+            var result = await _mediator.Send(
                 new GetBookingDetailQuery { BookingId = id, OwnerId = GetUserId() });
             return Ok(result);
         }
