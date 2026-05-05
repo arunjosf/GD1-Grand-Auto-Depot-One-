@@ -1,4 +1,4 @@
-﻿using GD1.Application.Interfaces;
+using GD1.Application.Interfaces;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
@@ -9,9 +9,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using FluentValidation;
+
 namespace GD1.Application.Features.Pickup.Commands
 {
     public record SendOtpCommand(long PickupRequestId) : IRequest<string>;
+
+    public class SendOtpCommandValidator : AbstractValidator<SendOtpCommand>
+    {
+        public SendOtpCommandValidator()
+        {
+            RuleFor(x => x.PickupRequestId).GreaterThan(0);
+        }
+    }
 
     public class SendOtpCommandHandler
         : IRequestHandler<SendOtpCommand, string>

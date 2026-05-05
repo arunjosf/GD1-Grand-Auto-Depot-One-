@@ -1,14 +1,12 @@
 using GD1.Api.Middleware;
-using GD1.Application.Common;
 using GD1.Application.Features.Auth.Commands;
+using GD1.Application.Features.FranchiseApplication.Commands;
 using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
-using GD1.Infrastructure;
 using GD1.Infrastructure.Data;
 using GD1.Infrastructure.Repositories;
 using GD1.Infrastructure.Services;
-using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -16,13 +14,44 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Data;
 using System.Text;
+using FluentValidation;
+using MediatR;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
 
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(ApplicationAssemblyMarker).Assembly));
+builder.Services.AddScoped<IDbConnection>(sp =>
+    new SqlConnection(builder.Configuration
+        .GetConnectionString("DefaultConnection")));
+
+
+
+builder.Services.AddScoped(
+    typeof(IGenericRepository<>),
+    typeof(GenericRepository<>));
+
+builder.Services.AddScoped<IUserReadRepository, UserReadRepository>();
+builder.Services.AddScoped<IFranchiseReadRepository, FranchiseReadRepository>();
+builder.Services.AddScoped<IVehicleReadRepository, VehicleReadRepository>();
+builder.Services.AddScoped<IBookingReadRepository, BookingReadRepository>();
+
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+
+builder.Services.AddHttpClient<ISmsService, SmsService>();
+
+builder.Services.AddMediatR(cfg => {
+    cfg.RegisterServicesFromAssembly(typeof(GD1.Application.Features.Auth.Commands.LoginCommand).Assembly);
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(GD1.Application.Common.Behaviors.ValidationBehavior<,>));
+});
+builder.Services.AddValidatorsFromAssembly(typeof(GD1.Application.Features.Auth.Commands.LoginCommand).Assembly);
+
 
 
 var jwtKey = builder.Configuration["Jwt:SecretKey"]
@@ -48,16 +77,37 @@ builder.Services
                                            Encoding.UTF8.GetBytes(jwtKey)),
             ClockSkew = TimeSpan.Zero
         };
+        opt.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Cookies.ContainsKey("AccessToken"))
+                {
+                    context.Token = context.Request.Cookies["AccessToken"];
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("VehicleOwner", p => p.RequireClaim("roleId", "1"));
+    options.AddPolicy("LotOwner", p => p.RequireClaim("roleId", "2"));
+    options.AddPolicy("Agent", p => p.RequireClaim("roleId", "3"));
+    options.AddPolicy("Manager", p => p.RequireClaim("roleId", "4"));
+    options.AddPolicy("Admin", p => p.RequireClaim("roleId", "5"));
+    options.AddPolicy("LotOwnerOrManager", p => p.RequireClaim("roleId", "2", "4"));
+    options.AddPolicy("AdminOrLotOwner", p => p.RequireClaim("roleId", "2", "5"));
+});
 
 
 builder.Services.AddCors(opt =>
     opt.AddPolicy("Frontend", policy =>
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyHeader()
-              .AllowAnyMethod()));
-
-
+              .AllowAnyMethod()
+              .AllowCredentials()));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -92,12 +142,8 @@ builder.Services.AddSwaggerGen(opt =>
 });
 // Add services to the container.
 
-builder.Services.AddControllers();
-    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
 
-    var app = builder.Build();
+        var app = builder.Build();
 
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
@@ -114,6 +160,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
+app.Run();  
 
 

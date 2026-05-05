@@ -1,4 +1,4 @@
-﻿using GD1.Application.Features.Auth.DTOs;
+using GD1.Application.Features.Auth.DTOs;
 using GD1.Application.Interfaces;
 using GD1.Domain.Entities;
 using GD1.Infrastructure.Data;
@@ -14,6 +14,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
+using GD1.Domain.Entities.Enums;
+
 namespace GD1.Infrastructure.Services
 {
     public class AuthService : IAuthService
@@ -41,7 +43,7 @@ namespace GD1.Infrastructure.Services
                 Email = req.Email.ToLower().Trim(),
                 PhoneNumber = req.PhoneNumber,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-                Role = req.RoleId,
+                Role = UserRole.VehicleOwner,
                 IsActive = true,
                 IsEmailVerified = false
             };
@@ -93,7 +95,7 @@ namespace GD1.Infrastructure.Services
                     Email = payload.Email.ToLower().Trim(),
                     GoogleId = payload.Subject,
                     AvatarUrl = payload.Picture,
-                    Role = req.RoleId,
+                    Role = UserRole.VehicleOwner,
                     IsActive = true,
                     IsEmailVerified = true
                 };
@@ -162,7 +164,7 @@ namespace GD1.Infrastructure.Services
                 UserId = user.Id,
                 FullName = user.FullName,
                 Email = user.Email,
-                RoleId = user.Role
+                Role = user.Role
             };
         }
 
@@ -179,9 +181,9 @@ namespace GD1.Infrastructure.Services
                 new Claim(JwtRegisteredClaimNames.Sub,   user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti,   Guid.NewGuid().ToString()),
-                new Claim("userId",   user.Id.ToString()),
+                new Claim("userId",   user.Id.ToString(), ClaimValueTypes.Integer64),
                 new Claim("fullName", user.FullName),
-                new Claim("roleId",   user.Role.ToString())
+                new Claim("role",     ((int)user.Role).ToString(), ClaimValueTypes.Integer32)
             };
 
             var expiryMinutes = int.Parse(

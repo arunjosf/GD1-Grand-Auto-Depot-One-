@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities;
+using GD1.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -26,7 +26,7 @@ namespace GD1.Infrastructure.Repositories
                        State, Status, AdminNotes, ApplicationFee,
                        FeeStatus, CreatedAt
                 FROM   FranchiseApplications
-                WHERE  Id = @ApplicationId AND ApplicantId = @ApplicantId";
+                WHERE  Id = @ApplicationId AND (@ApplicantId = 0 OR ApplicantId = @ApplicantId)";
 
             var app = await _db.QuerySingleOrDefaultAsync<ApplicationDto>(
                 sql, new
@@ -166,6 +166,39 @@ namespace GD1.Infrastructure.Repositories
 
             return await _db.QueryAsync<PropertyImageDto>(
                 sql, new { ApplicationId = applicationId });
+        }
+        public async Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.ApplicationListDto>> GetAllApplicationsAsync(string? status, string? searchTerm, string? sortBy, bool descending)
+        {
+            var sql = @"
+                SELECT Id, ApplicationType, BusinessName, OwnerName, City, State, Status, CreatedAt
+                FROM FranchiseApplications
+                WHERE (@Status IS NULL OR Status = @Status)
+                AND (@SearchTerm IS NULL OR BusinessName LIKE '%' + @SearchTerm + '%' OR OwnerName LIKE '%' + @SearchTerm + '%')
+                ORDER BY CreatedAt DESC"; // Simplified sorting
+
+            return await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.ApplicationListDto>(sql, new { Status = status, SearchTerm = searchTerm });
+        }
+
+        public async Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetAllAgentsAsync(bool onlyActive, string? city, string? state)
+        {
+            var sql = @"
+                SELECT Id, FullName, PhoneNumber, Email, City, State, CoverageArea, Latitude, Longitude, IsActive
+                FROM GD1Agents
+                WHERE (@OnlyActive = 0 OR IsActive = 1)
+                AND (@City IS NULL OR City = @City)
+                AND (@State IS NULL OR State = @State)";
+
+            return await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.AgentDto>(sql, new { OnlyActive = onlyActive, City = city, State = state });
+        }
+
+        public async Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetNearbyAgentsAsync(string city, string state)
+        {
+            var sql = @"
+                SELECT Id, FullName, PhoneNumber, Email, City, State, CoverageArea, Latitude, Longitude, IsActive
+                FROM GD1Agents
+                WHERE IsActive = 1 AND State = @State"; // Basic approximation
+
+            return await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.AgentDto>(sql, new { State = state });
         }
     }
 }

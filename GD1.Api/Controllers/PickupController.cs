@@ -1,4 +1,4 @@
-﻿using GD1.Application.Features.Pickup.Commands;
+using GD1.Application.Features.Pickup.Commands;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
@@ -20,6 +20,15 @@ namespace GD1.Api.Controllers
         public async Task<IActionResult> RequestPickup([FromBody] RequestPickupCommand command)
         {
             var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        [HttpGet("managers")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner")]
+        public async Task<IActionResult> GetManagers()
+        {
+            var value = User.FindFirst("userId")?.Value ?? "0";
+            var result = await _mediator.Send(new GD1.Application.Features.Pickup.Queries.GetMyManagersQuery { LotOwnerId = long.Parse(value) });
             return Ok(result);
         }
 

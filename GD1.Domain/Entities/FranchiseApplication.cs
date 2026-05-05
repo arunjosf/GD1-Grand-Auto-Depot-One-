@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -40,6 +40,7 @@ namespace GD1.Domain.Entities
         public DateTime? ReviewedAt { get; set; }
 
         public User Applicant { get; set; } = null!;
+        public bool IsDeleted { get; set; } = false;
         public ICollection<LotUnit> LotUnits { get; set; } = [];
         public ICollection<InspectionReport> InspectionReports { get; set; } = [];
         public ICollection<PropertyImage> PropertyImages { get; set; } = [];

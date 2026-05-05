@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities;
+using GD1.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,5 +17,8 @@ namespace GD1.Application.Interfaces.Repositories
         Task<IEnumerable<LotUnit>> GetLotUnitsByApplicationIdAsync(long applicationId);
         Task<InspectionReport?> GetReportByTokenAsync(string accessToken);
         Task<IEnumerable<InspectionReport>> GetReportsByApplicationIdAsync(long applicationId);
+        Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.ApplicationListDto>> GetAllApplicationsAsync(string? status, string? searchTerm, string? sortBy, bool descending);
+        Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetAllAgentsAsync(bool onlyActive, string? city, string? state);
+        Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetNearbyAgentsAsync(string city, string state);
     }
 }

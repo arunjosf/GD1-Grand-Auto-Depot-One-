@@ -1,4 +1,4 @@
-﻿using GD1.Application.Common;
+using GD1.Application.Common;
 using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
@@ -7,6 +7,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
+using MediatR;
+using FluentValidation;
 
 namespace GD1.Application.Features.FranchiseApplication.Commands
 {
@@ -18,13 +21,23 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         public List<PropertyImageRequest> Images { get; set; } = [];
     }
 
-    public class SubmitInspectionCommand
+    public class SubmitInspectionCommand : IRequest<BaseResponse<string>>
     {
         public string AccessToken { get; set; } = string.Empty;
         public SubmitInspectionRequest Request { get; set; } = null!;
     }
 
-    public class SubmitInspectionCommandHandler
+    public class SubmitInspectionCommandValidator : AbstractValidator<SubmitInspectionCommand>
+    {
+        public SubmitInspectionCommandValidator()
+        {
+            RuleFor(x => x.AccessToken).NotEmpty();
+            RuleFor(x => x.Request.Passcode).NotEmpty();
+            RuleFor(x => x.Request.ChecklistJson).NotEmpty();
+        }
+    }
+
+    public class SubmitInspectionCommandHandler : IRequestHandler<SubmitInspectionCommand, BaseResponse<string>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.InspectionReport> _reportRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.PropertyImage> _imageRepo;
@@ -40,7 +53,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             _franchiseRead = franchiseRead;
         }
 
-        public async Task<BaseResponse<string>> HandleAsync(SubmitInspectionCommand cmd)
+        public async Task<BaseResponse<string>> Handle(SubmitInspectionCommand cmd, CancellationToken cancellationToken)
         {
             var report = await _franchiseRead
                 .GetReportByTokenAsync(cmd.AccessToken);

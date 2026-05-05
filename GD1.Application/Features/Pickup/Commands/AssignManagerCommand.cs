@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities;
+using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
 using MediatR;
@@ -8,6 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using FluentValidation;
+
 namespace GD1.Application.Features.Pickup.Commands
 {
     public record AssignManagerCommand(
@@ -15,6 +17,16 @@ namespace GD1.Application.Features.Pickup.Commands
          long ManagerId,
          DateTime ArrivalTime
      ) : IRequest<string>;
+
+    public class AssignManagerCommandValidator : AbstractValidator<AssignManagerCommand>
+    {
+        public AssignManagerCommandValidator()
+        {
+            RuleFor(x => x.PickupRequestId).GreaterThan(0);
+            RuleFor(x => x.ManagerId).GreaterThan(0);
+            RuleFor(x => x.ArrivalTime).GreaterThanOrEqualTo(DateTime.UtcNow.AddMinutes(-5));
+        }
+    }
 
     public class AssignManagerCommandHandler
         : IRequestHandler<AssignManagerCommand, string>
