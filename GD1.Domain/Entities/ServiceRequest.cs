@@ -9,10 +9,10 @@ namespace GD1.Domain.Entities
 {
     public class ServiceRequest : BaseEntity
     {
-        public Guid BookingId { get; set; }
-        public Guid ServiceCenterId { get; set; }
-        public Guid? MechanicId { get; set; }
-        public Guid RequestedBy { get; set; }
+        public long BookingId { get; set; }
+        public long ServiceCenterId { get; set; }
+        public long? MechanicId { get; set; }
+        public long RequestedBy { get; set; }
         public string ServiceType { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public string Status { get; set; } = "Pending";

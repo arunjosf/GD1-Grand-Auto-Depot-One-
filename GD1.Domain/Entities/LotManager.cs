@@ -9,9 +9,9 @@ namespace GD1.Domain.Entities
 {
     public class LotManager : BaseEntity
     {
-        public Guid LotId { get; set; }
-        public Guid ManagerId { get; set; }
-        public Guid AddedBy { get; set; }
+        public long LotId { get; set; }
+        public long ManagerId { get; set; }
+        public long AddedBy { get; set; }
         public bool IsActive { get; set; } = true;
 
         public StorageLot LotOwner { get; set; } = null!;

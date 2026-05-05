@@ -9,8 +9,8 @@ namespace GD1.Domain.Entities
 {
     public class Review : BaseEntity
     {
-        public Guid LotId { get; set; }
-        public Guid ReviewerId { get; set; }
+        public long LotId { get; set; }
+        public long ReviewerId { get; set; }
         public int Rating { get; set; }
         public string? Comment { get; set; }
         public string? SentimentScore { get; set; }

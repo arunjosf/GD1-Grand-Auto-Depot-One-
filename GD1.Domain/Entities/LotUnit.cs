@@ -9,24 +9,25 @@ namespace GD1.Domain.Entities
 {
     public class LotUnit : BaseEntity
     {
-        public Guid FranchiseApplicationId { get; set; }
+        public long FranchiseApplicationId { get; set; }
 
         public string Label { get; set; } = string.Empty;
+        public string? Description { get; set; }
+
+        public string Tier { get; set; } = "Tier1";
         public int Capacity { get; set; }
 
         public bool HasCCTV { get; set; }
         public bool HasSecurity { get; set; }
         public bool HasWorkshop { get; set; }
-
-
-        public string? OwnerLotFrontImageUrl { get; set; }
-        public string? OwnerFullPropertyImageUrl { get; set; }
-        public string? OwnerWorkshopImageUrl { get; set; }
-        public string? OwnerExtraImages { get; set; }
+        public bool HasWashingArea { get; set; }
 
         public string Status { get; set; } = "Pending";
+        public string? AssignedLotCode { get; set; }
 
         public FranchiseApplication Application { get; set; } = null!;
         public ICollection<InspectionReport> InspectionReports { get; set; } = [];
+        public ICollection<PropertyImage> Images { get; set; } = [];
     }
 }
+

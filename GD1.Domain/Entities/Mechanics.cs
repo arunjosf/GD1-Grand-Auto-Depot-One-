@@ -9,7 +9,7 @@ namespace GD1.Domain.Entities
 {
     public class Mechanics : BaseEntity
     {
-        public Guid ServiceCenterId { get; set; }
+        public long ServiceCenterId { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string? IdProofUrl { get; set; }

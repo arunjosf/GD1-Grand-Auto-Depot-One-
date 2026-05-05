@@ -9,8 +9,8 @@ namespace GD1.Domain.Entities
 {
     public class Handoff : BaseEntity
     {
-        public Guid BookingId { get; set; }
-        public Guid RequestedBy { get; set; }
+        public long BookingId { get; set; }
+        public long RequestedBy { get; set; }
         public string PersonName { get; set; } = string.Empty;
         public string PersonPhone { get; set; } = string.Empty;
         public string? PersonIdUrl { get; set; }

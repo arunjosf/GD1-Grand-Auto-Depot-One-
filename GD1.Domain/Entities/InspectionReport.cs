@@ -9,31 +9,30 @@ namespace GD1.Domain.Entities
 {
     public class InspectionReport : BaseEntity
     {
-        public Guid ApplicationId { get; set; }
-        public Guid LotUnitId { get; set; }
-        public Guid AgentId { get; set; }
-        public Guid AssignedBy { get; set; }
+        public long ApplicationId { get; set; }
+        public long LotUnitId { get; set; }
+        public long AgentId { get; set; }
+        public long AssignedBy { get; set; }
 
-        public string AccessToken { get; set; } = string.Empty; 
-        public string PasscodeHash { get; set; } = string.Empty; 
+        public string AccessToken { get; set; } = string.Empty;
+
+        public string PasscodeHash { get; set; } = string.Empty;
+
         public DateTime ExpiryDate { get; set; }
-
         public DateTime ScheduledDate { get; set; }
+        public DateTime? StartedAt { get; set; }
         public DateTime? CompletedDate { get; set; }
 
-        public string ChecklistJson { get; set; } = string.Empty;
+        public string ChecklistJson { get; set; } = "[]";
+        public string? AgentRemarks { get; set; }
 
-        public string? AgentLotFrontImageUrl { get; set; }
-        public string? AgentFullPropertyImageUrl { get; set; }
-        public string? AgentWorkshopImageUrl { get; set; }
-        public string? AgentExtraImages { get; set; }
-
-
-        public string? Result { get; set; } 
         public string Status { get; set; } = "Assigned";
 
-        public string? AdminDecision { get; set; } 
+        public string? Result { get; set; }
+
+        public string? AdminDecision { get; set; }
         public string? AdminRemarks { get; set; }
+        public DateTime? DecisionAt { get; set; }
 
         public FranchiseApplication Application { get; set; } = null!;
         public GD1Agents Agent { get; set; } = null!;
