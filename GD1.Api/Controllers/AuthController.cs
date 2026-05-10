@@ -2,8 +2,8 @@ using GD1.Application.Features.Auth.Commands;
 using GD1.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace GD1.Api.Controllers
 {
@@ -13,39 +13,16 @@ namespace GD1.Api.Controllers
     {
         private readonly IMediator _mediator;
 
-        public AuthController(IMediator mediator)
-        {
-            _mediator = mediator;
-        }
+        public AuthController(IMediator mediator) => _mediator = mediator;
 
-        private void SetTokenCookies(string accessToken, string refreshToken)
-        {
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(7)
-            };
-            Response.Cookies.Append("AccessToken", accessToken, cookieOptions);
-            Response.Cookies.Append("RefreshToken", refreshToken, cookieOptions);
-        }
-
-        private void ClearTokenCookies()
-        {
-            Response.Cookies.Delete("AccessToken");
-            Response.Cookies.Delete("RefreshToken");
-        }
 
         [HttpPost("register")]
-        [AllowAnonymous]
+        [AllowAnonymous]    
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
         {
             var result = await _mediator.Send(new RegisterCommand { Request = req });
             if (result.Success && result.Data != null)
-            {
                 SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
-            }
             return Ok(result);
         }
 
@@ -55,9 +32,7 @@ namespace GD1.Api.Controllers
         {
             var result = await _mediator.Send(new LoginCommand { Request = req });
             if (result.Success && result.Data != null)
-            {
                 SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
-            }
             return Ok(result);
         }
 
@@ -67,22 +42,31 @@ namespace GD1.Api.Controllers
         {
             var result = await _mediator.Send(new GoogleLoginCommand { Request = req });
             if (result.Success && result.Data != null)
-            {
                 SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
-            }
             return Ok(result);
         }
+
+        [HttpPost("verify-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyOtpRequest req)
+        {
+            var result = await _mediator.Send(
+                new VerifyEmailOtpCommand { Request = req });
+            if (result.Success && result.Data != null)
+                SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
+            return Ok(result);
+        }
+
 
         [HttpPost("refresh")]
         [AllowAnonymous]
         public async Task<IActionResult> Refresh()
         {
             var refreshToken = Request.Cookies["RefreshToken"];
-            var result = await _mediator.Send(new RefreshTokenCommand { RefreshToken = refreshToken ?? "" });
+            var result = await _mediator.Send(
+                new RefreshTokenCommand { RefreshToken = refreshToken ?? "" });
             if (result.Success && result.Data != null)
-            {
                 SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
-            }
             return Ok(result);
         }
 
@@ -91,28 +75,53 @@ namespace GD1.Api.Controllers
         public async Task<IActionResult> Logout()
         {
             var refreshToken = Request.Cookies["RefreshToken"];
-            var result = await _mediator.Send(new LogoutCommand { RefreshToken = refreshToken ?? "" });
+            var result = await _mediator.Send(
+                new LogoutCommand { RefreshToken = refreshToken ?? "" });
             ClearTokenCookies();
             return Ok(result);
         }
 
         [HttpGet("me")]
         [Authorize]
-        public IActionResult Me()
+        public async Task<IActionResult> Me([FromServices] GD1.Infrastructure.Data.AppDbContext db)
         {
-            var userId = User.FindFirst("userId")?.Value;
-            var email = User.FindFirst("email")?.Value;
-            var fullName = User.FindFirst("fullName")?.Value;
-            var roleId = User.FindFirst("role")?.Value; // In AuthService it's "role", not "roleId"
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                              ?? User.FindFirst("userId")?.Value;
+
+            if (userIdClaim == null) return Unauthorized();
+
+            var userId = long.Parse(userIdClaim);
+            var user = await db.Users.FindAsync(userId);
+
+            if (user == null) return NotFound("User not found");
 
             return Ok(new
             {
-                userId = userId != null ? long.Parse(userId) : 0,
-                email,
-                fullName,
-                roleId = roleId != null ? int.Parse(roleId) : 0
+                userId = user.Id,
+                email = user.Email,
+                fullName = user.FullName,
+                role = user.Role.ToString(),
+                roleId = (int)user.Role
             });
+        }
+
+        private void SetTokenCookies(string accessToken, string refreshToken)
+        {
+            var opts = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+            Response.Cookies.Append("AccessToken", accessToken, opts);
+            Response.Cookies.Append("RefreshToken", refreshToken, opts);
+        }
+
+        private void ClearTokenCookies()
+        {
+            Response.Cookies.Delete("AccessToken");
+            Response.Cookies.Delete("RefreshToken");
         }
     }
 }
-    

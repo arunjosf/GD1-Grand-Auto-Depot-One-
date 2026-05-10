@@ -16,10 +16,16 @@ using System.Data;
 using System.Text;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Mvc;
 
 
+
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Clear default claim mapping to use standard names
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -45,6 +51,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 
 builder.Services.AddHttpClient<ISmsService, SmsService>();
+builder.Services.AddHttpClient<GD1.Application.Interfaces.IGeocodingService, GD1.Infrastructure.Services.GeocodingService>();
+builder.Services.AddHostedService<UnverifiedUserCleanupService>();
 
 builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(GD1.Application.Features.Auth.Commands.LoginCommand).Assembly);
@@ -92,24 +100,36 @@ builder.Services
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("VehicleOwner", p => p.RequireClaim("roleId", "1"));
-    options.AddPolicy("LotOwner", p => p.RequireClaim("roleId", "2"));
-    options.AddPolicy("Agent", p => p.RequireClaim("roleId", "3"));
-    options.AddPolicy("Manager", p => p.RequireClaim("roleId", "4"));
-    options.AddPolicy("Admin", p => p.RequireClaim("roleId", "5"));
-    options.AddPolicy("LotOwnerOrManager", p => p.RequireClaim("roleId", "2", "4"));
-    options.AddPolicy("AdminOrLotOwner", p => p.RequireClaim("roleId", "2", "5"));
+    options.AddPolicy("VehicleOwner", p => p.RequireRole("VehicleOwner"));
+    options.AddPolicy("Agent", p => p.RequireRole("Agent"));
+    options.AddPolicy("Admin", p => p.RequireRole("GD1Admin"));
 });
 
 
 builder.Services.AddCors(opt =>
     opt.AddPolicy("Frontend", policy =>
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage.Contains("Path:") ? "Invalid JSON format or value." : e.ErrorMessage)
+                .ToList();
+
+            return new BadRequestObjectResult(GD1.Application.Common.BaseResponse<object>.Fail(string.Join("\n", errors)));
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 
@@ -139,8 +159,8 @@ builder.Services.AddSwaggerGen(opt =>
             Array.Empty<string>()
         }
     });
+
 });
-// Add services to the container.
 
 
         var app = builder.Build();
@@ -152,9 +172,9 @@ builder.Services.AddSwaggerGen(opt =>
         app.UseSwaggerUI();
     }
 
+app.UseCors("Frontend");
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
-app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 

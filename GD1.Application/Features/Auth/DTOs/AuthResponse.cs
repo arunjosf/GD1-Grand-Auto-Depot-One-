@@ -16,5 +16,8 @@ namespace GD1.Application.Features.Auth.DTOs
         public string Email { get; set; } = string.Empty;
 
         public UserRole Role { get; set; }
+        public bool IsEmailVerified { get; set; }
+        public bool IsNewUser { get; set; }
+
     }
 }

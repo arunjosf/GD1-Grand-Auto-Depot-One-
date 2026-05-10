@@ -1,16 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace GD1.Application.Features.Auth.DTOs
 {
     public class RegisterRequest
     {
-        public string FullName { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string? PhoneNumber { get; set; }
+        [Required]
+        public string FullName { get; set; } = null!;
+
+        [Required]
+        [EmailAddress(ErrorMessage = "Invalid email format.")]
+        public string Email { get; set; } = null!;
+
+        [Required]
+        public string Password { get; set; } = null!;
+
+        [Required]
+        public string ConfirmPassword { get; set; } = null!;
     }
 }

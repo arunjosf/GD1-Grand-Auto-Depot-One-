@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using GD1.Application.Features.Auth.DTOs;
+using GD1.Domain.Entities;
+using System.Threading.Tasks;
+
 namespace GD1.Application.Interfaces
 {
     public interface IAuthService
@@ -13,5 +11,9 @@ namespace GD1.Application.Interfaces
         Task<AuthResponse> GoogleLoginAsync(GoogleLoginRequest request);
         Task<AuthResponse> RefreshTokenAsync(string refreshToken);
         Task RevokeTokenAsync(string refreshToken);
+
+        Task<string> SendVerificationOtpAsync(string email);
+        Task<AuthResponse> VerifyEmailOtpAsync(VerifyOtpRequest request);
+        Task<AuthResponse> CreateAuthResponseAsync(User user);
     }
 }

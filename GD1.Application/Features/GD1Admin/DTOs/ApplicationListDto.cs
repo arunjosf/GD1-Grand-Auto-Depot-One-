@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
     {
         public long Id { get; set; }
         public string BusinessName { get; set; } = string.Empty;
+        public string FrontImageUrl { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string ContactEmail { get; set; } = string.Empty;
         public string City { get; set; } = string.Empty;

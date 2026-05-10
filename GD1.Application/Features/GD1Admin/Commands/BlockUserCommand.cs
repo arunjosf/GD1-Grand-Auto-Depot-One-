@@ -31,7 +31,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
                 throw new KeyNotFoundException("User not found.");
 
             // GD1Admin cannot block themselves or other GD1Admins here if needed, but leaving general for now.
-            if (user.Role == GD1.Domain.Entities.Enums.UserRole.Admin)
+            if (user.Role == GD1.Domain.Entities.Enums.UserRole.GD1Admin)
                 throw new InvalidOperationException("Cannot block another GD1 Admin.");
 
             user.IsActive = !user.IsActive;

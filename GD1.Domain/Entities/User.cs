@@ -16,6 +16,10 @@ namespace GD1.Domain.Entities
         public string? PasswordHash { get; set; }
         public string? GoogleId { get; set; }
         public string? AvatarUrl { get; set; }
+        public string? EmailOtp { get; set; } 
+        public DateTime? EmailOtpExpiry { get; set; }
+        public string? PhoneOtp { get; set; }
+        public DateTime? PhoneOtpExpiry { get; set; }
         public UserRole Role { get; set; } = UserRole.VehicleOwner;
         public bool IsActive { get; set; } = true;
         public bool IsEmailVerified { get; set; } = false;
@@ -23,7 +27,7 @@ namespace GD1.Domain.Entities
         public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
         public ICollection<Notification> Notifications { get; set; } = [];
         public ICollection<Vehicle> Vehicles { get; set; } = [];
-        public ICollection<FranchiseApplication> FranchiseApplications { get; set; } = [];
+        public ICollection<GD1.Domain.Entities.FranchiseApplication> FranchiseApplications { get; set; } = [];
 
     }
 }

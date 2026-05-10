@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities;
+using GD1.Domain.Entities;
 using GD1.Domain.Entities.Base;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,11 +23,15 @@ namespace GD1.Infrastructure.Data
         public DbSet<ServiceCenter> ServiceCenters { get; set; }
         public DbSet<Mechanics> Mechanics { get; set; }
         public DbSet<ServiceRequest> ServiceRequests { get; set; }
-        public DbSet<FranchiseApplication> FranchiseApplications { get; set; }
+        public DbSet<GD1.Domain.Entities.FranchiseApplication> FranchiseApplications { get; set; }
         public DbSet<LotUnit> LotUnits { get; set; }
+        public DbSet<InspectionAssignment> InspectionAssignments { get; set; }
         public DbSet<InspectionReport> InspectionReports { get; set; }
+        public DbSet<InspectionItem> InspectionItems { get; set; }
+        public DbSet<AgentRequest> AgentRequests { get; set; }
         public DbSet<PropertyImage> PropertyImages { get; set; }
-        public DbSet<GD1Agents> GD1Agents { get; set; }
+        public DbSet<LotUnitImage> LotUnitImages { get; set; }
+        public DbSet<Agent> Agents { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Complaint> Complaints { get; set; }
@@ -40,6 +44,11 @@ namespace GD1.Infrastructure.Data
                 .HasIndex(u => u.Email).IsUnique();
             mb.Entity<User>()
                 .HasIndex(u => u.GoogleId);
+            mb.Entity<Agent>().ToTable("GD1Agents")
+                .HasOne(a => a.User)
+                .WithOne()
+                .HasForeignKey<Agent>(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<RefreshToken>()
                 .HasOne(rt => rt.User)
@@ -85,7 +94,7 @@ namespace GD1.Infrastructure.Data
                 .HasOne(s => s.LotOwner)
                 .WithMany()
                 .HasForeignKey(s => s.LotOwnerId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
             mb.Entity<StorageLot>()
                 .Property(s => s.PricePerDay).HasPrecision(10, 2);
             mb.Entity<StorageLot>()
@@ -106,7 +115,7 @@ namespace GD1.Infrastructure.Data
                 .HasOne(lm => lm.Manager)
                 .WithMany()
                 .HasForeignKey(lm => lm.ManagerId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Booking>()
                 .HasOne(b => b.Vehicle)
@@ -122,7 +131,7 @@ namespace GD1.Infrastructure.Data
                 .HasOne(b => b.Owner)
                 .WithMany()
                 .HasForeignKey(b => b.OwnerId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
             mb.Entity<Booking>()
                 .HasOne(b => b.Slot)
                 .WithMany()
@@ -159,7 +168,7 @@ namespace GD1.Infrastructure.Data
                 .HasOne(sc => sc.ServiceCenterAdmin)
                 .WithMany()
                 .HasForeignKey(sc => sc.AdminId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Mechanics>()
                 .HasOne(m => m.ServiceCenter)
@@ -180,12 +189,12 @@ namespace GD1.Infrastructure.Data
             mb.Entity<ServiceRequest>()
                 .Property(s => s.ServiceCost).HasPrecision(10, 2);
 
-            mb.Entity<FranchiseApplication>()
+            mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
                 .HasOne(f => f.Applicant)
                 .WithMany(u => u.FranchiseApplications)
                 .HasForeignKey(f => f.ApplicantId)
                 .OnDelete(DeleteBehavior.Cascade);
-            mb.Entity<FranchiseApplication>()
+            mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
                 .Property(f => f.ApplicationFee).HasPrecision(10, 2);
 
             mb.Entity<LotUnit>()
@@ -194,34 +203,46 @@ namespace GD1.Infrastructure.Data
                 .HasForeignKey(l => l.FranchiseApplicationId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            mb.Entity<InspectionReport>()
-                .HasOne(ir => ir.Application)
-                .WithMany(a => a.InspectionReports)
-                .HasForeignKey(ir => ir.ApplicationId)
+            mb.Entity<InspectionAssignment>()
+                .HasOne(ia => ia.Application)
+                .WithMany(a => a.Assignments)
+                .HasForeignKey(ia => ia.ApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            mb.Entity<InspectionAssignment>()
+                .HasOne(ia => ia.Agent)
+                .WithMany(a => a.Assignments)
+                .HasForeignKey(ia => ia.AgentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
             mb.Entity<InspectionReport>()
-                .HasOne(ir => ir.LotUnit)
-                .WithMany(l => l.InspectionReports)
-                .HasForeignKey(ir => ir.LotUnitId)
-                .OnDelete(DeleteBehavior.Restrict);
-            mb.Entity<InspectionReport>()
-                .HasOne(ir => ir.Agent)
-                .WithMany(a => a.InspectionReports)
-                .HasForeignKey(ir => ir.AgentId)
-                .OnDelete(DeleteBehavior.Restrict);
-            mb.Entity<InspectionReport>()
-                .HasIndex(ir => ir.AccessToken).IsUnique();
+                .HasOne(ir => ir.Assignment)
+                .WithOne(ia => ia.Report)
+                .HasForeignKey<InspectionReport>(ir => ir.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<InspectionItem>()
+                .HasOne(ii => ii.Report)
+                .WithMany(r => r.Items)
+                .HasForeignKey(ii => ii.ReportId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<AgentRequest>()
+                .HasOne(ar => ar.Assignment)
+                .WithMany(ia => ia.Requests)
+                .HasForeignKey(ar => ar.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<PropertyImage>()
                 .HasOne(pi => pi.Application)
                 .WithMany(a => a.PropertyImages)
                 .HasForeignKey(pi => pi.ApplicationId)
                 .OnDelete(DeleteBehavior.Cascade);
-            mb.Entity<PropertyImage>()
-                .HasOne(pi => pi.LotUnit)
-                .WithMany(l => l.Images)
-                .HasForeignKey(pi => pi.LotUnitId)
-                .OnDelete(DeleteBehavior.NoAction);
+
+            mb.Entity<LotUnitImage>()
+                .HasOne(lui => lui.LotUnit)
+                .WithMany(lu => lu.Images)
+                .HasForeignKey(lui => lui.LotUnitId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Review>()
                 .HasOne(r => r.Lot)
@@ -232,7 +253,7 @@ namespace GD1.Infrastructure.Data
                 .HasOne(r => r.Reviewer)
                 .WithMany()
                 .HasForeignKey(r => r.ReviewerId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Notification>()
                 .HasOne(n => n.User)
@@ -244,7 +265,7 @@ namespace GD1.Infrastructure.Data
     .HasOne(c => c.Complainant)
     .WithMany()
     .HasForeignKey(c => c.ComplainantId)
-    .OnDelete(DeleteBehavior.Restrict);
+    .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Complaint>()
                 .HasOne(c => c.Lot)
@@ -262,7 +283,7 @@ namespace GD1.Infrastructure.Data
                 .HasOne(d => d.User)
                 .WithMany()
                 .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<DigitalAgreement>()
                 .HasOne(d => d.Terms)

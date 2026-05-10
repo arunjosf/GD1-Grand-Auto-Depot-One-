@@ -1,4 +1,4 @@
-﻿using GD1.Application.Common;
+using GD1.Application.Common;
 using GD1.Domain.Entities;
 using GD1.Domain.Interfaces;
 using MediatR;
@@ -18,9 +18,9 @@ namespace GD1.Application.Features.GD1Admin.Commands
     public class BlockAgentCommandHandler
         : IRequestHandler<BlockAgentCommand, BaseResponse<string>>
     {
-        private readonly IGenericRepository<GD1Agents> _repo;
+        private readonly IGenericRepository<Agent> _repo;
 
-        public BlockAgentCommandHandler(IGenericRepository<GD1Agents> repo)
+        public BlockAgentCommandHandler(IGenericRepository<Agent> repo)
             => _repo = repo;
 
         public async Task<BaseResponse<string>> Handle(

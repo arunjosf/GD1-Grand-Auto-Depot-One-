@@ -21,8 +21,8 @@ namespace GD1.Application.Features.Auth.Commands
     {
         public LoginCommandValidator()
         {
-            RuleFor(x => x.Request.Email).NotEmpty().EmailAddress();
-            RuleFor(x => x.Request.Password).NotEmpty();
+            RuleFor(x => x.Request.Email).NotEmpty().WithMessage("Email is required").EmailAddress();
+            RuleFor(x => x.Request.Password).NotEmpty().WithMessage("Password is Required");
         }
     }
 

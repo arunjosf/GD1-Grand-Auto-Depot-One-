@@ -20,15 +20,18 @@ namespace GD1.Domain.Entities
         public string City { get; set; } = string.Empty;
         public string State { get; set; } = string.Empty;
         public string Country { get; set; } = "India";
+        public string? PostalCode { get; set; }
 
-        public double? Latitude { get; set; }
-        public double? Longitude { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime? PreferredInspectionDate { get; set; }
 
         public string? BusinessRegistrationUrl { get; set; }
         public string? LicenseDocumentUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? PropertyProofUrl { get; set; }
-
+        public string? ExtraFacilities { get; set; }
+        
         public decimal ApplicationFee { get; set; } = 2000;
 
         public string FeeStatus { get; set; } = "Pending";
@@ -42,7 +45,7 @@ namespace GD1.Domain.Entities
         public User Applicant { get; set; } = null!;
         public bool IsDeleted { get; set; } = false;
         public ICollection<LotUnit> LotUnits { get; set; } = [];
-        public ICollection<InspectionReport> InspectionReports { get; set; } = [];
+        public ICollection<InspectionAssignment> Assignments { get; set; } = [];
         public ICollection<PropertyImage> PropertyImages { get; set; } = [];
     }
 }

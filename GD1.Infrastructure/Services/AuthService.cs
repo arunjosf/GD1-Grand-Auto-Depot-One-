@@ -1,20 +1,18 @@
 using GD1.Application.Features.Auth.DTOs;
 using GD1.Application.Interfaces;
 using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using GD1.Infrastructure.Data;
+using Google.Apis.Auth;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using Google.Apis.Auth;
-using Microsoft.EntityFrameworkCore;
-using GD1.Domain.Entities.Enums;
+
+using Microsoft.Extensions.Logging;
 
 namespace GD1.Infrastructure.Services
 {
@@ -22,36 +20,73 @@ namespace GD1.Infrastructure.Services
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
+        private readonly IEmailService _email;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(AppDbContext db, IConfiguration config)
+        public AuthService(
+            AppDbContext db,
+            IConfiguration config,
+            IEmailService email,
+            ILogger<AuthService> logger)
         {
             _db = db;
             _config = config;
+            _email = email;
+            _logger = logger;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest req)
         {
-            var emailExists = await _db.Users
-                .AnyAsync(u => u.Email == req.Email.ToLower().Trim());
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email == req.Email.ToLower().Trim());
 
-            if (emailExists)
-                throw new InvalidOperationException("Email already registered.");
-
-            var user = new User
+            if (user != null)
             {
-                FullName = req.FullName.Trim(),
-                Email = req.Email.ToLower().Trim(),
-                PhoneNumber = req.PhoneNumber,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-                Role = UserRole.VehicleOwner,
-                IsActive = true,
+                if (user.IsEmailVerified)
+                    throw new InvalidOperationException("Email already registered. Please login or use a different email.");
+                
+                // If not verified, allow "re-registering" (updates info and resends OTP)
+                user.FullName = req.FullName.Trim();
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+                user.PhoneNumber = null;
+                user.CreatedAt = DateTime.UtcNow; // Reset cleanup timer
+            }
+            else
+            {
+                user = new User
+                {
+                    FullName = req.FullName.Trim(),
+                    Email = req.Email.ToLower().Trim(),
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+                    Role = UserRole.VehicleOwner,
+                    IsActive = true,
+                    IsEmailVerified = false,
+                    PhoneNumber = null
+                };
+                _db.Users.Add(user);
+            }
+
+            await _db.SaveChangesAsync();
+            
+            try
+            {
+                await SendOtpEmailAsync(user);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Initial OTP email failed for {Email} during registration.", user.Email);
+            }
+
+            return new AuthResponse
+            {
+                AccessToken = string.Empty,
+                RefreshToken = string.Empty,
+                UserId = user.Id,
+                FullName = user.FullName,
+                Email = user.Email,
+                Role = user.Role,
                 IsEmailVerified = false
             };
-
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
-
-            return await BuildResponseAsync(user);
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest req)
@@ -68,51 +103,192 @@ namespace GD1.Infrastructure.Services
             if (!user.IsActive)
                 throw new UnauthorizedAccessException("Account is deactivated.");
 
+            if (!user.IsEmailVerified)
+                throw new UnauthorizedAccessException("Email not verified. Please verify your email before logging in.");
+
+            // NEW: Block Agents who are not yet approved by Admin
+            if (user.Role == UserRole.Agent)
+            {
+                var agent = await _db.Agents.FirstOrDefaultAsync(a => a.UserId == user.Id);
+                if (agent == null || !agent.IsVerified)
+                {
+                    throw new UnauthorizedAccessException("Your agent account is pending Admin approval. You will be able to login once approved.");
+                }
+            }
+
             return await BuildResponseAsync(user);
         }
 
         public async Task<AuthResponse> GoogleLoginAsync(GoogleLoginRequest req)
         {
-            GoogleJsonWebSignature.Payload payload;
+            _logger.LogInformation("Google Login attempt started.");
+            string email = "", name = "", picture = "", googleId = "";
 
-            try
-            {
-                payload = await GoogleJsonWebSignature.ValidateAsync(req.IdToken);
+            try {
+                // 1. Try to validate as ID Token (JWT)
+                if (req.IdToken.Contains("."))
+                {
+                    _logger.LogInformation("Attempting to validate Google ID Token.");
+                    var settings = new GoogleJsonWebSignature.ValidationSettings
+                    {
+                        Audience = [_config["Google:ClientId"]]
+                    };
+                    var payload = await GoogleJsonWebSignature.ValidateAsync(req.IdToken, settings);
+                    email = payload.Email;
+                    name = payload.Name;
+                    picture = payload.Picture;
+                    googleId = payload.Subject;
+                }
+                else
+                {
+                    // 2. Fallback to Access Token verification
+                    _logger.LogInformation("Attempting to validate Google Access Token via API.");
+                    using var client = new HttpClient();
+                    var response = await client.GetAsync($"https://www.googleapis.com/oauth2/v3/userinfo?access_token={req.IdToken}");
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var err = await response.Content.ReadAsStringAsync();
+                        _logger.LogWarning("Google userinfo API failed: {Error}", err);
+                        throw new UnauthorizedAccessException("Invalid Google access token.");
+                    }
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    using var doc = System.Text.Json.JsonDocument.Parse(content);
+                    var root = doc.RootElement;
+                    
+                    email = root.TryGetProperty("email", out var e) ? e.GetString() : "";
+                    name = root.TryGetProperty("name", out var n) ? n.GetString() : "";
+                    picture = root.TryGetProperty("picture", out var p) ? p.GetString() : "";
+                    googleId = root.TryGetProperty("sub", out var s) ? s.GetString() : "";
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                throw new UnauthorizedAccessException("Invalid Google token.");
+                _logger.LogError(ex, "Google verification failed.");
+                throw new UnauthorizedAccessException($"Google verification failed: {ex.Message}");
             }
+
+            if (string.IsNullOrEmpty(email))
+                throw new UnauthorizedAccessException("Could not retrieve email from Google.");
 
             var user = await _db.Users.FirstOrDefaultAsync(
-                u => u.GoogleId == payload.Subject || u.Email == payload.Email);
+                u => u.GoogleId == googleId || u.Email == email.ToLower().Trim());
+
+            bool isNewUser = false;
 
             if (user is null)
             {
                 user = new User
                 {
-                    FullName = payload.Name,
-                    Email = payload.Email.ToLower().Trim(),
-                    GoogleId = payload.Subject,
-                    AvatarUrl = payload.Picture,
+                    FullName = name,
+                    Email = email.ToLower().Trim(),
+                    GoogleId = googleId,
+                    AvatarUrl = picture,
                     Role = UserRole.VehicleOwner,
                     IsActive = true,
-                    IsEmailVerified = true
+                    IsEmailVerified = true  
                 };
 
                 _db.Users.Add(user);
                 await _db.SaveChangesAsync();
+                isNewUser = true;
             }
-            else if (user.GoogleId is null)
+            else 
             {
-                user.GoogleId = payload.Subject;
-                user.AvatarUrl = payload.Picture;
+                // Update existing user info if linked
+                if (user.GoogleId is null)
+                {
+                    user.GoogleId = googleId;
+                    user.IsEmailVerified = true;
+                }
+                user.AvatarUrl = picture;
                 await _db.SaveChangesAsync();
             }
 
             if (!user.IsActive)
                 throw new UnauthorizedAccessException("Account is deactivated.");
 
+            if (isNewUser)
+                await SendWelcomeEmailAsync(user);
+
+            var res = await BuildResponseAsync(user);
+            res.IsNewUser = isNewUser;
+            return res;
+        }
+
+        public async Task<string> SendVerificationOtpAsync(string email)
+        {
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email == email.ToLower().Trim());
+
+            if (user is null)
+            {
+                _logger.LogWarning("OTP Request Failed: User with email {Email} not found in database.", email);
+                throw new KeyNotFoundException("User not found.");
+            }
+
+            if (user.IsEmailVerified)
+                throw new InvalidOperationException("Email already verified.");
+
+            try
+            {
+                await SendOtpEmailAsync(user);
+                
+                if (_config.GetValue<bool>("Email:UseDevMode"))
+                    return "DEV MODE: OTP sent to your backend console (terminal).";
+                    
+                return "OTP sent to your email address.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "OTP email sending failed for {Email}.", email);
+                throw new Exception($"OTP generated but email sending failed: {ex.Message}. " +
+                    "TIP: If you can't fix Gmail credentials, set 'Email:UseDevMode': true in appsettings.json to see OTPs in the console instead.");
+            }
+
+        }
+
+        public async Task<AuthResponse> VerifyEmailOtpAsync(VerifyOtpRequest req)
+        {
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email == req.Email.ToLower().Trim());
+
+            if (user is null)
+                throw new KeyNotFoundException("User not found.");
+
+            if (user.IsEmailVerified)
+                throw new InvalidOperationException("Email already verified.");
+
+            if (user.EmailOtp is null || user.EmailOtpExpiry is null)
+                throw new InvalidOperationException(
+                    "No OTP found. Request a new one.");
+
+            if (user.EmailOtpExpiry < DateTime.UtcNow)
+                throw new InvalidOperationException(
+                    "OTP has expired. Request a new one.");
+
+            var submittedOtp = (req.Otp ?? "").Trim();
+            _logger.LogInformation("Attempting to verify OTP for {Email}. Length: {Length}", user.Email, submittedOtp.Length);
+
+            if (!BCrypt.Net.BCrypt.Verify(submittedOtp, user.EmailOtp))
+            {
+                _logger.LogWarning("Invalid OTP attempt for {Email}.", user.Email);
+                throw new UnauthorizedAccessException("Incorrect OTP.");
+            }
+
+            user.IsEmailVerified = true;
+            user.EmailOtp = null;
+            user.EmailOtpExpiry = null;
+
+            await _db.SaveChangesAsync();
+
+            await SendWelcomeEmailAsync(user);
+
+            return await BuildResponseAsync(user);
+        }
+
+        public async Task<AuthResponse> CreateAuthResponseAsync(User user)
+        {
             return await BuildResponseAsync(user);
         }
 
@@ -126,10 +302,10 @@ namespace GD1.Infrastructure.Services
                 throw new UnauthorizedAccessException("Invalid refresh token.");
 
             if (stored.IsRevoked)
-                throw new UnauthorizedAccessException("Refresh token has been revoked.");
+                throw new UnauthorizedAccessException("Refresh token revoked.");
 
             if (stored.ExpiresAt < DateTime.UtcNow)
-                throw new UnauthorizedAccessException("Refresh token has expired.");
+                throw new UnauthorizedAccessException("Refresh token expired.");
 
             if (!stored.User.IsActive)
                 throw new UnauthorizedAccessException("Account is deactivated.");
@@ -164,7 +340,8 @@ namespace GD1.Infrastructure.Services
                 UserId = user.Id,
                 FullName = user.FullName,
                 Email = user.Email,
-                Role = user.Role
+                Role = user.Role,
+                IsEmailVerified = user.IsEmailVerified
             };
         }
 
@@ -178,12 +355,12 @@ namespace GD1.Infrastructure.Services
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub,   user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti,   Guid.NewGuid().ToString()),
-                new Claim("userId",   user.Id.ToString(), ClaimValueTypes.Integer64),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim("roleId", ((int)user.Role).ToString()),
                 new Claim("fullName", user.FullName),
-                new Claim("role",     ((int)user.Role).ToString(), ClaimValueTypes.Integer32)
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             var expiryMinutes = int.Parse(
@@ -209,8 +386,7 @@ namespace GD1.Infrastructure.Services
             foreach (var t in previous)
                 t.IsRevoked = true;
 
-            var tokenBytes = RandomNumberGenerator.GetBytes(64);
-            var token = Convert.ToBase64String(tokenBytes);
+            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
             var expiryDays = int.Parse(
                 _config["Jwt:RefreshTokenExpiryDays"] ?? "7");
@@ -226,6 +402,83 @@ namespace GD1.Infrastructure.Services
             await _db.SaveChangesAsync();
             return token;
         }
+
+        private async Task SendOtpEmailAsync(User user)
+        {
+            var plainOtp = new Random().Next(100000, 999999).ToString();
+
+            user.EmailOtp = BCrypt.Net.BCrypt.HashPassword(plainOtp);
+            user.EmailOtpExpiry = DateTime.UtcNow.AddMinutes(10);
+            await _db.SaveChangesAsync();
+
+            var subject = "GD1 — Verify Your Email";
+            var body = $@"
+<!DOCTYPE html>
+<html>
+<body style='font-family: Arial, sans-serif; background:#f5f5f5; padding:30px;'>
+  <div style='max-width:480px; margin:auto; background:white; border-radius:8px;
+              padding:40px; box-shadow:0 2px 8px rgba(0,0,0,0.1);'>
+    <h2 style='color:#1a1a1a; margin-bottom:4px;'>GD1</h2>
+    <p style='color:#666; font-size:13px; margin-top:0;'>Grand Auto Depot One</p>
+    <hr style='border:none; border-top:1px solid #eee; margin:24px 0;'>
+    <h3 style='color:#1a1a1a;'>Verify your email address</h3>
+    <p style='color:#444; font-size:14px;'>
+      Hi {user.FullName}, use this OTP to verify your email address.
+      It is valid for <strong>10 minutes</strong>.
+    </p>
+    <div style='text-align:center; margin:32px 0;'>
+      <div style='display:inline-block; background:#f0f4ff; border:1px solid #c7d7ff;
+                  border-radius:8px; padding:16px 40px;'>
+        <span style='font-size:36px; font-weight:bold; letter-spacing:12px;
+                     color:#2563eb;'>{plainOtp}</span>
+      </div>
+    </div>
+    <p style='color:#999; font-size:12px; text-align:center;'>
+      If you did not create a GD1 account, ignore this email.
+    </p>
+  </div>
+</body>
+</html>";
+
+            await _email.SendAsync(user.Email, subject, body);
+        }
+
+        private async Task SendWelcomeEmailAsync(User user)
+        {
+            var frontendUrl = _config["Frontend:BaseUrl"] ?? "http://localhost:5173";
+            var subject = "Welcome to GD1 — Your Vehicle Is in Safe Hands";
+            var body = $@"
+<!DOCTYPE html>
+<html>
+<body style='font-family: Arial, sans-serif; background:#f5f5f5; padding:30px;'>
+  <div style='max-width:480px; margin:auto; background:white; border-radius:8px;
+              padding:40px; box-shadow:0 2px 8px rgba(0,0,0,0.1);'>
+    <h2 style='color:#1a1a1a; margin-bottom:4px;'>GD1</h2>
+    <p style='color:#666; font-size:13px; margin-top:0;'>Grand Auto Depot One</p>
+    <hr style='border:none; border-top:1px solid #eee; margin:24px 0;'>
+    <h3 style='color:#1a1a1a;'>Welcome, {user.FullName}!</h3>
+    <p style='color:#444; font-size:14px; line-height:1.7;'>
+      Your GD1 account is ready. We provide secure long-term vehicle storage
+      with live monitoring, scheduled maintenance, and complete peace of mind —
+      no matter where life takes you.
+    </p>
+    <div style='margin:32px 0; text-align:center;'>
+      <a href='{frontendUrl}/dashboard'
+         style='background:#2563eb; color:white; text-decoration:none;
+                padding:12px 32px; border-radius:4px; font-size:14px;
+                font-weight:600; display:inline-block;'>
+        Go to Dashboard
+      </a>
+    </div>
+    <p style='color:#999; font-size:12px;'>
+      GD1 · Grand Auto Depot One · Where every machine rests in safety.
+    </p>
+  </div>
+</body>
+</html>";
+
+            await _email.SendAsync(user.Email, subject, body);
+        }
     }
 }
-    
+

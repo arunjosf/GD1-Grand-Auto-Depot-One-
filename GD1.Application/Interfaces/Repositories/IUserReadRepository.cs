@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,5 +11,6 @@ namespace GD1.Application.Interfaces.Repositories
     {
         Task<UserDto?> GetByIdAsync(long id);
         Task<bool> EmailExistsAsync(string email);
+        Task<IEnumerable<Features.GD1Admin.DTOs.UserListDto>> GetAllUsersAsync(GD1.Domain.Entities.Enums.UserRole? role, string? search);
     }
 }

@@ -1,8 +1,10 @@
 using GD1.Domain.Interfaces;
 using GD1.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -40,10 +42,13 @@ namespace GD1.Infrastructure.Repositories
 
         public async Task<IEnumerable<T>> GetAllAsync()
         {
-            // Simple generic get all, in a real scenario might need AsNoTracking or pagination
-            return await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(_db.Set<T>());
+            return await _db.Set<T>().ToListAsync();
+        }
+
+        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _db.Set<T>().Where(predicate).ToListAsync();
         }
     }
-
-    }
+}
 

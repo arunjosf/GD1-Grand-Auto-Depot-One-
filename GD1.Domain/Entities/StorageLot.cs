@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +10,7 @@ namespace GD1.Domain.Entities
     public class StorageLot : BaseEntity
     {
         public long LotOwnerId { get; set; }
+        public long? LotUnitId { get; set; }
         public string LotCode { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
@@ -29,15 +30,12 @@ namespace GD1.Domain.Entities
         public bool HasWorkshopBay { get; set; }
         public bool HasWashingArea { get; set; }
         public bool HasSecurity { get; set; }
+        public bool HasFireSafety { get; set; }
+        public string? ExtraFacilities { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal AverageRating { get; set; }
         public int TotalReviews { get; set; }
 
-        public string? FrontImageUrl { get; set; }
-        public string? RearImageUrl { get; set; }
-        public string? LeftSideImageUrl { get; set; }
-        public string? RightSideImageUrl { get; set; }
-        public string? ExtraImageUrls { get; set; }
 
         public User LotOwner { get; set; } = null!;
         public ICollection<LotSlot> Slots { get; set; } = [];

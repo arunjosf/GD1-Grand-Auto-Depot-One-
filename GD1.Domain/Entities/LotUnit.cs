@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,13 +21,14 @@ namespace GD1.Domain.Entities
         public bool HasSecurity { get; set; }
         public bool HasWorkshop { get; set; }
         public bool HasWashingArea { get; set; }
+        public bool HasFireSafety { get; set; }
+        public string? ExtraFacilities { get; set; }
 
         public string Status { get; set; } = "Pending";
         public string? AssignedLotCode { get; set; }
 
-        public FranchiseApplication Application { get; set; } = null!;
-        public ICollection<InspectionReport> InspectionReports { get; set; } = [];
-        public ICollection<PropertyImage> Images { get; set; } = [];
+        public GD1.Domain.Entities.FranchiseApplication Application { get; set; } = null!;
+        public ICollection<LotUnitImage> Images { get; set; } = [];
     }
 }
 

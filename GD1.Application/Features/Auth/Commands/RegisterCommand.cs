@@ -21,9 +21,26 @@ namespace GD1.Application.Features.Auth.Commands
     {
         public RegisterCommandValidator()
         {
-            RuleFor(x => x.Request.Email).NotEmpty().EmailAddress();
-            RuleFor(x => x.Request.Password).NotEmpty().MinimumLength(6);
-            RuleFor(x => x.Request.FullName).NotEmpty();
+            RuleFor(x => x.Request.FullName)
+                .NotEmpty().WithMessage("Full name is Required")
+                .MinimumLength(3).WithMessage("Please enter your full name")
+                .Matches(@"^[A-Za-z\s]+$").WithMessage("Full name must contain only letters");
+
+            RuleFor(x => x.Request.Email)
+                .NotEmpty().WithMessage("Email address is required.")
+                .EmailAddress().WithMessage("Please enter a valid email address.");
+
+            RuleFor(x => x.Request.Password)
+                .NotEmpty().WithMessage("Password is required.")
+                .MinimumLength(8).WithMessage("Password must be at least 8 characters long.")
+                .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$")
+                .WithMessage("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+            
+            RuleFor(x => x.Request.ConfirmPassword)
+                .NotEmpty().WithMessage("Confirm Password is required.")
+                .Equal(x => x.Request.Password)
+                .WithMessage("Passwords do not match. Please ensure password and confirm password are the same.");
+                
         }
     }
 

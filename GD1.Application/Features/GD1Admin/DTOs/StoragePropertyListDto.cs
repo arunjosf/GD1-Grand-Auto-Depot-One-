@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,5 +20,6 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public decimal AverageRating { get; set; }
         public string OwnerName { get; set; } = string.Empty;
         public string OwnerEmail { get; set; } = string.Empty;
+        public List<string> ExtraFacilities { get; set; } = [];
     }
 }
