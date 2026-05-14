@@ -1,6 +1,7 @@
 using GD1.Application.Features.Agents.Commands;
 using GD1.Application.Features.GD1Admin.Commands;
 using GD1.Application.Features.GD1Admin.Queries;
+using GD1.Application.Features.GD1Admin.DTOs;
 using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Features.FranchiseApplication.Queries;
 using MediatR;
@@ -18,17 +19,11 @@ namespace GD1.Api.Controllers
 
         public AdminController(IMediator mediator) => _mediator = mediator;
 
-        [HttpGet("agents")]
-        public async Task<IActionResult> GetAllAgents()
-        {
-            var result = await _mediator.Send(new GetAllAgentsQuery());
-            return Ok(result);
-        }
 
         [HttpPost("agents/register-onboard")]
-        public async Task<IActionResult> OnboardAgent([FromBody] InviteOrUpgradeAgentCommand cmd)
+        public async Task<IActionResult> OnboardAgent([FromBody] InviteOrUpgradeAgentCommand command)
         {
-            var result = await _mediator.Send(cmd);
+            var result = await _mediator.Send(command);
             return Ok(result);
         }
 
@@ -40,14 +35,14 @@ namespace GD1.Api.Controllers
         }
 
         [HttpPost("agents/login-access")]
-        public async Task<IActionResult> ReviewAgentAccess([FromBody] ReviewAgentRequestCommand cmd)
+        public async Task<IActionResult> ReviewAgentAccess([FromBody] ReviewAgentRequestCommand command)
         {
-            var result = await _mediator.Send(cmd);
+            var result = await _mediator.Send(command);
             return Ok(result);
         }
 
         [HttpGet("users")]
-        public async Task<IActionResult> GetAllUsers([FromQuery] GD1.Domain.Entities.Enums.UserRole? role, [FromQuery] string? search)
+        public async Task<IActionResult> GetAllUsers([FromQuery] UserFilterRole? role, [FromQuery] string? search)
         {
             var result = await _mediator.Send(new GetAllUsersQuery { Role = role, SearchTerm = search });
             return Ok(result);
@@ -81,13 +76,13 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPatch("franchise/applications/{id}/status")]
-        public async Task<IActionResult> UpdateStatus(long id, [FromBody] UpdateStatusRequest req)
+        [HttpPost("franchise/applications/{id}/update-status")]
+        public async Task<IActionResult> UpdateStatus(long id, [FromForm] UpdateStatusRequest req)
         {
             var result = await _mediator.Send(new UpdateApplicationStatusCommand
             {
                 Id = id,
-                Status = req.Status,
+                Decision = req.Decision,
                 AdminNotes = req.AdminNotes,
                 AdminId = GetUserId()
             });
@@ -114,18 +109,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("franchise/agent/inspection-reports/{id}/review")]
-        public async Task<IActionResult> ReviewInspection(long id, [FromBody] ReviewInspectionRequest req)
-        {
-            var result = await _mediator.Send(new ReviewInspectionCommand
-            {
-                ReportId = id,
-                AdminId = GetUserId(),
-                Decision = req.Decision,
-                AdminRemarks = req.AdminRemarks
-            });
-            return Ok(result);
-        }
 
         [HttpPost("franchise/agent/assignments/{id}/cancel")]
         public async Task<IActionResult> CancelAssignment(long id, [FromBody] CancelAssignmentRequest req)
@@ -139,25 +122,7 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("franchise/agent/appeals/{id}/review")]
-        public async Task<IActionResult> ReviewAgentAppeal(long id, [FromBody] ReviewAppealRequest req)
-        {
-            var result = await _mediator.Send(new ReviewAppealCommand
-            {
-                RequestId = id,
-                Decision = req.Decision,
-                Reason = req.Reason,
-                AdminId = GetUserId()
-            });
-            return Ok(result);
-        }
 
-        [HttpGet("partnered-lots")]
-        public async Task<IActionResult> GetPartneredStorageLots()
-        {
-            var result = await _mediator.Send(new GetAllStoragePropertyQuery());
-            return Ok(result);
-        }
 
         private long GetUserId()
         {
@@ -174,23 +139,13 @@ namespace GD1.Api.Controllers
         public DateTime ScheduledDate { get; set; }
     }
 
-    public class ReviewInspectionRequest
-    {
-        public GD1.Domain.Entities.Enums.InspectionDecision Decision { get; set; }
-        public string? AdminRemarks { get; set; }
-    }
 
     public class UpdateStatusRequest
     {
-        public GD1.Domain.Entities.Enums.FranchiseStatus Status { get; set; }
+        public GD1.Domain.Entities.Enums.ApplicationReviewDecision Decision { get; set; }
         public string? AdminNotes { get; set; }
     }
 
-    public class ReviewAppealRequest
-    {
-        public GD1.Domain.Entities.Enums.AppealDecision Decision { get; set; }
-        public string? Reason { get; set; }
-    }
 
     public class CancelAssignmentRequest
     {

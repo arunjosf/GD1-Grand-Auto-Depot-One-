@@ -45,20 +45,20 @@ namespace GD1.Application.Features.GD1Admin.Queries
                     PostalCode = app.PostalCode,
                     Latitude = app.Latitude,
                     Longitude = app.Longitude,
-                    Status = app.Status,
+                    Status = app.Status ?? FranchiseStatus.Pending,
                     AdminNotes = app.AdminNotes,
                     ApplicationFee = app.ApplicationFee,
-                    FeeStatus = app.FeeStatus,
+                    FeeStatus = app.FeeStatus ?? "Pending",
                     CreatedAt = app.CreatedAt,
                     PreferredInspectionDate = app.PreferredInspectionDate,
                     
                     PropertyFrontImageUrl = app.FrontImageUrl,
                     OtherImageUrls = app.OtherImageUrls,
-                    ExtraFacilities = app.ExtraFacilities,
+
 
                     // Re-application Logic
-                    IsReapplication = app.PastRejections.Any(),
-                    RejectionHistory = app.PastRejections,
+                    IsReapplication = app.PastRejections?.Any() ?? false,
+                    RejectionHistory = app.PastRejections ?? [],
 
                     LotUnits = app.LotUnits.Select(lot => new AdminLotUnitDto
                     {
@@ -72,7 +72,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
                         HasWashingArea = lot.HasWashingArea,
                         HasFireSafety = lot.HasFireSafety,
                         ExtraFacilities = lot.ExtraFacilities,
-                        Status = lot.Status,
+                        Status = lot.Status ?? FranchiseStatus.Pending,
                         
                         LotImages = lot.OwnerImages.Select(img => new AdminPropertyImageDto
                         {
@@ -85,28 +85,12 @@ namespace GD1.Application.Features.GD1Admin.Queries
                     }).ToList()
                 };
 
-                // Conditional Data Mapping
-                var currentAssignment = app.Assignments.OrderByDescending(a => a.ScheduledDate).FirstOrDefault();
-                if (currentAssignment != null)
-                {
-                    dto.AssignedAgent = new AdminAgentSummaryDto
-                    {
-                        Id = currentAssignment.AgentId,
-                        Name = currentAssignment.AgentName,
-                        City = currentAssignment.AgentCity,
-                        SelfieUrl = currentAssignment.AgentSelfieUrl
-                    };
-
-                    if (currentAssignment.Report != null)
-                    {
-                        dto.InspectionReport = currentAssignment.Report;
-                    }
-                }
+                // Assigned Agent and Inspection Report removed from List API as requested
 
                 return dto;
             });
 
-            return BaseResponse<IEnumerable<AdminApplicationDto>>.Ok(adminDtos);
+            return BaseResponse<IEnumerable<AdminApplicationDto>>.Ok(adminDtos.ToList());
         }
     }
 }

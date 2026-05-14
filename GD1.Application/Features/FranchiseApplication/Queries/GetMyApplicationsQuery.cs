@@ -1,4 +1,5 @@
 using GD1.Application.Common;
+using GD1.Domain.Entities.Enums;
 using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Interfaces.Repositories;
 using MediatR;
@@ -41,14 +42,14 @@ namespace GD1.Application.Features.FranchiseApplication.Queries
                 State = app.State,
                 PostalCode = app.PostalCode,
                 PreferredInspectionDate = app.PreferredInspectionDate,
-                Status = app.Status,
+                Status = app.Status ?? FranchiseStatus.Pending,
                 AdminNotes = app.AdminNotes,
                 ApplicationFee = app.ApplicationFee,
                 FeeStatus = app.FeeStatus,
                 CreatedAt = app.CreatedAt,
                 FrontImageUrl = app.FrontImageUrl,
                 OtherImageUrls = app.OtherImageUrls,
-                ExtraFacilities = app.ExtraFacilities,
+
                 LotUnits = app.LotUnits.Select(u => new UserLotUnitDto
                 {
                     Id = u.Id,
@@ -61,7 +62,7 @@ namespace GD1.Application.Features.FranchiseApplication.Queries
                     HasWashingArea = u.HasWashingArea,
                     HasFireSafety = u.HasFireSafety,
                     ExtraFacilities = u.ExtraFacilities,
-                    Status = u.Status,
+                    Status = u.Status ?? FranchiseStatus.Pending,
                     OwnerImages = u.OwnerImages.Select(i => new UserPropertyImageDto
                     {
                         Id = i.Id,

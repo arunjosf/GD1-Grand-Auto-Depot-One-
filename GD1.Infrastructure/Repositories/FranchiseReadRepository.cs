@@ -1,4 +1,5 @@
 using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -7,7 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Dapper;
 using GD1.Application.Interfaces.Repositories;
-using GD1.Application.Features.FranchiseApplication.DTOs;
+using FranchiseDTOs = GD1.Application.Features.FranchiseApplication.DTOs;
+using AdminDTOs = GD1.Application.Features.GD1Admin.DTOs;
 
 namespace GD1.Infrastructure.Repositories
 {
@@ -17,40 +19,90 @@ namespace GD1.Infrastructure.Repositories
 
         public FranchiseReadRepository(IDbConnection db) => _db = db;
 
-        public async Task<ApplicationDto?> GetByIdAsync(long applicationId, long applicantId)
+        public async Task<FranchiseDTOs.ApplicationDto?> GetByIdAsync(long applicationId, long applicantId)
         {
-            const string sql = @"
-                SELECT Id, ApplicationType, BusinessName, OwnerName,
-                       ContactEmail, PhoneNumber, AddressLine, City,
-                       State, PostalCode, Status, AdminNotes, ApplicationFee,
-                       FeeStatus, CreatedAt, Latitude, Longitude, PreferredInspectionDate
-                FROM   FranchiseApplications
-                WHERE  Id = @ApplicationId AND (@ApplicantId = 0 OR ApplicantId = @ApplicantId)";
+            string appSql = @"
+                SELECT * FROM FranchiseApplications 
+                WHERE Id = @ApplicationId" + (applicantId > 0 ? " AND ApplicantId = @ApplicantId" : "");
 
-            var app = await _db.QuerySingleOrDefaultAsync<ApplicationDto>(sql, new { ApplicationId = applicationId, ApplicantId = applicantId });
+            var app = await _db.QuerySingleOrDefaultAsync<FranchiseDTOs.ApplicationDto>(appSql, new { ApplicationId = applicationId, ApplicantId = applicantId });
 
-            if (app is null) return null;
-
-            await HydrateLotUnitsAsync(app);
-            await HydrateAssignmentsAsync(app);
-            await HydratePastRejectionsAsync(app, applicationId);
+            if (app != null)
+            {
+                await HydrateLotUnitsAsync(app);
+                await HydrateAssignmentsAsync(app);
+                
+                // Hydrate Rejection History from the same table (using soft-deleted records)
+                // Match on owner details AND property details to identify true re-applications
+                const string historySql = @"
+                    SELECT Id, CreatedAt, AdminNotes, Status as RejectionReason 
+                    FROM   FranchiseApplications 
+                    WHERE  OwnerName = @OwnerName 
+                      AND  ContactEmail = @Email 
+                      AND  PhoneNumber = @PhoneNumber
+                      AND  AddressLine = @AddressLine
+                      AND  City = @City
+                      AND  State = @State
+                      AND  PostalCode = @PostalCode
+                      AND  Id != @CurrentId 
+                      AND  Status = @RejectedStatus
+                    ORDER BY CreatedAt DESC";
+                
+                app.PastRejections = (await _db.QueryAsync<FranchiseDTOs.PastRejectionDto>(historySql, new 
+                { 
+                    OwnerName = app.OwnerName,
+                    Email = app.ContactEmail, 
+                    PhoneNumber = app.PhoneNumber,
+                    AddressLine = app.AddressLine,
+                    City = app.City,
+                    State = app.State,
+                    PostalCode = app.PostalCode,
+                    CurrentId = app.Id,
+                    RejectedStatus = FranchiseStatus.Rejected.ToString()
+                })).ToList();
+            }
 
             return app;
         }
 
-        private async Task HydrateAssignmentsAsync(ApplicationDto app)
+        public async Task<IEnumerable<FranchiseDTOs.ApplicationDto>> GetByApplicantIdAsync(long applicantId)
+        {
+            const string sql = "SELECT * FROM FranchiseApplications WHERE ApplicantId = @ApplicantId ORDER BY CreatedAt DESC";
+            var apps = await _db.QueryAsync<FranchiseDTOs.ApplicationDto>(sql, new { ApplicantId = applicantId });
+
+            foreach (var app in apps)
+            {
+                await HydrateLotUnitsAsync(app);
+            }
+
+            return apps;
+        }
+
+        public async Task<IEnumerable<FranchiseDTOs.ApplicationDto>> GetAllPendingAsync()
+        {
+            const string sql = "SELECT * FROM FranchiseApplications WHERE Status = 'Pending' ORDER BY CreatedAt DESC";
+            var apps = await _db.QueryAsync<FranchiseDTOs.ApplicationDto>(sql);
+
+            foreach (var app in apps)
+            {
+                await HydrateLotUnitsAsync(app);
+            }
+
+            return apps;
+        }
+
+        private async Task HydrateAssignmentsAsync(FranchiseDTOs.ApplicationDto app)
         {
             const string assignSql = @"
-                SELECT ia.Id, ia.AgentId, a.FullName as AgentName, a.City as AgentCity, 
-                       a.SelfieUrl as AgentSelfieUrl, a.IdProofUrl as AgentIdProofUrl,
-                       a.PhoneNumber,
-                       ia.ScheduledDate, ia.Status
+                SELECT ia.Id, ia.ScheduledDate, ia.Status, ia.AgentId,
+                       a.FullName as AgentName, a.City as AgentCity, 
+                       a.SelfieUrl as AgentSelfieUrl, a.IdProofUrl as AgentIdProofUrl, a.PhoneNumber
                 FROM   InspectionAssignments ia
-                INNER JOIN GD1Agents a ON ia.AgentId = a.Id
+                LEFT JOIN GD1Agents a ON ia.AgentId = a.Id
                 WHERE  ia.ApplicationId = @ApplicationId
                 ORDER BY ia.CreatedAt DESC";
 
-            var assignments = (await _db.QueryAsync<InspectionAssignmentDto>(assignSql, new { ApplicationId = app.Id })).ToList();
+            var assignments = (await _db.QueryAsync<FranchiseDTOs.InspectionAssignmentDto>(assignSql, new { ApplicationId = app.Id })).ToList();
 
             foreach (var assign in assignments)
             {
@@ -61,7 +113,7 @@ namespace GD1.Infrastructure.Repositories
                     FROM   InspectionReports
                     WHERE  AssignmentId = @AssignmentId";
                 
-                assign.Report = await _db.QuerySingleOrDefaultAsync<InspectionReportDto>(reportSql, new { AssignmentId = assign.Id });
+                assign.Report = await _db.QuerySingleOrDefaultAsync<FranchiseDTOs.FranchiseInspectionReportDto>(reportSql, new { AssignmentId = assign.Id });
 
                 if (assign.Report != null)
                 {
@@ -70,47 +122,41 @@ namespace GD1.Infrastructure.Repositories
                         FROM   InspectionItems ii
                         INNER JOIN LotUnits lu ON ii.LotUnitId = lu.Id
                         WHERE  ii.ReportId = @ReportId";
+
+                    var items = (await _db.QueryAsync<FranchiseDTOs.FranchiseInspectionItemDto>(itemSql, new { ReportId = assign.Report.Id })).ToList();
                     
-                    var items = await _db.QueryAsync<InspectionItemDto>(itemSql, new { ReportId = assign.Report.Id });
-                    assign.Report.Items = items.ToList();
+                    foreach (var item in items)
+                    {
+                        item.UnitImages = (await GetUnitImagesAsync(item.LotUnitId, "Agent")).ToList();
+                    }
+                    
+                    assign.Report.Items = items;
+                    
+                    // Hydrate Agent uploaded property images for this report
+                    assign.Report.PropertyImages = (await GetPropertyImagesAsync(app.Id)).Where(i => i.UploadedBy == "Agent").ToList();
                 }
 
-                // Hydrate Requests (Appeals/Reschedules)
-                const string reqSql = @"
-                    SELECT Id, Description, RequestedDate, Status, AdminRemarks, CreatedAt
-                    FROM   AgentRequests
-                    WHERE  AssignmentId = @AssignmentId
-                    ORDER BY CreatedAt ASC";
-                
-                var requests = (await _db.QueryAsync<dynamic>(reqSql, new { AssignmentId = assign.Id }))
-                    .Select(r => new AgentRequestDto
-                    {
-                        Id = r.Id,
-                        Description = r.Description,
-                        RequestedDate = r.RequestedDate,
-                        Status = ((GD1.Domain.Entities.Enums.AppealStatus)r.Status).ToString(),
-                        AdminRemarks = r.AdminRemarks,
-                        CreatedAt = r.CreatedAt
-                    }).ToList();
-                assign.Requests = requests;
             }
 
             app.Assignments = assignments;
         }
 
-        private async Task HydrateLotUnitsAsync(ApplicationDto app)
+        private async Task HydrateLotUnitsAsync(FranchiseDTOs.ApplicationDto app)
         {
             const string unitSql = @"
                 SELECT Id, Label, Tier, Capacity, HasCCTV, HasSecurity, HasWorkshop, HasWashingArea, HasFireSafety, Status
                 FROM   LotUnits
                 WHERE  FranchiseApplicationId = @ApplicationId";
 
-            var units = await _db.QueryAsync<LotUnitDto>(unitSql, new { ApplicationId = app.Id });
+            var units = await _db.QueryAsync<FranchiseDTOs.LotUnitDto>(unitSql, new { ApplicationId = app.Id });
 
             foreach (var unit in units)
             {
-                unit.OwnerImages = (await GetUnitImagesAsync(unit.Id, "Owner")).ToList();
-                unit.AgentImages = (await GetUnitImagesAsync(unit.Id, "Agent")).ToList();
+                // Pull ALL unit images regardless of who uploaded them to ensure visibility
+                var allUnitImages = (await GetUnitImagesAsync(unit.Id, null)).ToList();
+                
+                unit.OwnerImages = allUnitImages.Where(i => i.UploadedBy == "Owner" || i.UploadedBy == "Applicant").ToList();
+                unit.AgentImages = allUnitImages.Where(i => i.UploadedBy == "Agent").ToList();
                 
                 var unitExtra = await _db.QuerySingleOrDefaultAsync<string>("SELECT ExtraFacilities FROM LotUnits WHERE Id = @Id", new { Id = unit.Id });
                 unit.ExtraFacilities = unitExtra?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() ?? [];
@@ -120,127 +166,41 @@ namespace GD1.Infrastructure.Repositories
             app.FrontImageUrl = propImages.FirstOrDefault(i => i.Label == "Front View")?.ImageUrl ?? "";
             app.OtherImageUrls = propImages.Where(i => i.Label != "Front View").Select(i => i.ImageUrl).ToList();
 
-            var appExtra = await _db.QuerySingleOrDefaultAsync<string>("SELECT ExtraFacilities FROM FranchiseApplications WHERE Id = @Id", new { Id = app.Id });
-            app.ExtraFacilities = appExtra?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() ?? [];
-
             app.LotUnits = units.ToList();
         }
 
-        private async Task<IEnumerable<PropertyImageDto>> GetUnitImagesAsync(long lotUnitId, string uploadedBy)
+        private async Task<IEnumerable<FranchiseDTOs.PropertyImageDto>> GetUnitImagesAsync(long lotUnitId, string? uploadedBy)
         {
-            const string sql = @"
-                SELECT Id, CASE WHEN IsMain = 1 THEN 'Front View' ELSE 'Lot Unit Image' END as Label, 
+            var sql = new StringBuilder(@"
+                SELECT Id, 
+                       CASE WHEN IsMain = 1 OR IsMain = 'true' THEN 'Front View' ELSE 'Lot Unit Image' END as Label, 
                        ImageUrl, UploadedBy, Remark
                 FROM   LotUnitImages
-                WHERE  LotUnitId = @LotUnitId AND UploadedBy = @UploadedBy";
+                WHERE  LotUnitId = @LotUnitId");
 
-            return await _db.QueryAsync<PropertyImageDto>(sql, new { LotUnitId = lotUnitId, UploadedBy = uploadedBy });
-        }
-
-        private async Task<IEnumerable<PropertyImageDto>> GetPropertyImagesAsync(long applicationId)
-        {
-            const string sql = @"SELECT Id, Label, ImageUrl, UploadedBy, Remark FROM PropertyImages WHERE ApplicationId = @ApplicationId";
-            return await _db.QueryAsync<PropertyImageDto>(sql, new { ApplicationId = applicationId });
-        }
-
-        public async Task<IEnumerable<ApplicationDto>> GetAllApplicationsAsync(GD1.Domain.Entities.Enums.FranchiseStatus? status, string? searchTerm, string? sortBy, bool descending)
-        {
-            var statusStr = status?.ToString();
-            var sql = @"
-                SELECT fa.Id, fa.ApplicationType, fa.BusinessName, fa.OwnerName,
-                       fa.ContactEmail, fa.PhoneNumber, fa.AddressLine, fa.City,
-                       fa.State, fa.PostalCode, fa.Status, fa.AdminNotes, fa.ApplicationFee,
-                       fa.FeeStatus, fa.CreatedAt, fa.PreferredInspectionDate,
-                       pi.ImageUrl as FrontImageUrl
-                FROM FranchiseApplications fa
-                LEFT JOIN PropertyImages pi ON fa.Id = pi.ApplicationId AND pi.IsMain = 1
-                WHERE (@Status IS NULL OR fa.Status = @Status)
-                AND (@SearchTerm IS NULL 
-                     OR fa.BusinessName LIKE '%' + @SearchTerm + '%' 
-                     OR fa.OwnerName LIKE '%' + @SearchTerm + '%'
-                     OR fa.City LIKE '%' + @SearchTerm + '%'
-                     OR fa.State LIKE '%' + @SearchTerm + '%')
-                ORDER BY fa.CreatedAt DESC";
-
-            var apps = (await _db.QueryAsync<ApplicationDto>(sql, new { Status = statusStr, SearchTerm = searchTerm })).ToList();
-            foreach (var app in apps) 
+            if (!string.IsNullOrEmpty(uploadedBy))
             {
-                await HydrateLotUnitsAsync(app);
-                await HydrateAssignmentsAsync(app);
-                await HydratePastRejectionsAsync(app, app.Id);
+                sql.Append(" AND TRIM(UploadedBy) = @UploadedBy");
             }
-            return apps;
+
+            return await _db.QueryAsync<FranchiseDTOs.PropertyImageDto>(sql.ToString(), new { LotUnitId = lotUnitId, UploadedBy = uploadedBy });
         }
 
-        public async Task<IEnumerable<ApplicationDto>> GetAgentAssignedApplicationsAsync(long agentId)
+        public async Task<IEnumerable<string>> GetUnitImageUrlsAsync(long lotUnitId)
+        {
+            const string sql = "SELECT ImageUrl FROM LotUnitImages WHERE LotUnitId = @LotUnitId AND ImageUrl IS NOT NULL AND ImageUrl != ''";
+            return await _db.QueryAsync<string>(sql, new { LotUnitId = lotUnitId });
+        }
+
+        private async Task<IEnumerable<FranchiseDTOs.PropertyImageDto>> GetPropertyImagesAsync(long applicationId)
         {
             const string sql = @"
-                SELECT fa.Id, fa.ApplicationType, fa.BusinessName, fa.OwnerName,
-                       fa.ContactEmail, fa.PhoneNumber, fa.AddressLine, fa.City,
-                       fa.State, fa.PostalCode, fa.Status, fa.AdminNotes, fa.ApplicationFee,
-                       fa.FeeStatus, fa.CreatedAt, fa.PreferredInspectionDate
-                FROM FranchiseApplications fa
-                INNER JOIN InspectionAssignments ia ON fa.Id = ia.ApplicationId
-                WHERE ia.AgentId = @AgentId AND ia.Status IN ('Assigned', 'InProgress')
-                ORDER BY ia.ScheduledDate DESC";
+                SELECT Id, Label, ImageUrl, UploadedBy, Remark
+                FROM   PropertyImages
+                WHERE  ApplicationId = @ApplicationId";
 
-            var apps = (await _db.QueryAsync<ApplicationDto>(sql, new { AgentId = agentId })).ToList();
-            foreach (var app in apps)
-            {
-                await HydrateLotUnitsAsync(app);
-                await HydrateAssignmentsAsync(app);
-            }
-            return apps;
+            return await _db.QueryAsync<FranchiseDTOs.PropertyImageDto>(sql, new { ApplicationId = applicationId });
         }
-
-        public async Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetAllAgentsAsync(bool onlyActive, string? city, string? state)
-        {
-            var sql = @"
-                SELECT Id, FullName, PhoneNumber, Email, City, State, PostalCode, CoverageArea, Latitude, Longitude, IsActive,
-                       (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = GD1Agents.Id AND (Status = 'Assigned' OR Status = 'InProgress')) as PendingInspectionsCount
-                FROM GD1Agents
-                WHERE (@OnlyActive = 0 OR IsActive = 1)
-                AND (@City IS NULL OR City = @City)
-                AND (@State IS NULL OR State = @State)";
-            return await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.AgentDto>(sql, new { OnlyActive = onlyActive, City = city, State = state });
-        }
-
-        public async Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetNearbyAgentsAsync(double lat, double lon)
-        {
-            var sql = @"
-                SELECT Id, FullName, PhoneNumber, Email, City, State, PostalCode, CoverageArea, Latitude, Longitude, IsActive,
-                       (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = GD1Agents.Id AND (Status = 'Assigned' OR Status = 'InProgress')) as PendingInspectionsCount
-                FROM GD1Agents
-                WHERE IsActive = 1";
-
-            var agents = (await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.AgentDto>(sql)).ToList();
-            foreach (var agent in agents)
-            {
-                if (agent.Latitude.HasValue && agent.Longitude.HasValue && (agent.Latitude != 0 || agent.Longitude != 0))
-                    agent.DistanceKm = HaversineDistance(lat, lon, agent.Latitude.Value, agent.Longitude.Value);
-            }
-            return agents.OrderBy(a => a.DistanceKm == null).ThenBy(a => a.DistanceKm);
-        }
-
-        private async Task HydratePastRejectionsAsync(ApplicationDto app, long currentAppId)
-        {
-            var applicantId = await _db.QuerySingleAsync<long>("SELECT ApplicantId FROM FranchiseApplications WHERE Id = @Id", new { Id = currentAppId });
-            const string sql = @"
-                SELECT Id, CreatedAt, AdminNotes, Status as RejectionReason FROM FranchiseApplications
-                WHERE ApplicantId = @ApplicantId AND Id != @CurrentAppId AND (Status = 'Rejected' OR IsDeleted = 1)
-                ORDER BY CreatedAt DESC";
-            var past = await _db.QueryAsync<PastRejectionDto>(sql, new { ApplicantId = applicantId, CurrentAppId = currentAppId });
-            app.PastRejections = past.ToList();
-        }
-
-        private double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            var R = 6371; var dLat = ToRadians(lat2 - lat1); var dLon = ToRadians(lon2 - lon1);
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) + Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        }
-
-        private double ToRadians(double angle) => (Math.PI / 180) * angle;
 
         public async Task<IEnumerable<LotUnit>> GetLotUnitsByApplicationIdAsync(long applicationId)
         {
@@ -257,46 +217,151 @@ namespace GD1.Infrastructure.Repositories
         public async Task<IEnumerable<InspectionReport>> GetReportsByApplicationIdAsync(long applicationId)
         {
             const string sql = @"
-                SELECT ir.* FROM InspectionReports ir
-                INNER JOIN InspectionAssignments ia ON ir.AssignmentId = ia.Id
+                SELECT ir.* 
+                FROM InspectionReports ir
+                JOIN InspectionAssignments ia ON ir.AssignmentId = ia.Id
                 WHERE ia.ApplicationId = @ApplicationId";
             return await _db.QueryAsync<InspectionReport>(sql, new { ApplicationId = applicationId });
         }
 
-        public async Task<IEnumerable<ApplicationDto>> GetAllPendingAsync()
+        public async Task<IEnumerable<FranchiseDTOs.ApplicationDto>> GetAllApplicationsAsync(GD1.Domain.Entities.Enums.FranchiseStatus? status, string? searchTerm, string? sortBy, bool descending)
         {
-            const string sql = @"
-                SELECT fa.Id, fa.ApplicationType, fa.BusinessName, fa.OwnerName,
-                       fa.ContactEmail, fa.PhoneNumber, fa.AddressLine, fa.City,
-                       fa.State, fa.PostalCode, fa.Status, fa.AdminNotes, fa.ApplicationFee,
-                       fa.FeeStatus, fa.CreatedAt, fa.PreferredInspectionDate,
-                       fa.Latitude, fa.Longitude,
-                       pi.ImageUrl as FrontImageUrl
-                FROM FranchiseApplications fa
-                LEFT JOIN PropertyImages pi ON fa.Id = pi.ApplicationId AND pi.IsMain = 1
-                WHERE fa.Status = 'Pending'
-                ORDER BY fa.CreatedAt ASC";
-            var apps = (await _db.QueryAsync<ApplicationDto>(sql)).ToList();
-            foreach (var app in apps) await HydrateLotUnitsAsync(app);
+            var sql = new StringBuilder("SELECT * FROM FranchiseApplications WHERE 1=1");
+            var parameters = new DynamicParameters();
+
+            if (status.HasValue)
+            {
+                sql.Append(" AND Status = @Status");
+                parameters.Add("Status", status.Value.ToString());
+            }
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                sql.Append(" AND (BusinessName LIKE @Search OR OwnerName LIKE @Search OR ContactEmail LIKE @Search)");
+                parameters.Add("Search", $"%{searchTerm}%");
+            }
+
+            if (!string.IsNullOrEmpty(sortBy))
+            {
+                sql.Append($" ORDER BY {sortBy} {(descending ? "DESC" : "ASC")}");
+            }
+            else
+            {
+                sql.Append(" ORDER BY CreatedAt DESC");
+            }
+
+            var apps = await _db.QueryAsync<FranchiseDTOs.ApplicationDto>(sql.ToString(), parameters);
+            
+            foreach(var app in apps)
+            {
+                await HydrateLotUnitsAsync(app);
+            }
+
             return apps;
         }
 
-        public async Task<IEnumerable<ApplicationDto>> GetByApplicantIdAsync(long applicantId)
+        public async Task<IEnumerable<AdminDTOs.UserListDto>> GetAllAgentsAsync(bool onlyActive, string? city, string? state)
+        {
+            var sql = new StringBuilder(@"
+                SELECT u.Id, a.FullName as Name, u.Email, a.PhoneNumber, a.City, a.State, 
+                       a.Id as AgentId, a.IsActive, a.SelfieUrl
+                FROM Users u
+                JOIN GD1Agents a ON u.Id = a.UserId
+                WHERE 1=1");
+
+            var parameters = new DynamicParameters();
+
+            if (onlyActive)
+            {
+                sql.Append(" AND a.IsVerified = 1");
+            }
+
+            if (!string.IsNullOrEmpty(city))
+            {
+                sql.Append(" AND a.City = @City");
+                parameters.Add("City", city);
+            }
+
+            if (!string.IsNullOrEmpty(state))
+            {
+                sql.Append(" AND a.State = @State");
+                parameters.Add("State", state);
+            }
+
+            var raw = await _db.QueryAsync<dynamic>(sql.ToString(), parameters);
+            return MapToUserListDto(raw);
+        }
+
+        public async Task<IEnumerable<AdminDTOs.UserListDto>> GetNearbyAgentsAsync(double lat, double lon)
         {
             const string sql = @"
-                SELECT fa.Id, fa.ApplicationType, fa.BusinessName, fa.OwnerName,
-                       fa.ContactEmail, fa.PhoneNumber, fa.AddressLine, fa.City,
-                       fa.State, fa.PostalCode, fa.Status, fa.AdminNotes, fa.ApplicationFee,
-                       fa.FeeStatus, fa.CreatedAt, fa.PreferredInspectionDate,
-                       fa.Latitude, fa.Longitude,
-                       pi.ImageUrl as FrontImageUrl
+                SELECT TOP 10 u.Id, a.FullName as Name, u.Email, a.PhoneNumber, a.City, a.State, 
+                       a.Id as AgentId, a.IsActive, a.SelfieUrl, u.Role,
+                       (ABS(a.Latitude - @Lat) + ABS(a.Longitude - @Lon)) * 111 as DistanceKm,
+                       (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = a.Id AND Status IN ('Assigned', 'InProgress')) as PendingInspections
+                FROM Users u
+                JOIN GD1Agents a ON u.Id = a.UserId
+                WHERE a.IsVerified = 1
+                ORDER BY DistanceKm ASC";
+
+            var raw = await _db.QueryAsync<dynamic>(sql, new { Lat = lat, Lon = lon });
+            var agents = MapToUserListDto(raw).ToList();
+
+            foreach (var agent in agents)
+            {
+                if (agent.AgentId.HasValue)
+                {
+                    const string assignSql = @"
+                        SELECT ia.ScheduledDate, fa.BusinessName, ia.Status
+                        FROM InspectionAssignments ia
+                        JOIN FranchiseApplications fa ON ia.ApplicationId = fa.Id
+                        WHERE ia.AgentId = @AgentId AND ia.Status IN ('Assigned', 'InProgress')";
+                    
+                    agent.CurrentAssignments = (await _db.QueryAsync<AdminDTOs.AgentAssignmentSummaryDto>(assignSql, new { AgentId = agent.AgentId.Value })).ToList();
+                }
+            }
+
+            return agents;
+        }
+
+        public async Task<IEnumerable<FranchiseDTOs.ApplicationDto>> GetAgentAssignedApplicationsAsync(long agentId)
+        {
+            const string sql = @"
+                SELECT fa.* 
                 FROM FranchiseApplications fa
-                LEFT JOIN PropertyImages pi ON fa.Id = pi.ApplicationId AND pi.IsMain = 1
-                WHERE fa.ApplicantId = @ApplicantId
-                ORDER BY fa.CreatedAt DESC";
-            var apps = (await _db.QueryAsync<ApplicationDto>(sql, new { ApplicantId = applicantId })).ToList();
-            foreach (var app in apps) await HydrateLotUnitsAsync(app);
+                JOIN InspectionAssignments ia ON fa.Id = ia.ApplicationId
+                WHERE ia.AgentId = @AgentId";
+            
+            var apps = await _db.QueryAsync<FranchiseDTOs.ApplicationDto>(sql, new { AgentId = agentId });
+
+            foreach (var app in apps)
+            {
+                await HydrateLotUnitsAsync(app);
+                await HydrateAssignmentsAsync(app);
+            }
+
             return apps;
+        }
+
+
+        private IEnumerable<AdminDTOs.UserListDto> MapToUserListDto(IEnumerable<dynamic> raw)
+        {
+            return raw.Select(r => new AdminDTOs.UserListDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                FullName = r.Name,
+                Email = r.Email,
+                PhoneNumber = r.PhoneNumber,
+                City = r.City,
+                State = r.State,
+                AgentId = r.AgentId,
+                IsActive = r.IsActive,
+                SelfieUrl = r.SelfieUrl,
+                DistanceKm = r.DistanceKm ?? 0,
+                Role = (UserRole)r.Role,
+                PendingInspections = r.PendingInspections
+            });
         }
     }
 }

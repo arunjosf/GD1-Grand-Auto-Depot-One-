@@ -21,5 +21,20 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public string OwnerName { get; set; } = string.Empty;
         public string OwnerEmail { get; set; } = string.Empty;
         public List<string> ExtraFacilities { get; set; } = [];
+
+        // Property Details
+        public string AddressLine { get; set; } = string.Empty;
+        public string FrontImageUrl { get; set; } = string.Empty;
+        public List<string> OtherImageUrls { get; set; } = [];
+        
+        // Specific Lot Unit Details & Images
+        public bool HasCCTV { get; set; }
+        public bool HasSecurity { get; set; }
+        public bool HasWorkshop { get; set; }
+        public bool HasWashingArea { get; set; }
+        public bool HasFireSafety { get; set; }
+        public int Capacity { get; set; }
+        public string UnitLabel { get; set; } = string.Empty;
+        public List<string> UnitImages { get; set; } = [];
     }
 }

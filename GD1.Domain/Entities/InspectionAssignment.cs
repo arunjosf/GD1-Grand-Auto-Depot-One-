@@ -18,7 +18,6 @@ namespace GD1.Domain.Entities
         public GD1.Domain.Entities.FranchiseApplication Application { get; set; } = null!;
         public Agent Agent { get; set; } = null!;
         
-        public ICollection<AgentRequest> Requests { get; set; } = new List<AgentRequest>();
         public InspectionReport? Report { get; set; }
     }
 }

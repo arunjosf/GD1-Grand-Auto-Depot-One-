@@ -68,7 +68,7 @@ namespace GD1.Application.Features.Agents.Commands
                 
                 await _userRepo.UpdateAsync(user);
 
-                return BaseResponse<AuthResponse>.Ok(authResponse, "Onboarding completed successfully. You are now logged in.");
+                return BaseResponse<AuthResponse>.Ok(authResponse, "Onboarding completed successfully. Your account is now pending Admin approval.");
             }
 
             return BaseResponse<AuthResponse>.Fail("User not found.");

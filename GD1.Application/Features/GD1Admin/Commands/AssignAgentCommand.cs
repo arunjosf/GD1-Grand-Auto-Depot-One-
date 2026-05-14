@@ -3,6 +3,7 @@ using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
 using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using MediatR;
 using System;
 using System.Collections.Generic;
@@ -77,7 +78,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             await _assignRepo.AddAsync(assignment);
 
             // 2. Update application status
-            application.Status = "UnderReview";
+            application.Status = FranchiseStatus.Assigned;
             await _appRepo.UpdateAsync(application);
 
             // 3. Notify Agent

@@ -18,8 +18,9 @@ namespace GD1.Application.Interfaces.Repositories
         Task<InspectionReport?> GetReportByIdAsync(long reportId);
         Task<IEnumerable<InspectionReport>> GetReportsByApplicationIdAsync(long applicationId);
         Task<IEnumerable<ApplicationDto>> GetAllApplicationsAsync(GD1.Domain.Entities.Enums.FranchiseStatus? status, string? searchTerm, string? sortBy, bool descending);
-        Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetAllAgentsAsync(bool onlyActive, string? city, string? state);
-        Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.AgentDto>> GetNearbyAgentsAsync(double lat, double lon);
+        Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.UserListDto>> GetAllAgentsAsync(bool onlyActive, string? city, string? state);
+        Task<IEnumerable<GD1.Application.Features.GD1Admin.DTOs.UserListDto>> GetNearbyAgentsAsync(double lat, double lon);
         Task<IEnumerable<ApplicationDto>> GetAgentAssignedApplicationsAsync(long agentId);
+        Task<IEnumerable<string>> GetUnitImageUrlsAsync(long lotUnitId);
     }
 }

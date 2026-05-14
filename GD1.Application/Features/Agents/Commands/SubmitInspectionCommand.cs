@@ -3,6 +3,7 @@ using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
 using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,6 +45,7 @@ namespace GD1.Application.Features.Agents.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.LotUnitImage> _unitImageRepo;
         private readonly IGenericRepository<Agent> _agentRepo;
         private readonly IGenericRepository<LotUnit> _unitRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
 
         public SubmitInspectionCommandHandler(
             IGenericRepository<InspectionAssignment> assignRepo,
@@ -52,7 +54,8 @@ namespace GD1.Application.Features.Agents.Commands
             IGenericRepository<GD1.Domain.Entities.PropertyImage> imageRepo,
             IGenericRepository<GD1.Domain.Entities.LotUnitImage> unitImageRepo,
             IGenericRepository<Agent> agentRepo,
-            IGenericRepository<LotUnit> unitRepo)
+            IGenericRepository<LotUnit> unitRepo,
+            IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo)
         {
             _assignRepo = assignRepo;
             _reportRepo = reportRepo;
@@ -61,6 +64,7 @@ namespace GD1.Application.Features.Agents.Commands
             _unitImageRepo = unitImageRepo;
             _agentRepo = agentRepo;
             _unitRepo = unitRepo;
+            _appRepo = appRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(SubmitInspectionCommand cmd, CancellationToken cancellationToken)
@@ -106,6 +110,7 @@ namespace GD1.Application.Features.Agents.Commands
                 StartedAt = DateTime.UtcNow, 
                 CompletedAt = DateTime.UtcNow,
                 OverallDescription = cmd.Request.OverallDescription,
+                IsVerified = cmd.Request.Units.All(u => u.IsVerified),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -161,6 +166,14 @@ namespace GD1.Application.Features.Agents.Commands
                         UpdatedAt = DateTime.UtcNow
                     });
                 }
+            }
+
+            // 7. Update Application Status to Submitted
+            var application = await _appRepo.GetByIdAsync(assignment.ApplicationId);
+            if (application != null)
+            {
+                application.Status = FranchiseStatus.Submitted;
+                await _appRepo.UpdateAsync(application);
             }
 
             return BaseResponse<string>.Ok(string.Empty, "Inspection submitted successfully.");

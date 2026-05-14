@@ -40,6 +40,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<LotUnit> _unitRepo;
         private readonly IGenericRepository<StorageLot> _lotRepo;
         private readonly IFranchiseReadRepository _franchiseRead;
+        private readonly IGenericRepository<InspectionItem> _itemRepo;
 
         public ReviewInspectionCommandHandler(
             IGenericRepository<InspectionReport> reportRepo,
@@ -47,7 +48,8 @@ namespace GD1.Application.Features.GD1Admin.Commands
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
             IGenericRepository<LotUnit> unitRepo,
             IGenericRepository<StorageLot> lotRepo,
-            IFranchiseReadRepository franchiseRead)
+            IFranchiseReadRepository franchiseRead,
+            IGenericRepository<InspectionItem> itemRepo)
         {
             _reportRepo = reportRepo;
             _assignRepo = assignRepo;
@@ -55,6 +57,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             _unitRepo = unitRepo;
             _lotRepo = lotRepo;
             _franchiseRead = franchiseRead;
+            _itemRepo = itemRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(ReviewInspectionCommand cmd, CancellationToken cancellationToken)
@@ -65,14 +68,22 @@ namespace GD1.Application.Features.GD1Admin.Commands
             var assignment = await _assignRepo.GetByIdAsync(report.AssignmentId);
             if (assignment == null) throw new KeyNotFoundException("Associated assignment not found.");
 
-            report.AdminDecision = cmd.Decision.ToString();
-            report.AdminRemarks = cmd.AdminRemarks;
-            report.DecisionAt = DateTime.UtcNow;
-
-            await _reportRepo.UpdateAsync(report);
-
             if (cmd.Decision == InspectionDecision.Approved)
             {
+                // Check if all items are verified
+                var items = await _itemRepo.FindAsync(i => i.ReportId == cmd.ReportId);
+                var itemList = items.ToList();
+
+                if (!itemList.Any())
+                {
+                    return BaseResponse<string>.Fail("Cannot approve. No inspection items found in the report.");
+                }
+
+                if (itemList.Any(i => !i.IsVerified))
+                {
+                    return BaseResponse<string>.Fail("Cannot approve. Some inspection items are not verified by the agent.");
+                }
+
                 var app = await _appRepo.GetByIdAsync(assignment.ApplicationId);
                 var units = await _franchiseRead.GetLotUnitsByApplicationIdAsync(assignment.ApplicationId);
 
@@ -96,7 +107,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
                             Longitude = app.Longitude,
                             TotalSlots = unit.Capacity,
                             Tier = unit.Tier,
-                            Status = "Active",
+                            Status = "Active", // StorageLot status is still string in entity? Let me check. Wait, I didn't change StorageLot.Status.
                             HasCCTV = unit.HasCCTV,
                             HasWorkshopBay = unit.HasWorkshop,
                             HasWashingArea = unit.HasWashingArea,
@@ -110,13 +121,13 @@ namespace GD1.Application.Features.GD1Admin.Commands
                         var unitEntity = await _unitRepo.GetByIdAsync(unit.Id);
                         if (unitEntity != null)
                         {
-                            unitEntity.Status = "Approved";
+                            unitEntity.Status = FranchiseStatus.Approved;
                             unitEntity.AssignedLotCode = lotCode;
                             await _unitRepo.UpdateAsync(unitEntity);
                         }
                     }
 
-                    app.Status = "Approved";
+                    app.Status = FranchiseStatus.Approved;
                     app.ReviewedBy = cmd.AdminId;
                     app.ReviewedAt = DateTime.UtcNow;
                     await _appRepo.UpdateAsync(app);
@@ -127,13 +138,19 @@ namespace GD1.Application.Features.GD1Admin.Commands
                 var app = await _appRepo.GetByIdAsync(assignment.ApplicationId);
                 if (app is not null)
                 {
-                    app.Status = "Rejected";
+                    app.Status = FranchiseStatus.Rejected;
                     app.IsDeleted = true;
                     app.ReviewedBy = cmd.AdminId;
                     app.ReviewedAt = DateTime.UtcNow;
                     await _appRepo.UpdateAsync(app);
                 }
             }
+
+            report.AdminDecision = cmd.Decision;
+            report.AdminRemarks = cmd.AdminRemarks;
+            report.DecisionAt = DateTime.UtcNow;
+
+            await _reportRepo.UpdateAsync(report);
 
             return BaseResponse<string>.Ok(string.Empty, $"Inspection {cmd.Decision}d successfully.");
         }

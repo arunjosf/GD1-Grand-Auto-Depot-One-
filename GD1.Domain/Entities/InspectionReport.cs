@@ -1,4 +1,5 @@
 using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,9 +18,10 @@ namespace GD1.Domain.Entities
         public string? AgentRemarks { get; set; }
         public string? OverallDescription { get; set; }
         
-        public string? AdminDecision { get; set; } // Approved, Rejected
+        public InspectionDecision? AdminDecision { get; set; } // Approved, Rejected
         public string? AdminRemarks { get; set; }
         public DateTime? DecisionAt { get; set; }
+        public bool IsVerified { get; set; } = false;
 
         public InspectionAssignment Assignment { get; set; } = null!;
         public ICollection<InspectionItem> Items { get; set; } = new List<InspectionItem>();

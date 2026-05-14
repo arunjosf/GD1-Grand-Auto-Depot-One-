@@ -2,6 +2,7 @@ using GD1.Application.Common;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
 using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using MediatR;
 using System;
 using System.Collections.Generic;
@@ -46,7 +47,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             var app = await _appRepo.GetByIdAsync(assignment.ApplicationId);
             if (app != null)
             {
-                app.Status = "Pending";
+                app.Status = FranchiseStatus.Pending;
                 await _appRepo.UpdateAsync(app);
             }
 

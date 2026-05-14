@@ -1,26 +1,27 @@
+using Dapper;
+using FluentValidation;
 using GD1.Api.Middleware;
 using GD1.Application.Features.Auth.Commands;
 using GD1.Application.Features.FranchiseApplication.Commands;
 using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
+using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
+using GD1.Infrastructure;
+using GD1.Infrastructure.Data;
 using GD1.Infrastructure.Data;
 using GD1.Infrastructure.Repositories;
 using GD1.Infrastructure.Services;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Data;
-using System.Text;
-using FluentValidation;
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-
-
-
 using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IDbConnection>(sp =>
     new SqlConnection(builder.Configuration
         .GetConnectionString("DefaultConnection")));
+
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// Register Dapper Enum Handlers
+SqlMapper.AddTypeHandler(new DapperEnumHandler<FranchiseStatus>());
+SqlMapper.AddTypeHandler(new DapperEnumHandler<InspectionDecision>());
 
 
 
@@ -108,10 +115,16 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddCors(opt =>
     opt.AddPolicy("Frontend", policy =>
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+        policy.SetIsOriginAllowed(_ => true) // Allow any origin for easier testing
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()));
+
+// Increase file upload limit (100 MB)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104857600; 
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -130,12 +143,13 @@ builder.Services.AddControllers()
             return new BadRequestObjectResult(GD1.Application.Common.BaseResponse<object>.Fail(string.Join("\n", errors)));
         };
     });
-builder.Services.AddEndpointsApiExplorer();
 
+builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(opt =>
 {
     opt.SwaggerDoc("v1", new OpenApiInfo { Title = "GD1 API", Version = "v1" });
+
     opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -174,6 +188,7 @@ builder.Services.AddSwaggerGen(opt =>
 
 app.UseCors("Frontend");
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -181,5 +196,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();  
+
 
 

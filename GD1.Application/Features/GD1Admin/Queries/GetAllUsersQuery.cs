@@ -11,7 +11,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
 {
     public class GetAllUsersQuery : IRequest<BaseResponse<IEnumerable<UserListDto>>>
     {
-        public UserRole? Role { get; set; }
+        public UserFilterRole? Role { get; set; }
         public string? SearchTerm { get; set; }
     }
 
@@ -19,11 +19,14 @@ namespace GD1.Application.Features.GD1Admin.Queries
     {
         private readonly IUserReadRepository _repo;
 
+        public IUserReadRepository Repo => _repo;
+
         public GetAllUsersQueryHandler(IUserReadRepository repo) => _repo = repo;
 
         public async Task<BaseResponse<IEnumerable<UserListDto>>> Handle(GetAllUsersQuery req, CancellationToken ct)
         {
-            var result = await _repo.GetAllUsersAsync(req.Role, req.SearchTerm);
+            var role = req.Role.HasValue ? (GD1.Domain.Entities.Enums.UserRole)req.Role.Value : (GD1.Domain.Entities.Enums.UserRole?)null;
+            var result = await _repo.GetAllUsersAsync(role, req.SearchTerm);
             return BaseResponse<IEnumerable<UserListDto>>.Ok(result);
         }
     }

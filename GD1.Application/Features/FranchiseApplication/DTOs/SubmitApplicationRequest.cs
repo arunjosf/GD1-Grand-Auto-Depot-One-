@@ -68,7 +68,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
 
         public List<string>? OtherImageUrls { get; set; }
 
-        public List<string>? ExtraFacilities { get; set; }
+
 
         [MinLength(1, ErrorMessage = "At least one lot unit is required.")]
         public List<LotUnitRequest> LotUnits { get; set; } = [];

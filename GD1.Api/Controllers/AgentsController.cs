@@ -19,9 +19,9 @@ namespace GD1.Api.Controllers
 
         [HttpPost("onboarding/finalize")]
         [AllowAnonymous]
-        public async Task<IActionResult> FinalizeOnboarding([FromBody] FinalizeAgentOnboardingCommand cmd)
+        public async Task<IActionResult> FinalizeOnboarding([FromBody] FinalizeAgentOnboardingCommand command)
         {
-            var result = await _mediator.Send(cmd);
+            var result = await _mediator.Send(command);
             
             if (result.Success && result.Data != null)
             {
@@ -64,19 +64,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("assignments/{id}/appeal")]
-        [Authorize(Roles = "Agent")]
-        public async Task<IActionResult> SubmitAppeal(long id, [FromBody] SubmitAppealRequest req)
-        {
-            var result = await _mediator.Send(new SubmitAppealCommand
-            {
-                AssignmentId = id,
-                Description = req.Description,
-                RescheduleRequestDate = req.RescheduleRequestDate,
-                UserId = GetUserId()
-            });
-            return Ok(result);
-        }
 
         private void SetTokenCookies(string accessToken, string refreshToken)
         {
@@ -100,9 +87,4 @@ namespace GD1.Api.Controllers
         }
     }
 
-    public class SubmitAppealRequest
-    {
-        public string Description { get; set; } = string.Empty;
-        public DateTime? RescheduleRequestDate { get; set; }
-    }
 }

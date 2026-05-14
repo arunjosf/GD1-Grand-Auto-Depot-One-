@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GD1.Domain.Entities.Enums;
 
 using MediatR;
 using FluentValidation;
@@ -109,10 +110,10 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                 LicenseDocumentUrl = req.LicenseDocumentUrl,
                 OwnerIdProofUrl = req.OwnerIdProofUrl,
                 PropertyProofUrl = req.PropertyProofUrl,
-                ExtraFacilities = req.ExtraFacilities != null ? string.Join(",", req.ExtraFacilities) : null,
+
                 ApplicationFee = 2000,
                 FeeStatus = "Pending",
-                Status = "Pending",
+                Status = FranchiseStatus.Pending,
                 AdminNotes = adminNotes
             };
 
@@ -176,7 +177,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                     HasWashingArea = unitReq.HasWashingArea,
                     HasFireSafety = unitReq.HasFireSafety,
                     ExtraFacilities = unitReq.ExtraFacilities != null ? string.Join(",", unitReq.ExtraFacilities) : null,
-                    Status = "Pending"
+                    Status = FranchiseStatus.Pending
                 };
 
                 await _unitRepo.AddAsync(unit);

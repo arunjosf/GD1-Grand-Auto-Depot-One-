@@ -48,11 +48,11 @@ namespace GD1.Infrastructure.Repositories
         {
             const string sql = @"
                 SELECT u.Id, u.FullName, u.Email, u.PhoneNumber, u.Role, u.IsActive, u.CreatedAt,
-                       a.City, a.State,
-                       (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = a.Id AND Status IN ('Assigned', 'InProgress')) as PendingInspections
+                       a.Id as AgentId, a.City, a.State, a.PostalCode, a.SelfieUrl, a.IdProofUrl, a.ApprovalStatus, a.Latitude, a.Longitude,
+                       CASE WHEN u.Role = 3 THEN (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = a.Id AND Status IN ('Assigned', 'InProgress')) ELSE NULL END as PendingInspections
                 FROM Users u
                 LEFT JOIN GD1Agents a ON u.Id = a.UserId
-                WHERE u.Role != 5 
+                WHERE u.Role < 5 
                 AND (@Role IS NULL OR u.Role = @Role)
                 AND (@Search IS NULL 
                      OR u.FullName LIKE '%' + @Search + '%' 
@@ -61,11 +61,43 @@ namespace GD1.Infrastructure.Repositories
                      OR a.State LIKE '%' + @Search + '%')
                 ORDER BY u.CreatedAt DESC";
 
-            return await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.UserListDto>(sql, new 
-            { 
-                Role = role, 
-                Search = search 
-            });
+            var raw = (await _db.QueryAsync<dynamic>(sql, new { Role = role, Search = search })).ToList();
+            
+            var users = raw.Select(u => new GD1.Application.Features.GD1Admin.DTOs.UserListDto
+            {
+                Id = u.Id,
+                FullName = u.FullName,
+                Email = u.Email,
+                PhoneNumber = u.PhoneNumber,
+                AgentId = u.AgentId,
+                Role = (GD1.Domain.Entities.Enums.UserRole)u.Role,
+                IsActive = u.IsActive,
+                CreatedAt = u.CreatedAt,
+                City = u.City,
+                State = u.State,
+                PostalCode = u.PostalCode,
+                PendingInspections = u.PendingInspections,
+                SelfieUrl = u.SelfieUrl,
+                IdProofUrl = u.IdProofUrl,
+                ApprovalStatus = u.ApprovalStatus != null ? ((GD1.Domain.Entities.Enums.AgentApprovalStatus)u.ApprovalStatus).ToString() : null,
+                Latitude = u.Latitude,
+                Longitude = u.Longitude
+            }).ToList();
+
+            foreach (var user in users.Where(u => u.Role == GD1.Domain.Entities.Enums.UserRole.Agent))
+            {
+                const string assignSql = @"
+                    SELECT ia.ScheduledDate, fa.BusinessName, ia.Status
+                    FROM InspectionAssignments ia
+                    INNER JOIN FranchiseApplications fa ON ia.ApplicationId = fa.Id
+                    INNER JOIN GD1Agents a ON ia.AgentId = a.Id
+                    WHERE a.UserId = @UserId AND ia.Status NOT IN ('Completed', 'Cancelled')
+                    ORDER BY ia.ScheduledDate ASC";
+                
+                user.CurrentAssignments = (await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.AgentAssignmentSummaryDto>(assignSql, new { UserId = user.Id })).ToList();
+            }
+
+            return users;
         }
     }
 }

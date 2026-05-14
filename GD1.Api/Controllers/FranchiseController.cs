@@ -45,6 +45,19 @@ namespace GD1.Api.Controllers
             });
             return Ok(result);
         }
+        
+        [HttpPost("applications/{id}/cancel")]
+        [Authorize]
+        public async Task<IActionResult> CancelApplication(long id)
+        {
+            var result = await _mediator.Send(new CancelMyApplicationCommand
+            {
+                ApplicationId = id,
+                ApplicantId = GetUserId()
+            });
+            return Ok(result);
+        }
+
 
 
         private long GetUserId()

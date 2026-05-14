@@ -69,6 +69,13 @@ namespace GD1.Application.Features.GD1Admin.Commands
             {
                 agent.IsVerified = true;
                 agent.IsActive = true;
+
+                var user = await _userRepo.GetByIdAsync(agent.UserId);
+                if (user != null)
+                {
+                    user.IsActive = true;
+                    await _userRepo.UpdateAsync(user);
+                }
             }
             else if (request.Status == AgentApprovalStatus.Rejected || request.Status == AgentApprovalStatus.Suspended)
             {

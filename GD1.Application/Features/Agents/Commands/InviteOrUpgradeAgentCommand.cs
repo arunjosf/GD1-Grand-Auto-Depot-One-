@@ -165,6 +165,8 @@ namespace GD1.Application.Features.Agents.Commands
                     PostalCode = cmd.PostalCode,
                     SelfieUrl = cmd.SelfieUrl,
                     IdProofUrl = cmd.IdProofUrl,
+                    Latitude = lat,
+                    Longitude = lon,
                     IsActive = true,
                     IsVerified = false,
                     InvitationToken = token

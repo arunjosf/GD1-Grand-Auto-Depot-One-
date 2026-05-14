@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +18,10 @@ namespace GD1.Domain.Entities
         public string? FuelType { get; set; }
 
         public string VehicleType { get; set; } = string.Empty;
-        public string? DocumentUrls { get; set; } 
+        public string? DocumentUrls { get; set; }
+        public string? OwnerIdProofUrl { get; set; }
+        public string? VehicleRcUrl { get; set; }
+        public string VerificationStatus { get; set; } = "Pending";
         public int HealthScore { get; set; } = 100;
 
         public User Owner { get; set; } = null!;

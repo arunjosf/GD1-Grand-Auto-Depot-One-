@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GD1.Domain.Entities.Enums;
 
 namespace GD1.Domain.Entities
 {
@@ -24,7 +25,7 @@ namespace GD1.Domain.Entities
         public bool HasFireSafety { get; set; }
         public string? ExtraFacilities { get; set; }
 
-        public string Status { get; set; } = "Pending";
+        public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public string? AssignedLotCode { get; set; }
 
         public GD1.Domain.Entities.FranchiseApplication Application { get; set; } = null!;

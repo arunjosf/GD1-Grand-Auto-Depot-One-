@@ -1,3 +1,4 @@
+using GD1.Domain.Entities.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -17,18 +18,24 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string? PostalCode { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public DateTime? PreferredInspectionDate { get; set; }
-        public string Status { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public FranchiseStatus? Status { get; set; }
         public string? AdminNotes { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public decimal ApplicationFee { get; set; }
-        public string FeeStatus { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? FeeStatus { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public DateTime CreatedAt { get; set; }
         public string FrontImageUrl { get; set; } = string.Empty;
         public List<string> OtherImageUrls { get; set; } = [];
-        public List<string> ExtraFacilities { get; set; } = [];
+
         public List<LotUnitDto> LotUnits { get; set; } = [];
         public List<InspectionAssignmentDto> Assignments { get; set; } = [];
-        public List<PastRejectionDto> PastRejections { get; set; } = [];
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public List<PastRejectionDto>? PastRejections { get; set; } = [];
     }
 
     public class UserApplicationDto
@@ -44,14 +51,14 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string State { get; set; } = string.Empty;
         public string? PostalCode { get; set; }
         public DateTime? PreferredInspectionDate { get; set; }
-        public string Status { get; set; } = string.Empty;
+        public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public string? AdminNotes { get; set; }
         public decimal ApplicationFee { get; set; }
         public string FeeStatus { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string FrontImageUrl { get; set; } = string.Empty;
         public List<string> OtherImageUrls { get; set; } = [];
-        public List<string> ExtraFacilities { get; set; } = [];
+
         public List<UserLotUnitDto> LotUnits { get; set; } = [];
     }
 
@@ -68,27 +75,23 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public long Id { get; set; }
         public DateTime ScheduledDate { get; set; }
         public string Status { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public long AgentId { get; set; }
-        public string AgentName { get; set; } = string.Empty;
-        public string AgentCity { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? AgentName { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? AgentCity { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string? AgentSelfieUrl { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string? AgentIdProofUrl { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string? PhoneNumber { get; set; }
-        public InspectionReportDto? Report { get; set; }
-        public List<AgentRequestDto> Requests { get; set; } = [];
+        public FranchiseInspectionReportDto? Report { get; set; }
     }
 
-    public class AgentRequestDto
-    {
-        public long Id { get; set; }
-        public string Description { get; set; } = string.Empty;
-        public DateTime? RequestedDate { get; set; }
-        public string Status { get; set; } = string.Empty;
-        public string? AdminRemarks { get; set; }
-        public DateTime CreatedAt { get; set; }
-    }
 
-    public class InspectionReportDto
+    public class FranchiseInspectionReportDto
     {
         public long Id { get; set; }
         public DateTime? StartedAt { get; set; }
@@ -98,12 +101,13 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         [MinLength(10, ErrorMessage = "Discription Must contain Atleast 10 char")]
         public string? OverallDescription { get; set; }
 
-        public string? AdminDecision { get; set; }
+        public InspectionDecision? AdminDecision { get; set; }
         public string? AdminRemarks { get; set; }
-        public List<InspectionItemDto> Items { get; set; } = [];
+        public List<FranchiseInspectionItemDto> Items { get; set; } = [];
+        public List<PropertyImageDto> PropertyImages { get; set; } = [];
     }
 
-    public class InspectionItemDto
+    public class FranchiseInspectionItemDto
     {
         public long Id { get; set; }
         public long LotUnitId { get; set; }
@@ -111,6 +115,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string TaskName { get; set; } = string.Empty;
         public bool IsVerified { get; set; }
         public string? Remarks { get; set; }
+        public List<PropertyImageDto> UnitImages { get; set; } = [];
     }
 
     public class LotUnitDto
@@ -125,7 +130,8 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public bool HasWashingArea { get; set; }
         public bool HasFireSafety { get; set; }
         public List<string> ExtraFacilities { get; set; } = [];
-        public string Status { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public FranchiseStatus? Status { get; set; }
         public List<PropertyImageDto> OwnerImages { get; set; } = [];
         public List<PropertyImageDto> AgentImages { get; set; } = [];
     }
@@ -142,7 +148,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public bool HasWashingArea { get; set; }
         public bool HasFireSafety { get; set; }
         public List<string> ExtraFacilities { get; set; } = [];
-        public string Status { get; set; } = string.Empty;
+        public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public List<UserPropertyImageDto> OwnerImages { get; set; } = [];
     }
 
@@ -171,7 +177,6 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string? Remarks { get; set; }
 
         [Required]
-        [Url(ErrorMessage = "Invalid Unit Image URL.")]
         public List<string> UnitImages { get; set; } = []; 
     }
 
@@ -180,7 +185,6 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string OverallDescription { get; set; } = string.Empty;
 
         [Required]
-        [Url(ErrorMessage = "Invalid Property Image URL.")]
         public List<string> PropertyImages { get; set; } = []; 
         public List<UnitInspectionSubmission> Units { get; set; } = [];
     }

@@ -106,15 +106,7 @@ namespace GD1.Infrastructure.Services
             if (!user.IsEmailVerified)
                 throw new UnauthorizedAccessException("Email not verified. Please verify your email before logging in.");
 
-            // NEW: Block Agents who are not yet approved by Admin
-            if (user.Role == UserRole.Agent)
-            {
-                var agent = await _db.Agents.FirstOrDefaultAsync(a => a.UserId == user.Id);
-                if (agent == null || !agent.IsVerified)
-                {
-                    throw new UnauthorizedAccessException("Your agent account is pending Admin approval. You will be able to login once approved.");
-                }
-            }
+
 
             return await BuildResponseAsync(user);
         }
@@ -330,6 +322,16 @@ namespace GD1.Infrastructure.Services
 
         private async Task<AuthResponse> BuildResponseAsync(User user)
         {
+            // Security: Block Agents who are not yet approved by Admin
+            if (user.Role == UserRole.Agent)
+            {
+                var agent = await _db.Agents.FirstOrDefaultAsync(a => a.UserId == user.Id);
+                if (agent == null || agent.ApprovalStatus != AgentApprovalStatus.Approved)
+                {
+                    throw new UnauthorizedAccessException("Your agent account is pending Admin approval. You will be able to login once approved.");
+                }
+            }
+
             var accessToken = GenerateAccessToken(user);
             var refreshToken = await SaveRefreshTokenAsync(user.Id);
 
@@ -356,6 +358,7 @@ namespace GD1.Infrastructure.Services
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim("userId", user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role.ToString()),
                 new Claim("roleId", ((int)user.Role).ToString()),

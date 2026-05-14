@@ -46,14 +46,13 @@ namespace GD1.Application.Features.Vehicle.Commands
             if (vehicle is null)
                 throw new KeyNotFoundException("Vehicle not found.");
 
-            // Check if there are active bookings
+
             var allBookings = await _bookingRepo.GetAllAsync();
             var activeBooking = allBookings.FirstOrDefault(b => b.VehicleId == cmd.VehicleId && b.Status == BookingStatus.InLot);
             
             if (activeBooking is not null)
                 throw new InvalidOperationException("Cannot edit vehicle details after storage has started.");
 
-            // Verify permission
             if (cmd.UserRole == UserRole.VehicleOwner && vehicle.OwnerId != cmd.UserId)
             {
                 throw new UnauthorizedAccessException("You don't own this vehicle.");
@@ -63,9 +62,7 @@ namespace GD1.Application.Features.Vehicle.Commands
                 var relatedBooking = allBookings.FirstOrDefault(b => b.VehicleId == cmd.VehicleId && b.Lot.LotOwnerId == cmd.UserId);
                 if (relatedBooking is null)
                     throw new UnauthorizedAccessException("You are not the lot owner for this vehicle's booking.");
-                
-                // If LotOwner edits, we should send notification to VehicleOwner. 
-                // Notification service integration here.
+
                 Console.WriteLine($"[NOTIFICATION] Vehicle {vehicle.RegistrationNo} details were updated by Lot Owner.");
             }
 

@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
@@ -29,7 +29,15 @@ namespace GD1.Infrastructure
 
             services.AddScoped<IUserReadRepository, UserReadRepository>();
 
+            services.AddHttpClient<IVehicleService, VehicleService>();
+
+
             services.AddScoped<IAuthService, AuthService>();
+
+            // AI and File Services
+            services.AddHttpClient();
+            services.AddScoped<IOcrService, TesseractOcrService>();
+            services.AddScoped<IFileService, FileService>();
 
             return services;
         }

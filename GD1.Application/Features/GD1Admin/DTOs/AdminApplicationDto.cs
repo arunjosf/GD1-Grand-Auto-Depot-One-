@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GD1.Application.Features.FranchiseApplication.DTOs;
+using GD1.Domain.Entities.Enums;
 
 namespace GD1.Application.Features.GD1Admin.DTOs
 {
@@ -22,7 +23,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public double? Longitude { get; set; }
 
         // Status & Pricing
-        public string Status { get; set; } = string.Empty;
+        public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public string? AdminNotes { get; set; }
         public decimal ApplicationFee { get; set; }
         public string FeeStatus { get; set; } = string.Empty;
@@ -36,11 +37,11 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         // Property Visuals
         public string PropertyFrontImageUrl { get; set; } = string.Empty;
         public List<string> OtherImageUrls { get; set; } = [];
-        public List<string> ExtraFacilities { get; set; } = [];
+
 
         // Agent & Inspection Info (Populated based on Status)
         public AdminAgentSummaryDto? AssignedAgent { get; set; }
-        public InspectionReportDto? InspectionReport { get; set; }
+        public AdminInspectionReportDto? InspectionReport { get; set; }
 
         // Nested Data
         public List<AdminLotUnitDto> LotUnits { get; set; } = [];
@@ -57,6 +58,31 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public string? PhoneNumber { get; set; }
     }
 
+    public class AdminInspectionReportDto
+    {
+        public long Id { get; set; }
+        public DateTime? StartedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public string? OverallDescription { get; set; }
+        public List<AdminInspectionItemDto> Items { get; set; } = [];
+        
+        // Added for agent uploaded property images
+        public List<AdminPropertyImageDto> PropertyImages { get; set; } = [];
+    }
+
+    public class AdminInspectionItemDto
+    {
+        public long Id { get; set; }
+        public long LotUnitId { get; set; }
+        public string LotLabel { get; set; } = string.Empty;
+        public string TaskName { get; set; } = string.Empty;
+        public bool IsVerified { get; set; }
+        public string? Remarks { get; set; }
+        
+        // Added for agent uploaded unit images
+        public List<AdminPropertyImageDto> UnitImages { get; set; } = [];
+    }
+
     public class AdminLotUnitDto
     {
         public long Id { get; set; }
@@ -69,7 +95,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public bool HasWashingArea { get; set; }
         public bool HasFireSafety { get; set; }
         public List<string> ExtraFacilities { get; set; } = [];
-        public string Status { get; set; } = string.Empty;
+        public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
 
         // Renamed from OwnerImages
         public List<AdminPropertyImageDto> LotImages { get; set; } = [];

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Enums;
 
 namespace GD1.Domain.Entities
 {
@@ -30,20 +31,19 @@ namespace GD1.Domain.Entities
         public string? LicenseDocumentUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? PropertyProofUrl { get; set; }
-        public string? ExtraFacilities { get; set; }
+
         
         public decimal ApplicationFee { get; set; } = 2000;
 
         public string FeeStatus { get; set; } = "Pending";
         public string? FeeTransactionId { get; set; }
 
-        public string Status { get; set; } = "Pending";
+        public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public string? AdminNotes { get; set; }
         public long? ReviewedBy { get; set; }
         public DateTime? ReviewedAt { get; set; }
 
         public User Applicant { get; set; } = null!;
-        public bool IsDeleted { get; set; } = false;
         public ICollection<LotUnit> LotUnits { get; set; } = [];
         public ICollection<InspectionAssignment> Assignments { get; set; } = [];
         public ICollection<PropertyImage> PropertyImages { get; set; } = [];

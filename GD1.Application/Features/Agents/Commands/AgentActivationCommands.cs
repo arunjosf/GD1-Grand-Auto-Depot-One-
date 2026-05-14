@@ -2,6 +2,7 @@ using GD1.Application.Common;
 using GD1.Application.Features.Auth.DTOs;
 using GD1.Application.Interfaces;
 using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
 using MediatR;
 using FluentValidation;
@@ -76,9 +77,9 @@ namespace GD1.Application.Features.Agents.Commands
             await _userRepo.UpdateAsync(user);
 
             agent.PhoneNumber = user.PhoneNumber ?? string.Empty;
-            agent.IsVerified = true;
             agent.IsActive = true;
             agent.InvitationToken = null;
+            agent.ApprovalStatus = AgentApprovalStatus.Pending;
             await _agentRepo.UpdateAsync(agent);
 
             return BaseResponse<AuthResponse>.Ok(null, "Your profile has been submitted successfully. Please wait for Admin approval before logging in.");

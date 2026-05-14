@@ -1,14 +1,15 @@
 using GD1.Application.Common;
 using GD1.Application.Features.Vehicle.DTOs;
+using GD1.Application.Interfaces;
 using GD1.Domain.Interfaces;
+using GD1.Domain.Entities;
+using MediatR;
+using FluentValidation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-
-using MediatR;
-using FluentValidation;
 
 namespace GD1.Application.Features.Vehicle.Commands
 {
@@ -26,6 +27,8 @@ namespace GD1.Application.Features.Vehicle.Commands
             RuleFor(x => x.Request.Brand).NotEmpty();
             RuleFor(x => x.Request.Model).NotEmpty();
             RuleFor(x => x.Request.RegistrationNo).NotEmpty();
+            RuleFor(x => x.Request.OwnerIdProofUrl).NotEmpty().WithMessage("ID Proof is required for AI verification.");
+            RuleFor(x => x.Request.VehicleRcUrl).NotEmpty().WithMessage("Vehicle RC is required for AI verification.");
             RuleFor(x => x.Request.Images).NotEmpty();
         }
     }
@@ -34,26 +37,56 @@ namespace GD1.Application.Features.Vehicle.Commands
     {
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.VehicleImage> _imageRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.User> _userRepo;
+        private readonly IOcrService _ocrService;
 
         public AddVehicleCommandHandler(
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
-            IGenericRepository<GD1.Domain.Entities.VehicleImage> imageRepo)
+            IGenericRepository<GD1.Domain.Entities.VehicleImage> imageRepo,
+            IGenericRepository<GD1.Domain.Entities.User> userRepo,
+            IOcrService ocrService)
         {
             _vehicleRepo = vehicleRepo;
             _imageRepo = imageRepo;
+            _userRepo = userRepo;
+            _ocrService = ocrService;
         }
 
         public async Task<BaseResponse<long>> Handle(AddVehicleCommand cmd, CancellationToken cancellationToken)
         {
             var req = cmd.Request;
+
+            // 1. Check if Vehicle already exists (Duplicate Check)
+            var existingVehicle = (await _vehicleRepo.GetAllAsync())
+                .FirstOrDefault(v => v.RegistrationNo == req.RegistrationNo.ToUpper().Trim());
+            
+            if (existingVehicle != null)
+                return BaseResponse<long>.Fail("A vehicle with this registration number already exists in our system.");
+
+            // 2. Mandatory Image Check (Front, Rear, Left, Right)
             var labels = req.Images.Select(i => i.Label).ToList();
             var required = new[] { "Front", "Rear", "LeftSide", "RightSide" };
             var missing = required.Where(r => !labels.Contains(r)).ToList();
 
             if (missing.Any())
-                throw new InvalidOperationException(
-                    $"Missing required images: {string.Join(", ", missing)}");
+                throw new InvalidOperationException($"Missing required images: {string.Join(", ", missing)}");
 
+            // 3. AI Security Verification
+            var user = await _userRepo.GetByIdAsync(cmd.OwnerId);
+            if (user == null) throw new UnauthorizedAccessException("User not found.");
+
+            string idText = "", rcText = "";
+            bool isAiVerified = false;
+
+            try {
+                idText = await _ocrService.ExtractText(req.OwnerIdProofUrl);
+                rcText = await _ocrService.ExtractText(req.VehicleRcUrl);
+                isAiVerified = _ocrService.NamesMatch(idText, rcText, user.FullName);
+            } catch {
+                isAiVerified = false;
+            }
+
+            // 4. Create Vehicle Entity
             var vehicle = new GD1.Domain.Entities.Vehicle
             {
                 OwnerId = cmd.OwnerId,
@@ -64,18 +97,19 @@ namespace GD1.Application.Features.Vehicle.Commands
                 Color = req.Color,
                 FuelType = req.FuelType,
                 VehicleType = req.VehicleType,
-                DocumentUrls = req.DocumentUrls,
-                HealthScore = 100
+                
+                OwnerIdProofUrl = req.OwnerIdProofUrl,
+                VehicleRcUrl = req.VehicleRcUrl,
+                VerificationStatus = isAiVerified ? "Verified" : "Mismatch",
+                
+                HealthScore = 100,
+                Images = new List<GD1.Domain.Entities.VehicleImage>()
             };
-
-            await _vehicleRepo.AddAsync(vehicle);
 
             foreach (var img in req.Images)
             {
-                await _imageRepo.AddAsync(new GD1.Domain.Entities.VehicleImage
+                vehicle.Images.Add(new GD1.Domain.Entities.VehicleImage
                 {
-                    VehicleId = vehicle.Id,
-                    EventId = null,
                     Label = img.Label,
                     ImageUrl = img.ImageUrl,
                     UploadedBy = "Owner",
@@ -83,7 +117,14 @@ namespace GD1.Application.Features.Vehicle.Commands
                 });
             }
 
-            return BaseResponse<long>.Ok(vehicle.Id, "Vehicle added successfully.");
+            await _vehicleRepo.AddAsync(vehicle);
+
+            // 5. Build Response
+            var message = isAiVerified 
+                ? "Vehicle added and identity verified by AI successfully." 
+                : "Vehicle added, but AI detected a name mismatch on your documents. A Lot Manager will review it manually.";
+
+            return BaseResponse<long>.Ok(vehicle.Id, message);
         }
     }
 }

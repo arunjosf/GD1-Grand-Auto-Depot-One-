@@ -60,6 +60,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsVerified")
                         .HasColumnType("bit");
 
@@ -94,46 +97,10 @@ namespace GD1.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("GD1Agents", (string)null);
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.AgentRequest", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("AdminRemarks")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("AssignmentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("RequestedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AssignmentId");
-
-                    b.ToTable("AgentRequests");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Booking", b =>
@@ -152,6 +119,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<decimal>("LotEarning")
                         .HasPrecision(10, 2)
@@ -293,6 +263,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -331,6 +304,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("IpAddress")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<long>("TermsId")
                         .HasColumnType("bigint");
@@ -398,9 +374,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ExtraFacilities")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("FeeStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -411,13 +384,13 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<double?>("Latitude")
+                    b.Property<double>("Latitude")
                         .HasColumnType("float");
 
                     b.Property<string>("LicenseDocumentUrl")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<double?>("Longitude")
+                    b.Property<double>("Longitude")
                         .HasColumnType("float");
 
                     b.Property<string>("OwnerIdProofUrl")
@@ -481,6 +454,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool?>("OwnerApproved")
                         .HasColumnType("bit");
 
@@ -535,6 +511,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("ScheduledDate")
                         .HasColumnType("datetime2");
 
@@ -564,6 +543,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("bit");
@@ -622,6 +604,12 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime?>("DecisionAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OverallDescription")
                         .HasColumnType("nvarchar(max)");
 
@@ -656,6 +644,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<long>("LotId")
                         .HasColumnType("bigint");
 
@@ -684,6 +675,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsOccupied")
                         .HasColumnType("bit");
@@ -753,6 +747,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("HasWorkshop")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Label")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -789,6 +786,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsMain")
                         .HasColumnType("bit");
@@ -837,6 +837,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -871,6 +874,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
@@ -907,6 +913,9 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsApprovedByLotOwner")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsOtpVerified")
@@ -960,6 +969,9 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsMain")
                         .HasColumnType("bit");
 
@@ -1001,6 +1013,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("bit");
 
@@ -1037,6 +1052,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<long>("LotId")
                         .HasColumnType("bigint");
@@ -1098,6 +1116,9 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsVerified")
@@ -1162,6 +1183,9 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<bool?>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<long?>("MechanicId")
@@ -1256,6 +1280,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("HasWorkshopBay")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<double?>("Latitude")
                         .HasColumnType("float");
 
@@ -1329,6 +1356,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1381,6 +1411,9 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsEmailVerified")
@@ -1441,12 +1474,18 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<int>("HealthScore")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Model")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("OwnerId")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("OwnerIdProofUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RegistrationNo")
                         .IsRequired()
@@ -1455,7 +1494,14 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("VehicleRcUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("VehicleType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("VerificationStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -1489,6 +1535,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -1537,6 +1586,9 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<long?>("TriggeredBy")
                         .HasColumnType("bigint");
 
@@ -1558,23 +1610,12 @@ namespace GD1.Infrastructure.Migrations
             modelBuilder.Entity("GD1.Domain.Entities.Agent", b =>
                 {
                     b.HasOne("GD1.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
+                        .WithOne()
+                        .HasForeignKey("GD1.Domain.Entities.Agent", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.AgentRequest", b =>
-                {
-                    b.HasOne("GD1.Domain.Entities.InspectionAssignment", "Assignment")
-                        .WithMany("Requests")
-                        .HasForeignKey("AssignmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Assignment");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Booking", b =>
@@ -1700,7 +1741,7 @@ namespace GD1.Infrastructure.Migrations
                     b.HasOne("GD1.Domain.Entities.FranchiseApplication", "Application")
                         .WithMany("Assignments")
                         .HasForeignKey("ApplicationId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Agent");
@@ -1713,7 +1754,7 @@ namespace GD1.Infrastructure.Migrations
                     b.HasOne("GD1.Domain.Entities.LotUnit", "LotUnit")
                         .WithMany()
                         .HasForeignKey("LotUnitId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("GD1.Domain.Entities.InspectionReport", "Report")
@@ -1995,8 +2036,6 @@ namespace GD1.Infrastructure.Migrations
             modelBuilder.Entity("GD1.Domain.Entities.InspectionAssignment", b =>
                 {
                     b.Navigation("Report");
-
-                    b.Navigation("Requests");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.InspectionReport", b =>
