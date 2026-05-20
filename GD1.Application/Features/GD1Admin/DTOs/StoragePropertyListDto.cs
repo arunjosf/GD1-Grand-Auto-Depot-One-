@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GD1.Application.Features.GD1Admin.DTOs
 {
@@ -14,27 +11,49 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public string City { get; set; } = string.Empty;
         public string State { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public string Tier { get; set; } = string.Empty;
+        public string Tier { get; set; } = "Private Garage";
         public int TotalSlots { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal AverageRating { get; set; }
-        public string OwnerName { get; set; } = string.Empty;
-        public string OwnerEmail { get; set; } = string.Empty;
-        public List<string> ExtraFacilities { get; set; } = [];
+        public int TotalReviews { get; set; }
+        public double DistanceKm { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
 
-        // Property Details
-        public string AddressLine { get; set; } = string.Empty;
-        public string FrontImageUrl { get; set; } = string.Empty;
-        public List<string> OtherImageUrls { get; set; } = [];
+        public LotContactDto ContactInfo { get; set; } = new();
+        public LotPropertyDetailDto PropertyDetails { get; set; } = new();
+        public bool HasCompatibleSlots { get; set; } = true;
+        public bool IsPickupAvailable { get; set; } = false;
         
-        // Specific Lot Unit Details & Images
+        // Direct Slots for the Rectangle UI
+        public List<LotSlotDto> Slots { get; set; } = [];
+        public List<string> PropertyImages { get; set; } = [];
+    }
+
+    public class LotContactDto
+    {
+        public string AddressLine { get; set; } = string.Empty;
+    }
+
+    public class LotPropertyDetailDto
+    {
+        public string AddressLine { get; set; } = string.Empty;
         public bool HasCCTV { get; set; }
         public bool HasSecurity { get; set; }
         public bool HasWorkshop { get; set; }
         public bool HasWashingArea { get; set; }
         public bool HasFireSafety { get; set; }
-        public int Capacity { get; set; }
-        public string UnitLabel { get; set; } = string.Empty;
-        public List<string> UnitImages { get; set; } = [];
+        public string? ExtraFacilities { get; set; }
+    }
+
+    public class LotSlotDto
+    {
+        public long Id { get; set; }
+        public string SlotNumber { get; set; } = string.Empty;
+        public bool IsOccupied { get; set; }
+        public string? ImageUrl { get; set; }
+        public double SquareFeet { get; set; }
+        public double HeightFeet { get; set; }
+        public bool IsCompatible { get; set; } = true;
     }
 }

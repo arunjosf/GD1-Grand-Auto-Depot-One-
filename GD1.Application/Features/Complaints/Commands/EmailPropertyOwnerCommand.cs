@@ -19,16 +19,16 @@ namespace GD1.Application.Features.Complaints.Commands
     public class EmailPropertyOwnerCommandHandler : IRequestHandler<EmailPropertyOwnerCommand, BaseResponse<string>>
     {
         private readonly IGenericRepository<Complaint> _complaintRepo;
-        private readonly IGenericRepository<StorageLot> _lotRepo;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<User> _userRepo;
 
         public EmailPropertyOwnerCommandHandler(
             IGenericRepository<Complaint> complaintRepo,
-            IGenericRepository<StorageLot> lotRepo,
+            IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<User> userRepo)
         {
             _complaintRepo = complaintRepo;
-            _lotRepo = lotRepo;
+            _propertyRepo = propertyRepo;
             _userRepo = userRepo;
         }
 
@@ -38,13 +38,13 @@ namespace GD1.Application.Features.Complaints.Commands
             if (complaint is null)
                 throw new KeyNotFoundException("Complaint not found.");
 
-            var lot = await _lotRepo.GetByIdAsync(complaint.LotId);
-            if (lot is null)
-                throw new KeyNotFoundException("Lot not found.");
+            var property = await _propertyRepo.GetByIdAsync(complaint.PropertyId);
+            if (property is null)
+                throw new KeyNotFoundException("Property not found.");
 
-            var owner = await _userRepo.GetByIdAsync(lot.LotOwnerId);
+            var owner = await _userRepo.GetByIdAsync(property.LotOwnerId);
             if (owner is null)
-                throw new KeyNotFoundException("Lot owner not found.");
+                throw new KeyNotFoundException("Property owner not found.");
 
             // Fake Email sending for now. In a real system, you'd inject an IEmailService here.
             Console.WriteLine($"[EMAIL SENT to {owner.Email}] Regarding Complaint {complaint.Id}: {cmd.Message}");

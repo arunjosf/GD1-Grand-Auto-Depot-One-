@@ -325,7 +325,7 @@ namespace GD1.Infrastructure.Services
             // Security: Block Agents who are not yet approved by Admin
             if (user.Role == UserRole.Agent)
             {
-                var agent = await _db.Agents.FirstOrDefaultAsync(a => a.UserId == user.Id);
+                var agent = await _db.Agents.FirstOrDefaultAsync(a => a.Id == user.Id);
                 if (agent == null || agent.ApprovalStatus != AgentApprovalStatus.Approved)
                 {
                     throw new UnauthorizedAccessException("Your agent account is pending Admin approval. You will be able to login once approved.");
@@ -357,10 +357,11 @@ namespace GD1.Infrastructure.Services
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim("userId", user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim("role", user.Role.ToString()),
                 new Claim("roleId", ((int)user.Role).ToString()),
                 new Claim("fullName", user.FullName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
@@ -383,11 +384,10 @@ namespace GD1.Infrastructure.Services
         private async Task<string> SaveRefreshTokenAsync(long userId)
         {
             var previous = await _db.RefreshTokens
-                .Where(r => r.UserId == userId && !r.IsRevoked)
+                .Where(r => r.UserId == userId)
                 .ToListAsync();
 
-            foreach (var t in previous)
-                t.IsRevoked = true;
+            _db.RefreshTokens.RemoveRange(previous);
 
             var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 

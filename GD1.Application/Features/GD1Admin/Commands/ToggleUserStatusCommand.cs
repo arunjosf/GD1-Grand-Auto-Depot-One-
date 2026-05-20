@@ -18,20 +18,20 @@ namespace GD1.Application.Features.GD1Admin.Commands
     {
         private readonly IGenericRepository<User> _userRepo;
         private readonly IGenericRepository<Booking> _bookingRepo;
-        private readonly IGenericRepository<StorageLot> _lotRepo;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<Agent> _agentRepo;
         private readonly IGenericRepository<InspectionAssignment> _assignmentRepo;
 
         public ToggleUserStatusCommandHandler(
             IGenericRepository<User> userRepo,
             IGenericRepository<Booking> bookingRepo,
-            IGenericRepository<StorageLot> lotRepo,
+            IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<Agent> agentRepo,
             IGenericRepository<InspectionAssignment> assignmentRepo)
         {
             _userRepo = userRepo;
             _bookingRepo = bookingRepo;
-            _lotRepo = lotRepo;
+            _propertyRepo = propertyRepo;
             _agentRepo = agentRepo;
             _assignmentRepo = assignmentRepo;
         }
@@ -44,7 +44,6 @@ namespace GD1.Application.Features.GD1Admin.Commands
             if (user.Role == UserRole.GD1Admin)
                 return BaseResponse<bool>.Fail("Admins cannot be blocked.");
 
-            // If user is currently active and we are trying to block them (set IsActive to false)
             if (user.IsActive)
             {
                 if (user.Role == UserRole.VehicleOwner)
@@ -59,20 +58,20 @@ namespace GD1.Application.Features.GD1Admin.Commands
                 }
                 else if (user.Role == UserRole.LotOwner)
                 {
-                    var lots = await _lotRepo.FindAsync(l => l.LotOwnerId == user.Id);
-                    var lotIds = lots.Select(l => l.Id).ToList();
+                    var properties = await _propertyRepo.FindAsync(p => p.LotOwnerId == user.Id);
+                    var propIds = properties.Select(p => p.Id).ToList();
                     
                     var activeLotBookings = await _bookingRepo.FindAsync(b => 
-                        lotIds.Contains(b.LotId) && 
+                        propIds.Contains(b.PropertyId) && 
                         b.Status != BookingStatus.Completed && 
                         b.Status != BookingStatus.Cancelled);
                     
                     if (activeLotBookings.Any())
-                        return BaseResponse<bool>.Fail("Cannot block user. This lot owner has lots with active bookings.");
+                        return BaseResponse<bool>.Fail("Cannot block user. This property owner has sites with active bookings.");
                 }
                 else if (user.Role == UserRole.Agent)
                 {
-                    var agent = (await _agentRepo.FindAsync(a => a.UserId == user.Id)).FirstOrDefault();
+                    var agent = (await _agentRepo.FindAsync(a => a.Id == user.Id)).FirstOrDefault();
                     if (agent != null)
                     {
                         var activeAssignments = await _assignmentRepo.FindAsync(aa => 

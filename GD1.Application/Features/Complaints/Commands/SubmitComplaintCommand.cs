@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using GD1.Application.Common;
 using GD1.Domain.Entities;
 using GD1.Domain.Interfaces;
@@ -14,7 +14,7 @@ namespace GD1.Application.Features.Complaints.Commands
     public class SubmitComplaintCommand : IRequest<BaseResponse<long>>
     {
         public long ComplainantId { get; set; }
-        public long LotId { get; set; }
+        public long PropertyId { get; set; }
         public long? BookingId { get; set; }
         public string Subject { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
@@ -25,7 +25,7 @@ namespace GD1.Application.Features.Complaints.Commands
     {
         public SubmitComplaintCommandValidator()
         {
-            RuleFor(x => x.LotId).GreaterThan(0);
+            RuleFor(x => x.PropertyId).GreaterThan(0);
             RuleFor(x => x.Subject).NotEmpty().MaximumLength(200);
             RuleFor(x => x.Description).NotEmpty().MaximumLength(2000);
         }
@@ -45,7 +45,7 @@ namespace GD1.Application.Features.Complaints.Commands
             var complaint = new Complaint
             {
                 ComplainantId = cmd.ComplainantId,
-                LotId = cmd.LotId,
+                PropertyId = cmd.PropertyId,
                 BookingId = cmd.BookingId,
                 Subject = cmd.Subject.Trim(),
                 Description = cmd.Description.Trim(),

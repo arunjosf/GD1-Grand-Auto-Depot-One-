@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GD1.Application.Features.GD1Admin.DTOs;
+using GD1.Application.Interfaces.Repositories;
 
 namespace GD1.Application.Features.GD1Admin.Commands
 {
@@ -15,27 +16,13 @@ namespace GD1.Application.Features.GD1Admin.Commands
 
     public class GetPendingAgentsQueryHandler : IRequestHandler<GetPendingAgentsQuery, BaseResponse<List<PendingAgentDto>>>
     {
-        private readonly IGenericRepository<Agent> _agentRepo;
-        public GetPendingAgentsQueryHandler(IGenericRepository<Agent> agentRepo) => _agentRepo = agentRepo;
+        private readonly IFranchiseReadRepository _repo;
+        public GetPendingAgentsQueryHandler(IFranchiseReadRepository repo) => _repo = repo;
 
         public async Task<BaseResponse<List<PendingAgentDto>>> Handle(GetPendingAgentsQuery request, CancellationToken ct)
         {
-            var pending = (await _agentRepo.FindAsync(a => a.ApprovalStatus == AgentApprovalStatus.Pending)).ToList();
-            
-            var dtos = pending.Select(a => new PendingAgentDto
-            {
-                Id = a.Id,
-                FullName = a.FullName,
-                Email = a.Email,
-                PhoneNumber = a.PhoneNumber,
-                SelfieUrl = a.SelfieUrl,
-                IdProofUrl = a.IdProofUrl,
-                City = a.City,
-                State = a.State,
-                PostalCode = a.PostalCode
-            }).ToList();
-
-            return BaseResponse<List<PendingAgentDto>>.Ok(dtos, "Retrieved pending agent requests.");
+            var pending = (await _repo.GetPendingAgentsAsync()).ToList();
+            return BaseResponse<List<PendingAgentDto>>.Ok(pending, "Retrieved pending agent requests.");
         }
     }
 
@@ -70,7 +57,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
                 agent.IsVerified = true;
                 agent.IsActive = true;
 
-                var user = await _userRepo.GetByIdAsync(agent.UserId);
+                var user = await _userRepo.GetByIdAsync(agent.Id);
                 if (user != null)
                 {
                     user.IsActive = true;
@@ -81,7 +68,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             {
                 agent.IsActive = false;
                 
-                var user = await _userRepo.GetByIdAsync(agent.UserId);
+                var user = await _userRepo.GetByIdAsync(agent.Id);
                 if (user != null)
                 {
                     user.IsActive = false;

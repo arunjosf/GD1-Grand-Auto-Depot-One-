@@ -48,29 +48,46 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         [RegularExpression(@"^\d{6}$", ErrorMessage = "Postal Code must be exactly 6 digits.")]
         public string PostalCode { get; set; } = string.Empty;
 
+        [Range(1, double.MaxValue, ErrorMessage = "Price per day must be greater than 0.")]
+        public decimal PricePerDay { get; set; }
+
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+
         public DateTime? PreferredInspectionDate { get; set; }
 
-        [Url(ErrorMessage = "Invalid BusinessRegistration Image URL.")]
         public string? BusinessRegistrationUrl { get; set; }
-
-        [Url(ErrorMessage = "Invalid LicenseDocument URL.")]
         public string? LicenseDocumentUrl { get; set; }
-
-        [Url(ErrorMessage = "Invalid OwnerIdProof URL.")]
         public string? OwnerIdProofUrl { get; set; }
-
-        [Url(ErrorMessage = "Invalid PropertyProof Image URL.")]
         public string? PropertyProofUrl { get; set; }
 
         [Required]
-        [Url(ErrorMessage = "Invalid FrontImage Image URL.")]
         public string FrontImageUrl { get; set; } = string.Empty;
-
         public List<string>? OtherImageUrls { get; set; }
 
+        // Facilities
+        public bool HasCCTV { get; set; }
+        public bool HasSecurity { get; set; }
+        public bool HasFireSafety { get; set; }
+        public bool HasWorkshop { get; set; }
+        public bool HasWashingArea { get; set; }
 
+        [MinLength(1, ErrorMessage = "At least one garage (slot) is required.")]
+        public List<GarageSlotRequest> Slots { get; set; } = [];
+    }
 
-        [MinLength(1, ErrorMessage = "At least one lot unit is required.")]
-        public List<LotUnitRequest> LotUnits { get; set; } = [];
+    public class GarageSlotRequest
+    {
+        [Required]
+        public string SlotNumber { get; set; } = string.Empty;
+        
+        [Range(1, double.MaxValue, ErrorMessage = "SquareFeet must be greater than 0")]
+        public double SquareFeet { get; set; }
+        
+        [Range(1, double.MaxValue, ErrorMessage = "HeightFeet must be greater than 0")]
+        public double HeightFeet { get; set; }
+        
+        [Required]
+        public string ImageUrl { get; set; } = string.Empty;
     }
 }

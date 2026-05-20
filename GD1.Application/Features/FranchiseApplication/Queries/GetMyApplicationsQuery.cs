@@ -45,30 +45,17 @@ namespace GD1.Application.Features.FranchiseApplication.Queries
                 Status = app.Status ?? FranchiseStatus.Pending,
                 AdminNotes = app.AdminNotes,
                 ApplicationFee = app.ApplicationFee,
-                FeeStatus = app.FeeStatus,
+                FeeStatus = app.FeeStatus ?? "Pending",
                 CreatedAt = app.CreatedAt,
                 FrontImageUrl = app.FrontImageUrl,
-                OtherImageUrls = app.OtherImageUrls,
-
-                LotUnits = app.LotUnits.Select(u => new UserLotUnitDto
+                
+                Slots = app.Slots.Select(s => new FranchiseSlotDto
                 {
-                    Id = u.Id,
-                    Label = u.Label,
-                    Tier = u.Tier,
-                    Capacity = u.Capacity,
-                    HasCCTV = u.HasCCTV,
-                    HasSecurity = u.HasSecurity,
-                    HasWorkshop = u.HasWorkshop,
-                    HasWashingArea = u.HasWashingArea,
-                    HasFireSafety = u.HasFireSafety,
-                    ExtraFacilities = u.ExtraFacilities,
-                    Status = u.Status ?? FranchiseStatus.Pending,
-                    OwnerImages = u.OwnerImages.Select(i => new UserPropertyImageDto
-                    {
-                        Id = i.Id,
-                        Label = i.Label,
-                        ImageUrl = i.ImageUrl
-                    }).ToList()
+                    Id = s.Id,
+                    SlotNumber = s.SlotNumber,
+                    SquareFeet = s.SquareFeet,
+                    HeightFeet = s.HeightFeet,
+                    ImageUrl = s.ImageUrl
                 }).ToList()
             });
 

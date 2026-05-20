@@ -7,10 +7,9 @@ using System.Threading.Tasks;
 
 namespace GD1.Domain.Entities
 {
-    public class StorageLot : BaseEntity
+    public class VehicleStorageProperty : BaseEntity
     {
         public long LotOwnerId { get; set; }
-        public long? LotUnitId { get; set; }
         public string LotCode { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
@@ -20,27 +19,29 @@ namespace GD1.Domain.Entities
         public string Country { get; set; } = "India";
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
-        public int TotalSlots { get; set; }
-
-        public string Tier { get; set; } = "Tier1";
-
+        
         public string Status { get; set; } = "Active";
 
+        // Property-level facilities (Since slots are just garages)
         public bool HasCCTV { get; set; }
-        public bool HasWorkshopBay { get; set; }
-        public bool HasWashingArea { get; set; }
         public bool HasSecurity { get; set; }
         public bool HasFireSafety { get; set; }
+        public bool HasWorkshopBay { get; set; }
+        public bool HasWashingArea { get; set; }
         public string? ExtraFacilities { get; set; }
+        
         public decimal PricePerDay { get; set; }
         public decimal AverageRating { get; set; }
         public int TotalReviews { get; set; }
 
-
         public User LotOwner { get; set; } = null!;
-        public ICollection<LotSlot> Slots { get; set; } = [];
+        
+        // Direct Slots (Garages)
+        public ICollection<VehicleStorageSlot> Slots { get; set; } = [];
+        
         public ICollection<LotManager> Managers { get; set; } = [];
         public ICollection<Booking> Bookings { get; set; } = [];
         public ICollection<Review> Reviews { get; set; } = [];
+        public ICollection<PropertyImage> ActivePropertyImages { get; set; } = [];
     }
 }

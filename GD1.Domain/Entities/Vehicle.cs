@@ -18,6 +18,9 @@ namespace GD1.Domain.Entities
         public string? FuelType { get; set; }
 
         public string VehicleType { get; set; } = string.Empty;
+        public double LengthFeet { get; set; }
+        public double WidthFeet { get; set; }
+        public double HeightFeet { get; set; }
         public string? DocumentUrls { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? VehicleRcUrl { get; set; }

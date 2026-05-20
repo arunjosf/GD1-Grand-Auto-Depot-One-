@@ -14,16 +14,20 @@ namespace GD1.Domain.Entities
         
         public DateTime? StartedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
-        
-        public string? AgentRemarks { get; set; }
+
         public string? OverallDescription { get; set; }
-        
-        public InspectionDecision? AdminDecision { get; set; } // Approved, Rejected
+        public string? Latitude { get; set; }
+        public string? Longitude { get; set; }
+
+        public InspectionDecision AdminDecision { get; set; } = InspectionDecision.Pending;
         public string? AdminRemarks { get; set; }
-        public DateTime? DecisionAt { get; set; }
-        public bool IsVerified { get; set; } = false;
 
         public InspectionAssignment Assignment { get; set; } = null!;
-        public ICollection<InspectionItem> Items { get; set; } = new List<InspectionItem>();
+        
+        // Direct Slot verifications
+        public ICollection<InspectionSlotItem> SlotVerifications { get; set; } = [];
+        
+        // Agent uploaded site images
+        public ICollection<PropertyImage> SiteImages { get; set; } = [];
     }
 }

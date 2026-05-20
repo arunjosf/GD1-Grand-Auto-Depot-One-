@@ -6,33 +6,33 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GD1.Application.Features.Complaints.DTOs;
+using GD1.Domain.Interfaces;
+using GD1.Domain.Entities;
 
 namespace GD1.Application.Features.Complaints.Queries
 {
     public class GetComplaintsQuery : IRequest<BaseResponse<IEnumerable<ComplaintDto>>>
     {
-        public long? LotId { get; set; }   
+        public long? PropertyId { get; set; }   
         public long? ComplainantId { get; set; }   
         public string? Status { get; set; }
     }
 
-  
-
     public class GetComplaintsQueryHandler
         : IRequestHandler<GetComplaintsQuery, BaseResponse<IEnumerable<ComplaintDto>>>
     {
-        private readonly GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.Complaint> _repo;
+        private readonly IGenericRepository<Complaint> _repo;
 
-        public GetComplaintsQueryHandler(GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.Complaint> repo)
+        public GetComplaintsQueryHandler(IGenericRepository<Complaint> repo)
             => _repo = repo;
 
         public async Task<BaseResponse<IEnumerable<ComplaintDto>>> Handle(
             GetComplaintsQuery query, CancellationToken ct)
         {
-            var complaints = await _repo.GetAllAsync();
+            var complaints = await _repo.FindAsync(c => true, "Complainant", "Property");
 
-            if (query.LotId.HasValue)
-                complaints = complaints.Where(c => c.LotId == query.LotId);
+            if (query.PropertyId.HasValue)
+                complaints = complaints.Where(c => c.PropertyId == query.PropertyId);
             
             if (query.ComplainantId.HasValue)
                 complaints = complaints.Where(c => c.ComplainantId == query.ComplainantId);
@@ -48,7 +48,7 @@ namespace GD1.Application.Features.Complaints.Queries
                 Status = c.Status,
                 AdminResponse = c.AdminResponse,
                 ComplainantName = c.Complainant?.FullName ?? "Unknown",
-                LotName = c.Lot?.Name ?? "Unknown",
+                PropertyName = c.Property?.Name ?? "Unknown",
                 CreatedAt = c.CreatedAt
             }).ToList();
 

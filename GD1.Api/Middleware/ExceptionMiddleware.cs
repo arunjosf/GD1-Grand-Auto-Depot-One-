@@ -46,9 +46,14 @@ namespace GD1.Api.Middleware
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
+                var message = ex.Message;
+                if (ex.InnerException != null)
+                    message += " | Inner: " + ex.InnerException.Message;
+                if (ex.InnerException?.InnerException != null)
+                    message += " | Root: " + ex.InnerException.InnerException.Message;
                 await WriteErrorAsync(context,
                     HttpStatusCode.InternalServerError,
-                    ex.Message ?? "Something went wrong. Please try again.");
+                    message ?? "Something went wrong. Please try again.");
             }
         }
 

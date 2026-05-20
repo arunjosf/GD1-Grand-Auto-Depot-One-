@@ -89,24 +89,41 @@ namespace GD1.Infrastructure.Services
             var cleanRc = Normalize(rcText);
             var cleanProfile = Normalize(profileName);
 
-            // 1. Check if name is found in either document
-            bool foundInId = cleanId.Contains(cleanProfile) || IsVeryFuzzyMatch(cleanId, cleanProfile);
-            bool foundInRc = cleanRc.Contains(cleanProfile) || IsVeryFuzzyMatch(cleanRc, cleanProfile);
+            // 1. Profile name must be present in ID Proof
+            bool foundInId = IsNamePresent(cleanId, cleanProfile);
+            
+            // 2. Profile name must be present in Vehicle RC
+            bool foundInRc = IsNamePresent(cleanRc, cleanProfile);
 
-            // 2. If it's found in BOTH, it's a perfect match
-            if (foundInId && foundInRc) return true;
+            // Both must be true for automatic verification
+            return foundInId && foundInRc;
+        }
+        
+        public bool IsNamePresent(string text, string profileName)
+        {
+            if (string.IsNullOrWhiteSpace(profileName)) return false;
+            var cleanText = Normalize(text);
+            var cleanProfile = Normalize(profileName);
+            
+            if (cleanText.Contains(cleanProfile)) return true;
 
-            // 3. Advanced: If it's found in ONE, check the parts of the name in the other
+            // Fuzzy check for parts of the name (handling middle names/initials)
             var nameParts = cleanProfile.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (foundInId || foundInRc)
+            int matchedParts = 0;
+
+            foreach (var part in nameParts)
             {
-                // If one is perfect, we only need a "hint" of the name in the other
-                return nameParts.Any(part => IsFuzzyMatch(cleanId, part)) && 
-                       nameParts.Any(part => IsFuzzyMatch(cleanRc, part));
+                if (part.Length <= 2) continue; // Skip initials for strict match
+                if (cleanText.Contains(part) || IsFuzzyMatch(cleanText, part))
+                {
+                    matchedParts++;
+                }
             }
 
-            return false;
+            // At least 80% of major name parts must match
+            return matchedParts >= Math.Ceiling(nameParts.Where(p => p.Length > 2).Count() * 0.8);
         }
+
 
         private bool IsVeryFuzzyMatch(string text, string name)
         {

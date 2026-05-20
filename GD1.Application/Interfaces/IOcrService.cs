@@ -6,5 +6,6 @@ namespace GD1.Application.Interfaces
     {
         Task<string> ExtractText(string url);
         bool NamesMatch(string idText, string rcText, string profileName);
+        bool IsNamePresent(string text, string profileName);
     }
 }

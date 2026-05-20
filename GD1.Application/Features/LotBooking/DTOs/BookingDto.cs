@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -26,16 +26,16 @@ namespace GD1.Application.Features.LotBooking.DTOs
         [StringLength(20)]
         public string RegistrationNo { get; set; } = string.Empty;
 
-        [Range(1, long.MaxValue, ErrorMessage = "Invalid LotId.")]
-        public long LotId { get; set; }
+        [Range(1, long.MaxValue, ErrorMessage = "Invalid PropertyId.")]
+        public long PropertyId { get; set; }
 
         [Required]
         [StringLength(150)]
-        public string LotName { get; set; } = string.Empty;
+        public string PropertyName { get; set; } = string.Empty;
 
         [Required]
         [StringLength(300)]
-        public string LotAddress { get; set; } = string.Empty;
+        public string PropertyAddress { get; set; } = string.Empty;
 
         [StringLength(50)]
         public string? SlotNumber { get; set; }
@@ -48,14 +48,12 @@ namespace GD1.Application.Features.LotBooking.DTOs
 
         [Required]
         [StringLength(50)]
-        public string Plan { get; set; } = string.Empty;
-
-        [Required]
-        [StringLength(50)]
         public string Status { get; set; } = string.Empty;
 
         [Range(0, double.MaxValue, ErrorMessage = "Total cost must be non-negative.")]
         public decimal TotalCost { get; set; }
+
+        public decimal PricePerDay { get; set; }
 
         public DateTime CreatedAt { get; set; }
     }

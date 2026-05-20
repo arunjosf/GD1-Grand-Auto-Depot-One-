@@ -13,7 +13,7 @@ namespace GD1.Application.Features.Vehicle.Queries
     public class GetAllVehiclesQuery : IRequest<BaseResponse<IEnumerable<VehicleWithDetailsDto>>>
     {
         public string? SearchTerm { get; set; }
-        public long? LotOwnerId { get; set; }
+        public long? PropertyOwnerId { get; set; }
     }
 
     public class VehicleWithDetailsDto
@@ -23,8 +23,7 @@ namespace GD1.Application.Features.Vehicle.Queries
         public string Model { get; set; } = string.Empty;
         public string RegistrationNo { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
-        public string LotName { get; set; } = string.Empty;
-        public string Plan { get; set; } = string.Empty;
+        public string PropertyName { get; set; } = string.Empty;
     }
 
     public class GetAllVehiclesQueryHandler : IRequestHandler<GetAllVehiclesQuery, BaseResponse<IEnumerable<VehicleWithDetailsDto>>>
@@ -42,35 +41,59 @@ namespace GD1.Application.Features.Vehicle.Queries
 
         public async Task<BaseResponse<IEnumerable<VehicleWithDetailsDto>>> Handle(GetAllVehiclesQuery query, CancellationToken cancellationToken)
         {
-            var vehicles = await _vehicleRepo.GetAllAsync();
-            var bookings = await _bookingRepo.GetAllAsync();
+            var vehicles = await _vehicleRepo.FindAsync(v => true, "Owner");
+            var bookings = await _bookingRepo.FindAsync(b => true, "Vehicle", "Property");
 
-            var result = bookings
-                .Where(b => !query.LotOwnerId.HasValue || b.Lot.LotOwnerId == query.LotOwnerId)
-                .ToList();
+            if (query.PropertyOwnerId.HasValue)
+            {
+                var myBookings = bookings.Where(b => b.Property?.LotOwnerId == query.PropertyOwnerId).ToList();
+                var results = myBookings.Select(b => new VehicleWithDetailsDto
+                {
+                    Id = b.VehicleId,
+                    Brand = b.Vehicle?.Brand ?? "Unknown",
+                    Model = b.Vehicle?.Model ?? "Unknown",
+                    RegistrationNo = b.Vehicle?.RegistrationNo ?? "Unknown",
+                    OwnerName = b.Vehicle?.Owner?.FullName ?? "Unknown",
+                    PropertyName = b.Property?.Name ?? "Unknown"
+                }).ToList();
+
+                if (!string.IsNullOrEmpty(query.SearchTerm))
+                {
+                    var term = query.SearchTerm.ToLower();
+                    results = results.Where(v => 
+                        v.OwnerName.ToLower().Contains(term) ||
+                        v.Brand.ToLower().Contains(term) ||
+                        v.Model.ToLower().Contains(term)
+                    ).ToList();
+                }
+
+                return BaseResponse<IEnumerable<VehicleWithDetailsDto>>.Ok(results);
+            }
+
+            var allResults = vehicles.Select(v => {
+                var booking = bookings.FirstOrDefault(b => b.VehicleId == v.Id);
+                return new VehicleWithDetailsDto
+                {
+                    Id = v.Id,
+                    Brand = v.Brand,
+                    Model = v.Model,
+                    RegistrationNo = v.RegistrationNo,
+                    OwnerName = v.Owner?.FullName ?? "Unknown",
+                    PropertyName = booking?.Property?.Name ?? "Unassigned"
+                };
+            }).ToList();
 
             if (!string.IsNullOrEmpty(query.SearchTerm))
             {
                 var term = query.SearchTerm.ToLower();
-                result = result.Where(b => 
-                    (b.Vehicle?.Owner?.FullName?.ToLower().Contains(term) ?? false) ||
-                    (b.Vehicle?.Brand?.ToLower().Contains(term) ?? false) ||
-                    (b.Vehicle?.Model?.ToLower().Contains(term) ?? false)
+                allResults = allResults.Where(v => 
+                    v.OwnerName.ToLower().Contains(term) ||
+                    v.Brand.ToLower().Contains(term) ||
+                    v.Model.ToLower().Contains(term)
                 ).ToList();
             }
 
-            var finalResult = result.Select(b => new VehicleWithDetailsDto
-            {
-                Id = b.VehicleId,
-                Brand = b.Vehicle?.Brand ?? "Unknown",
-                Model = b.Vehicle?.Model ?? "Unknown",
-                RegistrationNo = b.Vehicle?.RegistrationNo ?? "Unknown",
-                OwnerName = b.Vehicle?.Owner?.FullName ?? "Unknown",
-                LotName = b.Lot?.Name ?? "Unknown",
-                Plan = b.Plan
-            }).ToList();
-
-            return BaseResponse<IEnumerable<VehicleWithDetailsDto>>.Ok(finalResult);
+            return BaseResponse<IEnumerable<VehicleWithDetailsDto>>.Ok(allResults);
         }
     }
 }

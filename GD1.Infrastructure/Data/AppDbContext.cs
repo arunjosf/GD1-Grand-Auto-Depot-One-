@@ -10,8 +10,8 @@ namespace GD1.Infrastructure.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
-        public DbSet<StorageLot> StorageLots { get; set; }
-        public DbSet<LotSlot> LotSlots { get; set; }
+        public DbSet<VehicleStorageProperty> VehicleStorageProperties { get; set; }
+        public DbSet<VehicleStorageSlot> VehicleStorageSlots { get; set; }
         public DbSet<LotManager> LotManagers { get; set; }
         public DbSet<Vehicle> Vehicles { get; set; }
         public DbSet<VehicleImage> VehicleImages { get; set; }
@@ -24,18 +24,19 @@ namespace GD1.Infrastructure.Data
         public DbSet<Mechanics> Mechanics { get; set; }
         public DbSet<ServiceRequest> ServiceRequests { get; set; }
         public DbSet<GD1.Domain.Entities.FranchiseApplication> FranchiseApplications { get; set; }
-        public DbSet<LotUnit> LotUnits { get; set; }
         public DbSet<InspectionAssignment> InspectionAssignments { get; set; }
         public DbSet<InspectionReport> InspectionReports { get; set; }
-        public DbSet<InspectionItem> InspectionItems { get; set; }
         public DbSet<PropertyImage> PropertyImages { get; set; }
-        public DbSet<LotUnitImage> LotUnitImages { get; set; }
         public DbSet<Agent> Agents { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Complaint> Complaints { get; set; }
         public DbSet<TermsAndConditions> TermsAndConditions { get; set; }
         public DbSet<DigitalAgreement> DigitalAgreements { get; set; }
+        public DbSet<BookingAgreement> BookingAgreements { get; set; }
+        public DbSet<FranchiseSlot> FranchiseSlots { get; set; }
+        public DbSet<InspectionSlotItem> InspectionSlotItems { get; set; }
+        public DbSet<PickupVerification> PickupVerifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -46,7 +47,7 @@ namespace GD1.Infrastructure.Data
             mb.Entity<Agent>().ToTable("GD1Agents")
                 .HasOne(a => a.User)
                 .WithOne()
-                .HasForeignKey<Agent>(a => a.UserId)
+                .HasForeignKey<Agent>(a => a.Id)
                 .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<RefreshToken>()
@@ -87,28 +88,28 @@ namespace GD1.Infrastructure.Data
                 .HasForeignKey(e => e.BookingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            mb.Entity<StorageLot>()
+            mb.Entity<VehicleStorageProperty>()
                 .HasIndex(s => s.LotCode).IsUnique();
-            mb.Entity<StorageLot>()
+            mb.Entity<VehicleStorageProperty>()
                 .HasOne(s => s.LotOwner)
                 .WithMany()
                 .HasForeignKey(s => s.LotOwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
-            mb.Entity<StorageLot>()
+            mb.Entity<VehicleStorageProperty>()
                 .Property(s => s.PricePerDay).HasPrecision(10, 2);
-            mb.Entity<StorageLot>()
+            mb.Entity<VehicleStorageProperty>()
                 .Property(s => s.AverageRating).HasPrecision(3, 2);
 
-            mb.Entity<LotSlot>()
-                .HasOne(ls => ls.Lot)
-                .WithMany(l => l.Slots)
-                .HasForeignKey(ls => ls.LotId)
+            mb.Entity<VehicleStorageSlot>()
+                .HasOne(ls => ls.Property)
+                .WithMany(p => p.Slots)
+                .HasForeignKey(ls => ls.PropertyId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<LotManager>()
-                .HasOne(lm => lm.LotOwner)
-                .WithMany(l => l.Managers)
-                .HasForeignKey(lm => lm.LotId)
+                .HasOne(lm => lm.Property)
+                .WithMany(p => p.Managers)
+                .HasForeignKey(lm => lm.PropertyId)
                 .OnDelete(DeleteBehavior.Cascade);
             mb.Entity<LotManager>()
                 .HasOne(lm => lm.Manager)
@@ -122,9 +123,9 @@ namespace GD1.Infrastructure.Data
                 .HasForeignKey(b => b.VehicleId)
                 .OnDelete(DeleteBehavior.Restrict);
             mb.Entity<Booking>()
-                .HasOne(b => b.Lot)
-                .WithMany(l => l.Bookings)
-                .HasForeignKey(b => b.LotId)
+                .HasOne(b => b.Property)
+                .WithMany(p => p.Bookings)
+                .HasForeignKey(b => b.PropertyId)
                 .OnDelete(DeleteBehavior.Restrict);
             mb.Entity<Booking>()
                 .HasOne(b => b.Owner)
@@ -137,13 +138,34 @@ namespace GD1.Infrastructure.Data
                 .HasForeignKey(b => b.SlotId)
                 .OnDelete(DeleteBehavior.Restrict);
             mb.Entity<Booking>()
-                .HasIndex(b => new { b.LotId, b.StartDate, b.EndDate });
+                .HasIndex(b => new { b.PropertyId, b.StartDate, b.EndDate });
             mb.Entity<Booking>()
                 .Property(b => b.TotalCost).HasPrecision(10, 2);
+            mb.Entity<Booking>()
+                .Property(b => b.PricePerDay).HasPrecision(10, 2);
             mb.Entity<Booking>()
                 .Property(b => b.PlatformFee).HasPrecision(10, 2);
             mb.Entity<Booking>()
                 .Property(b => b.LotEarning).HasPrecision(10, 2);
+
+            mb.Entity<BookingAgreement>()
+                .HasOne(ba => ba.Owner)
+                .WithMany()
+                .HasForeignKey(ba => ba.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            mb.Entity<BookingAgreement>()
+                .HasOne(ba => ba.Vehicle)
+                .WithMany()
+                .HasForeignKey(ba => ba.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            mb.Entity<BookingAgreement>()
+                .HasOne(ba => ba.Property)
+                .WithMany()
+                .HasForeignKey(ba => ba.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+            mb.Entity<BookingAgreement>()
+                .Property(ba => ba.Status)
+                .HasConversion<string>();
 
             mb.Entity<PickupRequest>()
                 .HasOne(p => p.Booking)
@@ -196,15 +218,9 @@ namespace GD1.Infrastructure.Data
             mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
                 .Property(f => f.ApplicationFee).HasPrecision(10, 2);
             mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
+                .Property(f => f.PricePerDay).HasPrecision(10, 2);
+            mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
                 .Property(f => f.Status).HasConversion<string>();
-
-            mb.Entity<LotUnit>()
-                .HasOne(l => l.Application)
-                .WithMany(a => a.LotUnits)
-                .HasForeignKey(l => l.FranchiseApplicationId)
-                .OnDelete(DeleteBehavior.Cascade);
-            mb.Entity<LotUnit>()
-                .Property(l => l.Status).HasConversion<string>();
 
             mb.Entity<InspectionAssignment>()
                 .HasOne(ia => ia.Application)
@@ -225,34 +241,28 @@ namespace GD1.Infrastructure.Data
             mb.Entity<InspectionReport>()
                 .Property(ir => ir.AdminDecision).HasConversion<string>();
 
-            mb.Entity<InspectionItem>()
-                .HasOne(ii => ii.Report)
-                .WithMany(r => r.Items)
-                .HasForeignKey(ii => ii.ReportId)
-                .OnDelete(DeleteBehavior.Cascade);
-            mb.Entity<InspectionItem>()
-                .HasOne(ii => ii.LotUnit)
-                .WithMany()
-                .HasForeignKey(ii => ii.LotUnitId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-
             mb.Entity<PropertyImage>()
                 .HasOne(pi => pi.Application)
                 .WithMany(a => a.PropertyImages)
                 .HasForeignKey(pi => pi.ApplicationId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            mb.Entity<LotUnitImage>()
-                .HasOne(lui => lui.LotUnit)
-                .WithMany(lu => lu.Images)
-                .HasForeignKey(lui => lui.LotUnitId)
+            mb.Entity<FranchiseSlot>()
+                .HasOne(lus => lus.Application)
+                .WithMany(a => a.Slots)
+                .HasForeignKey(lus => lus.ApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<InspectionSlotItem>()
+                .HasOne(isi => isi.Report)
+                .WithMany(r => r.SlotVerifications)
+                .HasForeignKey(isi => isi.ReportId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Review>()
-                .HasOne(r => r.Lot)
-                .WithMany(l => l.Reviews)
-                .HasForeignKey(r => r.LotId)
+                .HasOne(r => r.Property)
+                .WithMany(p => p.Reviews)
+                .HasForeignKey(r => r.PropertyId)
                 .OnDelete(DeleteBehavior.Cascade);
             mb.Entity<Review>()
                 .HasOne(r => r.Reviewer)
@@ -267,17 +277,15 @@ namespace GD1.Infrastructure.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Complaint>()
-    .HasOne(c => c.Complainant)
-    .WithMany()
-    .HasForeignKey(c => c.ComplainantId)
-    .OnDelete(DeleteBehavior.Restrict);
-
-            mb.Entity<Complaint>()
-                .HasOne(c => c.Lot)
+                .HasOne(c => c.Complainant)
                 .WithMany()
-                .HasForeignKey(c => c.LotId)
+                .HasForeignKey(c => c.ComplainantId)
                 .OnDelete(DeleteBehavior.Restrict);
-
+            mb.Entity<Complaint>()
+                .HasOne(c => c.Property)
+                .WithMany()
+                .HasForeignKey(c => c.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
             mb.Entity<Complaint>()
                 .HasOne(c => c.Booking)
                 .WithMany()
@@ -289,12 +297,23 @@ namespace GD1.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
-
             mb.Entity<DigitalAgreement>()
                 .HasOne(d => d.Terms)
                 .WithMany()
                 .HasForeignKey(d => d.TermsId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            mb.Entity<BookingAgreement>()
+                .HasOne(a => a.Booking)
+                .WithMany()
+                .HasForeignKey(a => a.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<PickupVerification>()
+                .HasOne(p => p.Booking)
+                .WithMany()
+                .HasForeignKey(p => p.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

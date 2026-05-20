@@ -25,10 +25,7 @@ namespace GD1.Infrastructure.Migrations
             modelBuilder.Entity("GD1.Domain.Entities.Agent", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<int>("ApprovalStatus")
                         .HasColumnType("int");
@@ -43,13 +40,6 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("IdProofUrl")
                         .HasColumnType("nvarchar(max)");
@@ -72,15 +62,8 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<double?>("Longitude")
                         .HasColumnType("float");
 
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("PostalCode")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("int");
 
                     b.Property<string>("SelfieUrl")
                         .HasColumnType("nvarchar(max)");
@@ -92,13 +75,7 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
 
                     b.ToTable("GD1Agents", (string)null);
                 });
@@ -111,6 +88,9 @@ namespace GD1.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<long?>("AssignedManagerId")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("CCTVUrl")
                         .HasColumnType("nvarchar(max)");
 
@@ -120,15 +100,18 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsAgreementSigned")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPickupRequested")
                         .HasColumnType("bit");
 
                     b.Property<decimal>("LotEarning")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
-
-                    b.Property<long>("LotId")
-                        .HasColumnType("bigint");
 
                     b.Property<long>("OwnerId")
                         .HasColumnType("bigint");
@@ -142,13 +125,22 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<double?>("PickupLongitude")
                         .HasColumnType("float");
 
-                    b.Property<string>("Plan")
-                        .IsRequired()
+                    b.Property<string>("PickupOtp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PickupPincode")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("PlatformFee")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("PricePerDay")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("bigint");
 
                     b.Property<long?>("SlotId")
                         .HasColumnType("bigint");
@@ -177,9 +169,76 @@ namespace GD1.Infrastructure.Migrations
 
                     b.HasIndex("VehicleId");
 
-                    b.HasIndex("LotId", "StartDate", "EndDate");
+                    b.HasIndex("PropertyId", "StartDate", "EndDate");
 
                     b.ToTable("Bookings");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.BookingAgreement", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("BookingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LotSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("OwnerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PdfUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("SignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("VehicleId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("VehicleSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("BookingAgreements");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Complaint", b =>
@@ -209,7 +268,7 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<long>("LotId")
+                    b.Property<long>("PropertyId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Status")
@@ -229,7 +288,7 @@ namespace GD1.Infrastructure.Migrations
 
                     b.HasIndex("ComplainantId");
 
-                    b.HasIndex("LotId");
+                    b.HasIndex("PropertyId");
 
                     b.ToTable("Complaints");
                 });
@@ -381,6 +440,24 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("FeeTransactionId")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("HasCCTV")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasFireSafety")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSecurity")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasWashingArea")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasWorkshop")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsAiVerified")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -410,6 +487,10 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime?>("PreferredInspectionDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal>("PricePerDay")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<string>("PropertyProofUrl")
                         .HasColumnType("nvarchar(max)");
 
@@ -435,6 +516,46 @@ namespace GD1.Infrastructure.Migrations
                     b.HasIndex("ApplicantId");
 
                     b.ToTable("FranchiseApplications");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.FranchiseSlot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ApplicationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("HeightFeet")
+                        .HasColumnType("float");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SlotNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("SquareFeet")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.ToTable("FranchiseSlots");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Handoff", b =>
@@ -533,48 +654,6 @@ namespace GD1.Infrastructure.Migrations
                     b.ToTable("InspectionAssignments");
                 });
 
-            modelBuilder.Entity("GD1.Domain.Entities.InspectionItem", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsVerified")
-                        .HasColumnType("bit");
-
-                    b.Property<long>("LotUnitId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Remarks")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("ReportId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("TaskName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LotUnitId");
-
-                    b.HasIndex("ReportId");
-
-                    b.ToTable("InspectionItems");
-                });
-
             modelBuilder.Entity("GD1.Domain.Entities.InspectionReport", b =>
                 {
                     b.Property<long>("Id")
@@ -584,12 +663,10 @@ namespace GD1.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("AdminDecision")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AdminRemarks")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AgentRemarks")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("AssignmentId")
@@ -601,14 +678,14 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("DecisionAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsVerified")
-                        .HasColumnType("bit");
+                    b.Property<string>("Latitude")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Longitude")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OverallDescription")
                         .HasColumnType("nvarchar(max)");
@@ -625,6 +702,49 @@ namespace GD1.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("InspectionReports");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.InspectionSlotItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("HeightFeet")
+                        .HasColumnType("float");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("ReportId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SlotNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("SquareFeet")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportId");
+
+                    b.ToTable("InspectionSlotItems");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.LotManager", b =>
@@ -647,170 +767,22 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<long>("LotId")
-                        .HasColumnType("bigint");
-
                     b.Property<long>("ManagerId")
                         .HasColumnType("bigint");
 
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("LotId");
 
                     b.HasIndex("ManagerId");
 
+                    b.HasIndex("PropertyId");
+
                     b.ToTable("LotManagers");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.LotSlot", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsOccupied")
-                        .HasColumnType("bit");
-
-                    b.Property<long>("LotId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("QRCodeUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SlotNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SlotType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LotId");
-
-                    b.ToTable("LotSlots");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.LotUnit", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("AssignedLotCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Capacity")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ExtraFacilities")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("FranchiseApplicationId")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("HasCCTV")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasFireSafety")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasSecurity")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasWashingArea")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasWorkshop")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Tier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FranchiseApplicationId");
-
-                    b.ToTable("LotUnits");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.LotUnitImage", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsMain")
-                        .HasColumnType("bit");
-
-                    b.Property<long>("LotUnitId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Remark")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UploadedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LotUnitId");
-
-                    b.ToTable("LotUnitImages");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
@@ -933,7 +905,7 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("OtpHash")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("RequestedPickupTime")
+                    b.Property<DateTime?>("RequestedPickupTime")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
@@ -949,6 +921,72 @@ namespace GD1.Infrastructure.Migrations
                     b.HasIndex("ManagerId");
 
                     b.ToTable("PickupRequests");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.PickupVerification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BookingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EngineBayImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FrontImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IdProofUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InteriorImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LeftSideImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("ManagerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ManagerRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RearImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RegistrationDocUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RightSideImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("VerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.ToTable("PickupVerifications");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.PropertyImage", b =>
@@ -968,6 +1006,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("InspectionReportId")
+                        .HasColumnType("bigint");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -989,9 +1030,16 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<long?>("VehicleStoragePropertyId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationId");
+
+                    b.HasIndex("InspectionReportId");
+
+                    b.HasIndex("VehicleStoragePropertyId");
 
                     b.ToTable("PropertyImages");
                 });
@@ -1056,7 +1104,7 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<long>("LotId")
+                    b.Property<long>("PropertyId")
                         .HasColumnType("bigint");
 
                     b.Property<int>("Rating")
@@ -1073,7 +1121,7 @@ namespace GD1.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LotId");
+                    b.HasIndex("PropertyId");
 
                     b.HasIndex("ReviewerId");
 
@@ -1232,112 +1280,6 @@ namespace GD1.Infrastructure.Migrations
                     b.ToTable("ServiceRequests");
                 });
 
-            modelBuilder.Entity("GD1.Domain.Entities.StorageLot", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("AddressLine")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("AverageRating")
-                        .HasPrecision(3, 2)
-                        .HasColumnType("decimal(3,2)");
-
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Country")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ExtraFacilities")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("HasCCTV")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasFireSafety")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasSecurity")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasWashingArea")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("HasWorkshopBay")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("float");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("float");
-
-                    b.Property<string>("LotCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<long>("LotOwnerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("LotUnitId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("PricePerDay")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<string>("State")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Tier")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TotalReviews")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TotalSlots")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LotCode")
-                        .IsUnique();
-
-                    b.HasIndex("LotOwnerId");
-
-                    b.ToTable("StorageLots");
-                });
-
             modelBuilder.Entity("GD1.Domain.Entities.TermsAndConditions", b =>
                 {
                     b.Property<long>("Id")
@@ -1474,8 +1416,14 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<int>("HealthScore")
                         .HasColumnType("int");
 
+                    b.Property<double>("HeightFeet")
+                        .HasColumnType("float");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<double>("LengthFeet")
+                        .HasColumnType("float");
 
                     b.Property<string>("Model")
                         .IsRequired()
@@ -1504,6 +1452,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("VerificationStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("WidthFeet")
+                        .HasColumnType("float");
 
                     b.Property<int>("Year")
                         .HasColumnType("int");
@@ -1607,11 +1558,154 @@ namespace GD1.Infrastructure.Migrations
                     b.ToTable("VehicleJourneyEvents");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleStorageProperty", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AddressLine")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("AverageRating")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExtraFacilities")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("HasCCTV")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasFireSafety")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSecurity")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasWashingArea")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasWorkshopBay")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("LotCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<long>("LotOwnerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("PricePerDay")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TotalReviews")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LotCode")
+                        .IsUnique();
+
+                    b.HasIndex("LotOwnerId");
+
+                    b.ToTable("VehicleStorageProperties");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleStorageSlot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("HeightFeet")
+                        .HasColumnType("float");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOccupied")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("PropertyId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SlotNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SlotType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("SquareFeet")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PropertyId");
+
+                    b.ToTable("VehicleStorageSlots");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.Agent", b =>
                 {
                     b.HasOne("GD1.Domain.Entities.User", "User")
                         .WithOne()
-                        .HasForeignKey("GD1.Domain.Entities.Agent", "UserId")
+                        .HasForeignKey("GD1.Domain.Entities.Agent", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1620,19 +1714,19 @@ namespace GD1.Infrastructure.Migrations
 
             modelBuilder.Entity("GD1.Domain.Entities.Booking", b =>
                 {
-                    b.HasOne("GD1.Domain.Entities.StorageLot", "Lot")
-                        .WithMany("Bookings")
-                        .HasForeignKey("LotId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("GD1.Domain.Entities.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GD1.Domain.Entities.LotSlot", "Slot")
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", "Property")
+                        .WithMany("Bookings")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageSlot", "Slot")
                         .WithMany()
                         .HasForeignKey("SlotId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -1643,11 +1737,45 @@ namespace GD1.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Lot");
+                    b.Navigation("Owner");
+
+                    b.Navigation("Property");
+
+                    b.Navigation("Slot");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.BookingAgreement", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("GD1.Domain.Entities.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.Vehicle", "Vehicle")
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
 
                     b.Navigation("Owner");
 
-                    b.Navigation("Slot");
+                    b.Navigation("Property");
 
                     b.Navigation("Vehicle");
                 });
@@ -1665,9 +1793,9 @@ namespace GD1.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GD1.Domain.Entities.StorageLot", "Lot")
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", "Property")
                         .WithMany()
-                        .HasForeignKey("LotId")
+                        .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1675,7 +1803,7 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Navigation("Complainant");
 
-                    b.Navigation("Lot");
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.DamageReport", b =>
@@ -1719,6 +1847,17 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Applicant");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.FranchiseSlot", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.FranchiseApplication", "Application")
+                        .WithMany("Slots")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Application");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.Handoff", b =>
                 {
                     b.HasOne("GD1.Domain.Entities.Booking", "Booking")
@@ -1749,25 +1888,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Application");
                 });
 
-            modelBuilder.Entity("GD1.Domain.Entities.InspectionItem", b =>
-                {
-                    b.HasOne("GD1.Domain.Entities.LotUnit", "LotUnit")
-                        .WithMany()
-                        .HasForeignKey("LotUnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("GD1.Domain.Entities.InspectionReport", "Report")
-                        .WithMany("Items")
-                        .HasForeignKey("ReportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LotUnit");
-
-                    b.Navigation("Report");
-                });
-
             modelBuilder.Entity("GD1.Domain.Entities.InspectionReport", b =>
                 {
                     b.HasOne("GD1.Domain.Entities.InspectionAssignment", "Assignment")
@@ -1779,56 +1899,34 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Assignment");
                 });
 
-            modelBuilder.Entity("GD1.Domain.Entities.LotManager", b =>
+            modelBuilder.Entity("GD1.Domain.Entities.InspectionSlotItem", b =>
                 {
-                    b.HasOne("GD1.Domain.Entities.StorageLot", "LotOwner")
-                        .WithMany("Managers")
-                        .HasForeignKey("LotId")
+                    b.HasOne("GD1.Domain.Entities.InspectionReport", "Report")
+                        .WithMany("SlotVerifications")
+                        .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.LotManager", b =>
+                {
                     b.HasOne("GD1.Domain.Entities.User", "Manager")
                         .WithMany()
                         .HasForeignKey("ManagerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("LotOwner");
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", "Property")
+                        .WithMany("Managers")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Manager");
-                });
 
-            modelBuilder.Entity("GD1.Domain.Entities.LotSlot", b =>
-                {
-                    b.HasOne("GD1.Domain.Entities.StorageLot", "Lot")
-                        .WithMany("Slots")
-                        .HasForeignKey("LotId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Lot");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.LotUnit", b =>
-                {
-                    b.HasOne("GD1.Domain.Entities.FranchiseApplication", "Application")
-                        .WithMany("LotUnits")
-                        .HasForeignKey("FranchiseApplicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Application");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.LotUnitImage", b =>
-                {
-                    b.HasOne("GD1.Domain.Entities.LotUnit", "LotUnit")
-                        .WithMany("Images")
-                        .HasForeignKey("LotUnitId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LotUnit");
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
@@ -1870,6 +1968,17 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Manager");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.PickupVerification", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.PropertyImage", b =>
                 {
                     b.HasOne("GD1.Domain.Entities.FranchiseApplication", "Application")
@@ -1877,6 +1986,14 @@ namespace GD1.Infrastructure.Migrations
                         .HasForeignKey("ApplicationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.InspectionReport", null)
+                        .WithMany("SiteImages")
+                        .HasForeignKey("InspectionReportId");
+
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", null)
+                        .WithMany("ActivePropertyImages")
+                        .HasForeignKey("VehicleStoragePropertyId");
 
                     b.Navigation("Application");
                 });
@@ -1894,9 +2011,9 @@ namespace GD1.Infrastructure.Migrations
 
             modelBuilder.Entity("GD1.Domain.Entities.Review", b =>
                 {
-                    b.HasOne("GD1.Domain.Entities.StorageLot", "Lot")
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", "Property")
                         .WithMany("Reviews")
-                        .HasForeignKey("LotId")
+                        .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1906,7 +2023,7 @@ namespace GD1.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Lot");
+                    b.Navigation("Property");
 
                     b.Navigation("Reviewer");
                 });
@@ -1945,17 +2062,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Mechanic");
 
                     b.Navigation("ServiceCenter");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.StorageLot", b =>
-                {
-                    b.HasOne("GD1.Domain.Entities.User", "LotOwner")
-                        .WithMany()
-                        .HasForeignKey("LotOwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("LotOwner");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Vehicle", b =>
@@ -2005,6 +2111,28 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Vehicle");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleStorageProperty", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.User", "LotOwner")
+                        .WithMany()
+                        .HasForeignKey("LotOwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LotOwner");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleStorageSlot", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", "Property")
+                        .WithMany("Slots")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.Agent", b =>
                 {
                     b.Navigation("Assignments");
@@ -2023,9 +2151,9 @@ namespace GD1.Infrastructure.Migrations
                 {
                     b.Navigation("Assignments");
 
-                    b.Navigation("LotUnits");
-
                     b.Navigation("PropertyImages");
+
+                    b.Navigation("Slots");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Handoff", b =>
@@ -2040,12 +2168,9 @@ namespace GD1.Infrastructure.Migrations
 
             modelBuilder.Entity("GD1.Domain.Entities.InspectionReport", b =>
                 {
-                    b.Navigation("Items");
-                });
+                    b.Navigation("SiteImages");
 
-            modelBuilder.Entity("GD1.Domain.Entities.LotUnit", b =>
-                {
-                    b.Navigation("Images");
+                    b.Navigation("SlotVerifications");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
@@ -2058,17 +2183,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Mechanics");
 
                     b.Navigation("ServiceRequests");
-                });
-
-            modelBuilder.Entity("GD1.Domain.Entities.StorageLot", b =>
-                {
-                    b.Navigation("Bookings");
-
-                    b.Navigation("Managers");
-
-                    b.Navigation("Reviews");
-
-                    b.Navigation("Slots");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.User", b =>
@@ -2092,6 +2206,19 @@ namespace GD1.Infrastructure.Migrations
             modelBuilder.Entity("GD1.Domain.Entities.VehicleJourneyEvent", b =>
                 {
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.VehicleStorageProperty", b =>
+                {
+                    b.Navigation("ActivePropertyImages");
+
+                    b.Navigation("Bookings");
+
+                    b.Navigation("Managers");
+
+                    b.Navigation("Reviews");
+
+                    b.Navigation("Slots");
                 });
 #pragma warning restore 612, 618
         }

@@ -6,11 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GD1.Infrastructure.Services
 {
-    /// <summary>
-    /// Background service that deletes users who registered but never verified
-    /// their email within 10 minutes of account creation.
-    /// Runs every 60 seconds.
-    /// </summary>
+    
     public class UnverifiedUserCleanupService : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;

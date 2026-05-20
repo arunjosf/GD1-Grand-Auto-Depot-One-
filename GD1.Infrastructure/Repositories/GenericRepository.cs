@@ -45,10 +45,19 @@ namespace GD1.Infrastructure.Repositories
             return await _db.Set<T>().ToListAsync();
         }
 
-        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, params string[] includes)
         {
-            return await _db.Set<T>().Where(predicate).ToListAsync();
+            IQueryable<T> query = _db.Set<T>();
+
+            if (includes != null)
+            {
+                foreach (var include in includes)
+                {
+                    query = query.Include(include);
+                }
+            }
+
+            return await query.Where(predicate).ToListAsync();
         }
     }
 }
-

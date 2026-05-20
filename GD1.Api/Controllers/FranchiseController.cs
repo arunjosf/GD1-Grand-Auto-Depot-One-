@@ -23,15 +23,42 @@ namespace GD1.Api.Controllers
 
         [HttpPost("apply")]
         [Authorize]
-        public async Task<IActionResult> Apply(
-            [FromBody] SubmitApplicationRequest req)
+        public async Task<IActionResult> Apply([FromBody] SubmitApplicationRequest req)
         {
-            var result = await _mediator.Send(
-                new SubmitApplicationCommand
+            var result = await _mediator.Send(new SubmitApplicationCommand
+            {
+                ApplicantId = GetUserId(),
+                ApplicationType = req.ApplicationType,
+                BusinessName = req.BusinessName,
+                OwnerName = req.OwnerName,
+                ContactEmail = req.ContactEmail,
+                PhoneNumber = req.PhoneNumber,
+                AddressLine = req.AddressLine,
+                City = req.City,
+                State = req.State,
+                PostalCode = req.PostalCode,
+                PricePerDay = req.PricePerDay,
+                Latitude = req.Latitude ?? 0,
+                Longitude = req.Longitude ?? 0,
+                PreferredInspectionDate = req.PreferredInspectionDate ?? DateTime.UtcNow.AddDays(7),
+                BusinessRegistrationUrl = req.BusinessRegistrationUrl,
+                LicenseDocumentUrl = req.LicenseDocumentUrl,
+                OwnerIdProofUrl = req.OwnerIdProofUrl,
+                PropertyProofUrl = req.PropertyProofUrl,
+                HasCCTV = req.HasCCTV,
+                HasSecurity = req.HasSecurity,
+                HasFireSafety = req.HasFireSafety,
+                HasWorkshop = req.HasWorkshop,
+                HasWashingArea = req.HasWashingArea,
+                PropertyImages = req.OtherImageUrls ?? new List<string> { req.FrontImageUrl },
+                Slots = req.Slots.Select(s => new FranchiseSlotRequest
                 {
-                    Request = req,
-                    ApplicantId = GetUserId()
-                });
+                    SlotNumber = s.SlotNumber,
+                    SquareFeet = s.SquareFeet,
+                    HeightFeet = s.HeightFeet,
+                    ImageUrl = s.ImageUrl
+                }).ToList()
+            });
             return Ok(result);
         }
 
@@ -58,8 +85,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-
-
         private long GetUserId()
         {
             var value = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -68,5 +93,4 @@ namespace GD1.Api.Controllers
             return long.Parse(value);
         }
     }
-
 }

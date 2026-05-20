@@ -12,7 +12,7 @@ namespace GD1.Application.Features.Vehicle.Queries
 {
     public class GetPendingServicesQuery : IRequest<BaseResponse<IEnumerable<ServiceRequestDto>>>
     {
-        public long LotId { get; set; }
+        public long PropertyId { get; set; }
     }
 
     public class ServiceRequestDto
@@ -34,18 +34,18 @@ namespace GD1.Application.Features.Vehicle.Queries
 
         public async Task<BaseResponse<IEnumerable<ServiceRequestDto>>> Handle(GetPendingServicesQuery query, CancellationToken cancellationToken)
         {
-            var services = await _serviceRepo.GetAllAsync();
-            // Complex join logic simplified for brevity.
-            // Ideally, we'd only filter by LotId on the joined Booking.
+            var services = await _serviceRepo.FindAsync(s => s.Status != "Completed", "Booking");
+            
+            // Filter by PropertyId on the associated Booking
             var result = services
-                .Where(s => s.Status != "Completed")
+                .Where(s => s.Booking?.PropertyId == query.PropertyId)
                 .Select(s => new ServiceRequestDto
                 {
                     Id = s.Id,
                     ServiceType = s.ServiceType,
                     Status = s.Status,
                     BookingId = s.BookingId
-                });
+                }).ToList();
 
             return BaseResponse<IEnumerable<ServiceRequestDto>>.Ok(result);
         }

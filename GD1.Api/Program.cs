@@ -52,6 +52,7 @@ builder.Services.AddScoped<IUserReadRepository, UserReadRepository>();
 builder.Services.AddScoped<IFranchiseReadRepository, FranchiseReadRepository>();
 builder.Services.AddScoped<IVehicleReadRepository, VehicleReadRepository>();
 builder.Services.AddScoped<IBookingReadRepository, BookingReadRepository>();
+builder.Services.AddScoped<IPickupReadRepository, PickupReadRepository>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -59,7 +60,9 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 
 builder.Services.AddHttpClient<ISmsService, SmsService>();
 builder.Services.AddHttpClient<GD1.Application.Interfaces.IGeocodingService, GD1.Infrastructure.Services.GeocodingService>();
+builder.Services.AddScoped<GD1.Application.Interfaces.Services.IPdfGeneratorService, GD1.Infrastructure.Services.PdfGeneratorService>();
 builder.Services.AddHostedService<UnverifiedUserCleanupService>();
+builder.Services.AddHostedService<BookingCleanupService>();
 
 builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(GD1.Application.Features.Auth.Commands.LoginCommand).Assembly);
@@ -90,7 +93,9 @@ builder.Services
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
                                            Encoding.UTF8.GetBytes(jwtKey)),
-            ClockSkew = TimeSpan.Zero
+            ClockSkew = TimeSpan.Zero,
+            NameClaimType = "sub",
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
         };
         opt.Events = new JwtBearerEvents
         {
@@ -109,7 +114,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("VehicleOwner", p => p.RequireRole("VehicleOwner"));
     options.AddPolicy("Agent", p => p.RequireRole("Agent"));
-    options.AddPolicy("Admin", p => p.RequireRole("GD1Admin"));
+    options.AddPolicy("Admin", p => p.RequireRole("Admin"));
 });
 
 
@@ -149,6 +154,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(opt =>
 {
     opt.SwaggerDoc("v1", new OpenApiInfo { Title = "GD1 API", Version = "v1" });
+    opt.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
 
     opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

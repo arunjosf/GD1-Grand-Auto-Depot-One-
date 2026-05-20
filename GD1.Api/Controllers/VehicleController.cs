@@ -4,11 +4,15 @@ using GD1.Application.Features.Vehicle.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
+using System;
 
 namespace GD1.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public class VehicleController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -18,13 +22,18 @@ namespace GD1.Api.Controllers
             _mediator = mediator;
         }
 
+        [HttpGet("debug-claims")]
+        public IActionResult DebugClaims()
+        {
+            return Ok(User.Claims.Select(c => new { c.Type, c.Value }));
+        }
+
         [HttpGet("search-vehicle")]
         public async Task<IActionResult> Search([FromQuery] string? model, [FromQuery] string? brand)
         {
             var result = await _mediator.Send(new SearchVehicleQuery { SearchTerm = model, SelectedBrand = brand });
             return Ok(result);
         }
-
 
         [HttpPost("add-vehicle")]
         public async Task<IActionResult> Add([FromBody] AddVehicleRequest req)
@@ -36,7 +45,6 @@ namespace GD1.Api.Controllers
             });
             return Ok(result);
         }
-
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Edit(long id, [FromBody] EditVehicleRequest req)
@@ -62,7 +70,7 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet]
+        [HttpGet("my-vehicle")]
         public async Task<IActionResult> GetMy()
         {
             var result = await _mediator.Send(
@@ -79,30 +87,30 @@ namespace GD1.Api.Controllers
         }
 
         [HttpGet("all")]
-        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "GD1Admin,LotOwner,LotManager")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,LotOwner,LotManager")]
         public async Task<IActionResult> GetAll([FromQuery] string? search)
         {
             var roleIdStr = User.FindFirst("role")?.Value ?? "0";
             var role = (GD1.Domain.Entities.Enums.UserRole)int.Parse(roleIdStr);
 
-            long? lotOwnerId = null;
+            long? propertyOwnerId = null;
             if (role == GD1.Domain.Entities.Enums.UserRole.LotOwner)
             {
-                lotOwnerId = GetUserId();
+                propertyOwnerId = GetUserId();
             }
 
             var result = await _mediator.Send(
-                new GD1.Application.Features.Vehicle.Queries.GetAllVehiclesQuery
+                new GetAllVehiclesQuery
                 {
                     SearchTerm = search,
-                    LotOwnerId = lotOwnerId
+                    PropertyOwnerId = propertyOwnerId
                 });
             return Ok(result);
         }
 
         [HttpPost("{id}/images")]
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner,LotManager")]
-        public async Task<IActionResult> UploadImages(long id, [FromBody] GD1.Application.Features.Vehicle.Commands.AddVehicleImagesCommand cmd)
+        public async Task<IActionResult> UploadImages(long id, [FromBody] AddVehicleImagesCommand cmd)
         {
             cmd.VehicleId = id;
             cmd.UploadedBy = GetUserId();
@@ -112,8 +120,9 @@ namespace GD1.Api.Controllers
 
         private long GetUserId()
         {
-            var value = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                ?? User.FindFirst("userId")?.Value
+            var value = User.FindFirst("userId")?.Value
+                ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
                 ?? throw new UnauthorizedAccessException("User not found in token.");
             return long.Parse(value);
         }

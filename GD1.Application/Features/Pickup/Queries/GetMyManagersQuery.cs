@@ -12,7 +12,7 @@ namespace GD1.Application.Features.Pickup.Queries
 {
     public class GetMyManagersQuery : IRequest<BaseResponse<IEnumerable<ManagerDto>>>
     {
-        public long LotOwnerId { get; set; }
+        public long PropertyOwnerId { get; set; }
     }
 
     public class ManagerDto
@@ -20,40 +20,36 @@ namespace GD1.Application.Features.Pickup.Queries
         public long Id { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
-        public long LotId { get; set; }
+        public long PropertyId { get; set; }
     }
 
     public class GetMyManagersQueryHandler : IRequestHandler<GetMyManagersQuery, BaseResponse<IEnumerable<ManagerDto>>>
     {
         private readonly IGenericRepository<LotManager> _managerRepo;
-        private readonly IGenericRepository<StorageLot> _lotRepo;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
 
         public GetMyManagersQueryHandler(
             IGenericRepository<LotManager> managerRepo,
-            IGenericRepository<StorageLot> lotRepo)
+            IGenericRepository<VehicleStorageProperty> propertyRepo)
         {
             _managerRepo = managerRepo;
-            _lotRepo = lotRepo;
+            _propertyRepo = propertyRepo;
         }
 
         public async Task<BaseResponse<IEnumerable<ManagerDto>>> Handle(GetMyManagersQuery query, CancellationToken cancellationToken)
         {
-            var lots = await _lotRepo.GetAllAsync();
-            var myLots = lots.Where(l => l.LotOwnerId == query.LotOwnerId).Select(l => l.Id).ToList();
+            var properties = await _propertyRepo.FindAsync(p => p.LotOwnerId == query.PropertyOwnerId);
+            var myPropIds = properties.Select(l => l.Id).ToList();
 
-            var allManagers = await _managerRepo.GetAllAsync();
-            // Since we need User details, we would ideally use Include(m => m.Manager) but generic repo might not support it directly.
-            // Assuming we just map what we have or I should use DbContext for complex queries.
+            var allManagers = await _managerRepo.FindAsync(m => myPropIds.Contains(m.PropertyId) && m.IsActive, "Manager");
             
-            var result = allManagers
-                .Where(m => myLots.Contains(m.LotId) && m.IsActive)
-                .Select(m => new ManagerDto
-                {
-                    Id = m.ManagerId,
-                    FullName = m.Manager?.FullName ?? "Unknown", // Assuming lazy loading or eager loading is configured
-                    Email = m.Manager?.Email ?? "Unknown",
-                    LotId = m.LotId
-                });
+            var result = allManagers.Select(m => new ManagerDto
+            {
+                Id = m.ManagerId,
+                FullName = m.Manager?.FullName ?? "Unknown",
+                Email = m.Manager?.Email ?? "Unknown",
+                PropertyId = m.PropertyId
+            });
 
             return BaseResponse<IEnumerable<ManagerDto>>.Ok(result);
         }

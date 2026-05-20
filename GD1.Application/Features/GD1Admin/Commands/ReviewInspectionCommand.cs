@@ -1,35 +1,24 @@
 using GD1.Application.Common;
+using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Interfaces.Repositories;
-using GD1.Domain.Interfaces;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
+using GD1.Domain.Interfaces;
+using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using MediatR;
-using FluentValidation;
-
 namespace GD1.Application.Features.GD1Admin.Commands
 {
     public class ReviewInspectionCommand : IRequest<BaseResponse<string>>
     {
         public long ReportId { get; set; }
-        public long AdminId { get; set; }
         public InspectionDecision Decision { get; set; }
-        public string? AdminRemarks { get; set; }
-    }
-
-    public class ReviewInspectionCommandValidator : AbstractValidator<ReviewInspectionCommand>
-    {
-        public ReviewInspectionCommandValidator()
-        {
-            RuleFor(x => x.ReportId).GreaterThan(0);
-            RuleFor(x => x.AdminId).GreaterThan(0);
-            RuleFor(x => x.Decision).IsInEnum();
-        }
+        public string? Remarks { get; set; }
+        public long AdminId { get; set; }
     }
 
     public class ReviewInspectionCommandHandler : IRequestHandler<ReviewInspectionCommand, BaseResponse<string>>
@@ -37,122 +26,105 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<InspectionReport> _reportRepo;
         private readonly IGenericRepository<InspectionAssignment> _assignRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
-        private readonly IGenericRepository<LotUnit> _unitRepo;
-        private readonly IGenericRepository<StorageLot> _lotRepo;
-        private readonly IFranchiseReadRepository _franchiseRead;
-        private readonly IGenericRepository<InspectionItem> _itemRepo;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
+        private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
 
         public ReviewInspectionCommandHandler(
             IGenericRepository<InspectionReport> reportRepo,
             IGenericRepository<InspectionAssignment> assignRepo,
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
-            IGenericRepository<LotUnit> unitRepo,
-            IGenericRepository<StorageLot> lotRepo,
-            IFranchiseReadRepository franchiseRead,
-            IGenericRepository<InspectionItem> itemRepo)
+            IGenericRepository<VehicleStorageProperty> propertyRepo,
+            IGenericRepository<VehicleStorageSlot> slotRepo)
         {
             _reportRepo = reportRepo;
             _assignRepo = assignRepo;
             _appRepo = appRepo;
-            _unitRepo = unitRepo;
-            _lotRepo = lotRepo;
-            _franchiseRead = franchiseRead;
-            _itemRepo = itemRepo;
+            _propertyRepo = propertyRepo;
+            _slotRepo = slotRepo;
         }
 
-        public async Task<BaseResponse<string>> Handle(ReviewInspectionCommand cmd, CancellationToken cancellationToken)
+        public async Task<BaseResponse<string>> Handle(ReviewInspectionCommand cmd, CancellationToken ct)
         {
-            var report = await _reportRepo.GetByIdAsync(cmd.ReportId);
-            if (report is null) throw new KeyNotFoundException("Inspection report not found.");
+            var report = (await _reportRepo.FindAsync(r => r.Id == cmd.ReportId, "SlotVerifications")).FirstOrDefault();
+            if (report == null) return BaseResponse<string>.Fail("Inspection report not found.");
 
             var assignment = await _assignRepo.GetByIdAsync(report.AssignmentId);
-            if (assignment == null) throw new KeyNotFoundException("Associated assignment not found.");
+            if (assignment == null) return BaseResponse<string>.Fail("Assignment not found.");
+            
+            var app = (await _appRepo.FindAsync(a => a.Id == assignment.ApplicationId, "Slots")).FirstOrDefault();
+            if (app == null) return BaseResponse<string>.Fail("Application not found.");
+
+            report.AdminDecision = cmd.Decision;
+            report.AdminRemarks = cmd.Remarks;
+            report.UpdatedAt = DateTime.UtcNow;
 
             if (cmd.Decision == InspectionDecision.Approved)
             {
-                // Check if all items are verified
-                var items = await _itemRepo.FindAsync(i => i.ReportId == cmd.ReportId);
-                var itemList = items.ToList();
-
-                if (!itemList.Any())
+                app.Status = FranchiseStatus.Approved;
+                
+                var storageProperty = new VehicleStorageProperty
                 {
-                    return BaseResponse<string>.Fail("Cannot approve. No inspection items found in the report.");
-                }
+                    LotOwnerId = app.ApplicantId,
+                    LotCode = $"GD1-{app.State[..2].ToUpper()}-{app.Id:D4}",
+                    Name = app.BusinessName,
+                    Description = $"{app.ApplicationType} Private Garage Property",
+                    AddressLine = app.AddressLine,
+                    City = app.City,
+                    State = app.State,
+                    Country = app.Country,
+                    Latitude = app.Latitude,
+                    Longitude = app.Longitude,
+                    Status = "Active",
+                    HasCCTV = app.HasCCTV,
+                    HasSecurity = app.HasSecurity,
+                    HasFireSafety = app.HasFireSafety,
+                    HasWorkshopBay = app.HasWorkshop,
+                    HasWashingArea = app.HasWashingArea,
+                    PricePerDay = app.PricePerDay,
+                    AverageRating = 0,
+                    TotalReviews = 0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
 
-                if (itemList.Any(i => !i.IsVerified))
+                await _propertyRepo.AddAsync(storageProperty);
+
+                var verifiedSlotMap = report.SlotVerifications.ToDictionary(s => s.SlotNumber);
+                var proposedSlotMap = app.Slots.ToDictionary(s => s.SlotNumber);
+
+                var allSlotNumbers = proposedSlotMap.Keys.Union(verifiedSlotMap.Keys).OrderBy(s => s);
+
+                foreach (var slotNum in allSlotNumbers)
                 {
-                    return BaseResponse<string>.Fail("Cannot approve. Some inspection items are not verified by the agent.");
-                }
+                    var pSlot = proposedSlotMap.GetValueOrDefault(slotNum);
+                    var vSlot = verifiedSlotMap.GetValueOrDefault(slotNum);
 
-                var app = await _appRepo.GetByIdAsync(assignment.ApplicationId);
-                var units = await _franchiseRead.GetLotUnitsByApplicationIdAsync(assignment.ApplicationId);
+                    if (vSlot == null || !vSlot.IsVerified) continue;
 
-                if (app is not null)
-                {
-                    foreach (var unit in units)
+                    await _slotRepo.AddAsync(new VehicleStorageSlot
                     {
-                        var lotCode = $"GD1-{app.State[..2].ToUpper()}-{unit.Id:D4}";
-
-                        var storageLot = new StorageLot
-                        {
-                            LotOwnerId = app.ApplicantId,
-                            LotUnitId = unit.Id,
-                            LotCode = lotCode,
-                            Name = $"{app.BusinessName} - {unit.Label}",
-                            AddressLine = app.AddressLine,
-                            City = app.City,
-                            State = app.State,
-                            Country = app.Country,
-                            Latitude = app.Latitude,
-                            Longitude = app.Longitude,
-                            TotalSlots = unit.Capacity,
-                            Tier = unit.Tier,
-                            Status = "Active", // StorageLot status is still string in entity? Let me check. Wait, I didn't change StorageLot.Status.
-                            HasCCTV = unit.HasCCTV,
-                            HasWorkshopBay = unit.HasWorkshop,
-                            HasWashingArea = unit.HasWashingArea,
-                            HasSecurity = unit.HasSecurity,
-                            HasFireSafety = unit.HasFireSafety,
-                            ExtraFacilities = unit.ExtraFacilities
-                        };
-
-                        await _lotRepo.AddAsync(storageLot);
-
-                        var unitEntity = await _unitRepo.GetByIdAsync(unit.Id);
-                        if (unitEntity != null)
-                        {
-                            unitEntity.Status = FranchiseStatus.Approved;
-                            unitEntity.AssignedLotCode = lotCode;
-                            await _unitRepo.UpdateAsync(unitEntity);
-                        }
-                    }
-
-                    app.Status = FranchiseStatus.Approved;
-                    app.ReviewedBy = cmd.AdminId;
-                    app.ReviewedAt = DateTime.UtcNow;
-                    await _appRepo.UpdateAsync(app);
+                        PropertyId = storageProperty.Id,
+                        SlotNumber = slotNum,
+                        SlotType = "Private Garage",
+                        IsOccupied = false,
+                        SquareFeet = vSlot.SquareFeet,
+                        HeightFeet = vSlot.HeightFeet,
+                        ImageUrl = vSlot.ImageUrl ?? pSlot?.ImageUrl,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
                 }
             }
-            else if (cmd.Decision == InspectionDecision.Rejected)
+            else
             {
-                var app = await _appRepo.GetByIdAsync(assignment.ApplicationId);
-                if (app is not null)
-                {
-                    app.Status = FranchiseStatus.Rejected;
-                    app.IsDeleted = true;
-                    app.ReviewedBy = cmd.AdminId;
-                    app.ReviewedAt = DateTime.UtcNow;
-                    await _appRepo.UpdateAsync(app);
-                }
+                app.Status = FranchiseStatus.Rejected;
+                app.AdminNotes = cmd.Remarks;
             }
-
-            report.AdminDecision = cmd.Decision;
-            report.AdminRemarks = cmd.AdminRemarks;
-            report.DecisionAt = DateTime.UtcNow;
 
             await _reportRepo.UpdateAsync(report);
+            await _appRepo.UpdateAsync(app);
 
-            return BaseResponse<string>.Ok(string.Empty, $"Inspection {cmd.Decision}d successfully.");
+            return BaseResponse<string>.Ok(string.Empty, $"Inspection {cmd.Decision}.");
         }
     }
 }

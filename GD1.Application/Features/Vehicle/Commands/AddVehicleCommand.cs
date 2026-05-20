@@ -39,17 +39,20 @@ namespace GD1.Application.Features.Vehicle.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.VehicleImage> _imageRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.User> _userRepo;
         private readonly IOcrService _ocrService;
+        private readonly IVehicleService _vehicleService;
 
         public AddVehicleCommandHandler(
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
             IGenericRepository<GD1.Domain.Entities.VehicleImage> imageRepo,
             IGenericRepository<GD1.Domain.Entities.User> userRepo,
-            IOcrService ocrService)
+            IOcrService ocrService,
+            IVehicleService vehicleService)
         {
             _vehicleRepo = vehicleRepo;
             _imageRepo = imageRepo;
             _userRepo = userRepo;
             _ocrService = ocrService;
+            _vehicleService = vehicleService;
         }
 
         public async Task<BaseResponse<long>> Handle(AddVehicleCommand cmd, CancellationToken cancellationToken)
@@ -86,6 +89,9 @@ namespace GD1.Application.Features.Vehicle.Commands
                 isAiVerified = false;
             }
 
+            // 4. Automatic Dimension Lookup
+            var dims = await _vehicleService.GetDimensionsAsync(req.Brand, req.Model, req.VehicleType);
+
             // 4. Create Vehicle Entity
             var vehicle = new GD1.Domain.Entities.Vehicle
             {
@@ -97,6 +103,11 @@ namespace GD1.Application.Features.Vehicle.Commands
                 Color = req.Color,
                 FuelType = req.FuelType,
                 VehicleType = req.VehicleType,
+                
+                // Automatic dimensions
+                LengthFeet = dims.Length,
+                WidthFeet = dims.Width,
+                HeightFeet = dims.Height,
                 
                 OwnerIdProofUrl = req.OwnerIdProofUrl,
                 VehicleRcUrl = req.VehicleRcUrl,

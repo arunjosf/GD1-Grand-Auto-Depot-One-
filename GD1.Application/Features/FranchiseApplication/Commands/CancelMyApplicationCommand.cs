@@ -23,17 +23,20 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
         private readonly IGenericRepository<InspectionAssignment> _assignRepo;
         private readonly IGenericRepository<Agent> _agentRepo;
+        private readonly IGenericRepository<User> _userRepo;
         private readonly IEmailService _emailService;
 
         public CancelMyApplicationCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
             IGenericRepository<InspectionAssignment> assignRepo,
             IGenericRepository<Agent> agentRepo,
+            IGenericRepository<User> userRepo,
             IEmailService emailService)
         {
             _appRepo = appRepo;
             _assignRepo = assignRepo;
             _agentRepo = agentRepo;
+            _userRepo = userRepo;
             _emailService = emailService;
         }
 
@@ -53,16 +56,20 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             foreach (var assign in assignments)
             {
                 var agent = await _agentRepo.GetByIdAsync(assign.AgentId);
-                if (agent != null && !string.IsNullOrEmpty(agent.Email))
+                if (agent != null)
                 {
-                    string subject = "Franchise Inspection Cancelled";
-                    string body = $@"
-                        <h3>Hello {agent.FullName},</h3>
-                        <p>The franchise inspection for <b>{app.BusinessName}</b> scheduled for {assign.ScheduledDate:dd MMM yyyy} has been cancelled by the applicant.</p>
-                        <p>This assignment has been removed from your list.</p>
-                        <p>Best regards,<br/>GD1 Team</p>";
-                    
-                    await _emailService.SendAsync(agent.Email, subject, body);
+                    var agentUser = await _userRepo.GetByIdAsync(agent.Id);
+                    if (agentUser != null && !string.IsNullOrEmpty(agentUser.Email))
+                    {
+                        string subject = "Franchise Inspection Cancelled";
+                        string body = $@"
+                            <h3>Hello {agentUser.FullName},</h3>
+                            <p>The franchise inspection for <b>{app.BusinessName}</b> scheduled for {assign.ScheduledDate:dd MMM yyyy} has been cancelled by the applicant.</p>
+                            <p>This assignment has been removed from your list.</p>
+                            <p>Best regards,<br/>GD1 Team</p>";
+                        
+                        await _emailService.SendAsync(agentUser.Email, subject, body);
+                    }
                 }
             }
             

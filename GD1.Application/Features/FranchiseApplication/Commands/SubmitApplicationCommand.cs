@@ -1,203 +1,143 @@
 using GD1.Application.Common;
 using GD1.Application.Features.FranchiseApplication.DTOs;
+using GD1.Application.Interfaces.Repositories;
+using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
-using GD1.Application.Interfaces;
+using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GD1.Domain.Entities.Enums;
-
-using MediatR;
-using FluentValidation;
 
 namespace GD1.Application.Features.FranchiseApplication.Commands
 {
     public class SubmitApplicationCommand : IRequest<BaseResponse<long>>
     {
-        public SubmitApplicationRequest Request { get; set; } = null!;
         public long ApplicantId { get; set; }
+        public string ApplicationType { get; set; } = string.Empty;
+        public string BusinessName { get; set; } = string.Empty;
+        public string OwnerName { get; set; } = string.Empty;
+        public string ContactEmail { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string AddressLine { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string? PostalCode { get; set; }
+        public decimal PricePerDay { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime PreferredInspectionDate { get; set; }
+
+        public string? BusinessRegistrationUrl { get; set; }
+        public string? LicenseDocumentUrl { get; set; }
+        public string? OwnerIdProofUrl { get; set; }
+        public string? PropertyProofUrl { get; set; }
+
+        public bool HasCCTV { get; set; }
+        public bool HasSecurity { get; set; }
+        public bool HasFireSafety { get; set; }
+        public bool HasWorkshop { get; set; }
+        public bool HasWashingArea { get; set; }
+
+        public List<string> PropertyImages { get; set; } = [];
+        public List<FranchiseSlotRequest> Slots { get; set; } = [];
     }
 
-    public class SubmitApplicationCommandValidator : AbstractValidator<SubmitApplicationCommand>
+    public class FranchiseSlotRequest
     {
-        public SubmitApplicationCommandValidator()
-        {
-            RuleFor(x => x.ApplicantId)
-                .GreaterThan(0).WithMessage("Invalid Applicant ID.");
-
-            RuleFor(x => x.Request.BusinessName)
-                .NotEmpty().WithMessage("Business Name is required.");
-
-            RuleFor(x => x.Request.ContactEmail)
-                .NotEmpty().WithMessage("Contact Email is required.")
-                .EmailAddress().WithMessage("Please enter a valid business email address.");
-
-            RuleFor(x => x.Request.FrontImageUrl)
-                .NotEmpty().WithMessage("Front view image is required.")
-                .Must(BeAValidUrl).WithMessage("The front image must be a valid URL.");
-
-            RuleFor(x => x.Request.OtherImageUrls)
-                .ForEach(url => url.Must(BeAValidUrl).WithMessage("One or more property images have an invalid URL."));
-
-            RuleFor(x => x.Request.LotUnits)
-                .NotEmpty().WithMessage("At least one lot unit must be defined.");
-        }
-
-        private bool BeAValidUrl(string? url)
-        {
-            if (string.IsNullOrWhiteSpace(url)) return true;
-            return Uri.TryCreate(url, UriKind.Absolute, out _);
-        }
+        public string SlotNumber { get; set; } = string.Empty;
+        public double SquareFeet { get; set; }
+        public double HeightFeet { get; set; }
+        public string ImageUrl { get; set; } = string.Empty;
     }
 
     public class SubmitApplicationCommandHandler : IRequestHandler<SubmitApplicationCommand, BaseResponse<long>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
-        private readonly IGenericRepository<GD1.Domain.Entities.LotUnit> _unitRepo;
-        private readonly IGenericRepository<GD1.Domain.Entities.PropertyImage> _imageRepo;
-        private readonly IGenericRepository<GD1.Domain.Entities.LotUnitImage> _unitImageRepo;
-        private readonly IGeocodingService _geocoding;
+        private readonly IGenericRepository<FranchiseSlot> _slotRepo;
+        private readonly IGenericRepository<PropertyImage> _imageRepo;
 
         public SubmitApplicationCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
-            IGenericRepository<GD1.Domain.Entities.LotUnit> unitRepo,
-            IGenericRepository<GD1.Domain.Entities.PropertyImage> imageRepo,
-            IGenericRepository<GD1.Domain.Entities.LotUnitImage> unitImageRepo,
-            IGeocodingService geocoding)
+            IGenericRepository<FranchiseSlot> slotRepo,
+            IGenericRepository<PropertyImage> imageRepo)
         {
             _appRepo = appRepo;
-            _unitRepo = unitRepo;
+            _slotRepo = slotRepo;
             _imageRepo = imageRepo;
-            _unitImageRepo = unitImageRepo;
-            _geocoding = geocoding;
         }
 
-        public async Task<BaseResponse<long>> Handle(SubmitApplicationCommand cmd, CancellationToken cancellationToken)
+        public async Task<BaseResponse<long>> Handle(SubmitApplicationCommand cmd, CancellationToken ct)
         {
-            var req = cmd.Request;
+            if (cmd.Slots.Count == 0)
+                return BaseResponse<long>.Fail("At least one garage (slot) must be added.");
 
-            if (req.LotUnits is null || req.LotUnits.Count == 0)
-                throw new InvalidOperationException(
-                    "At least one lot unit is required.");
-
-            var previousApps = await _appRepo.GetAllAsync();
-            var prevRejected = previousApps.FirstOrDefault(a => 
-                a.IsDeleted && 
-                (a.BusinessName.ToLower() == req.BusinessName.ToLower() || 
-                 a.AddressLine.ToLower() == req.AddressLine.ToLower()));
-
-            var adminNotes = prevRejected != null 
-                ? $"WARNING: Previously rejected application found. Previous App ID: {prevRejected.Id}." 
-                : null;
+            foreach (var slot in cmd.Slots)
+            {
+                if (string.IsNullOrEmpty(slot.ImageUrl))
+                    return BaseResponse<long>.Fail($"Image is required for garage {slot.SlotNumber}.");
+                if (slot.SquareFeet <= 0 || slot.HeightFeet <= 0)
+                    return BaseResponse<long>.Fail($"Valid dimensions are required for garage {slot.SlotNumber}.");
+            }
 
             var application = new GD1.Domain.Entities.FranchiseApplication
             {
                 ApplicantId = cmd.ApplicantId,
-                ApplicationType = req.ApplicationType,
-                BusinessName = req.BusinessName.Trim(),
-                OwnerName = req.OwnerName.Trim(),
-                ContactEmail = req.ContactEmail.ToLower().Trim(),
-                PhoneNumber = req.PhoneNumber.Trim(),
-                AddressLine = req.AddressLine.Trim(),
-                City = req.City.Trim(),
-                State = req.State.Trim(),
-                Country = req.Country,
-                PostalCode = req.PostalCode.Trim(),
-                PreferredInspectionDate = req.PreferredInspectionDate,
-                BusinessRegistrationUrl = req.BusinessRegistrationUrl,
-                LicenseDocumentUrl = req.LicenseDocumentUrl,
-                OwnerIdProofUrl = req.OwnerIdProofUrl,
-                PropertyProofUrl = req.PropertyProofUrl,
-
-                ApplicationFee = 2000,
-                FeeStatus = "Pending",
+                ApplicationType = cmd.ApplicationType,
+                BusinessName = cmd.BusinessName,
+                OwnerName = cmd.OwnerName,
+                ContactEmail = cmd.ContactEmail,
+                PhoneNumber = cmd.PhoneNumber,
+                AddressLine = cmd.AddressLine,
+                City = cmd.City,
+                State = cmd.State,
+                PostalCode = cmd.PostalCode,
+                Latitude = cmd.Latitude,
+                Longitude = cmd.Longitude,
+                PreferredInspectionDate = cmd.PreferredInspectionDate,
+                BusinessRegistrationUrl = cmd.BusinessRegistrationUrl,
+                LicenseDocumentUrl = cmd.LicenseDocumentUrl,
+                OwnerIdProofUrl = cmd.OwnerIdProofUrl,
+                PropertyProofUrl = cmd.PropertyProofUrl,
+                PricePerDay = cmd.PricePerDay,
                 Status = FranchiseStatus.Pending,
-                AdminNotes = adminNotes
+                HasCCTV = cmd.HasCCTV,
+                HasSecurity = cmd.HasSecurity,
+                HasFireSafety = cmd.HasFireSafety,
+                HasWorkshop = cmd.HasWorkshop,
+                HasWashingArea = cmd.HasWashingArea,
+                CreatedAt = DateTime.UtcNow
             };
-
-            // Automatic Geocoding
-            var fullAddress = $"{application.AddressLine}, {application.City}, {application.State}, {application.PostalCode}, {application.Country}";
-            var coords = await _geocoding.GetCoordinatesAsync(fullAddress);
-            
-            if (coords == null)
-            {
-                throw new InvalidOperationException($"Could not determine location for address: {fullAddress}. Please ensure the address is correct.");
-            }
-
-            application.Latitude = coords.Value.Lat;
-            application.Longitude = coords.Value.Lon;
 
             await _appRepo.AddAsync(application);
 
-            await _imageRepo.AddAsync(new GD1.Domain.Entities.PropertyImage
+            foreach (var imgUrl in cmd.PropertyImages)
             {
-                ApplicationId = application.Id,
-                UploadedBy = "Owner",
-                Label = "Front View",
-                ImageUrl = req.FrontImageUrl,
-                IsMain = true,
-                Remark = null
-            });
-
-            if (req.OtherImageUrls != null)
-            {
-                foreach (var imgUrl in req.OtherImageUrls)
+                await _imageRepo.AddAsync(new PropertyImage
                 {
-                    await _imageRepo.AddAsync(new GD1.Domain.Entities.PropertyImage
-                    {
-                        ApplicationId = application.Id,
-                        UploadedBy = "Owner",
-                        Label = "Overall Property View",
-                        ImageUrl = imgUrl,
-                        IsMain = false,
-                        Remark = null
-                    });
-                }
+                    ApplicationId = application.Id,
+                    ImageUrl = imgUrl,
+                    Label = "Property Main",
+                    UploadedBy = "Owner",
+                    IsMain = cmd.PropertyImages.First() == imgUrl
+                });
             }
 
-            for (int i = 0; i < req.LotUnits.Count; i++)
+            foreach (var s in cmd.Slots)
             {
-                var unitReq = req.LotUnits[i];
-                var unitLabel = string.IsNullOrWhiteSpace(unitReq.Label) 
-                    ? $"Unit {i + 1}" 
-                    : unitReq.Label.Trim();
-
-                var unit = new GD1.Domain.Entities.LotUnit
+                await _slotRepo.AddAsync(new FranchiseSlot
                 {
-                    FranchiseApplicationId = application.Id,
-                    Label = unitLabel,
-                    Description = unitReq.Description,
-                    Tier = unitReq.Tier,
-                    Capacity = unitReq.Capacity,
-                    HasCCTV = unitReq.HasCCTV,
-                    HasSecurity = unitReq.HasSecurity,
-                    HasWorkshop = unitReq.HasWorkshop,
-                    HasWashingArea = unitReq.HasWashingArea,
-                    HasFireSafety = unitReq.HasFireSafety,
-                    ExtraFacilities = unitReq.ExtraFacilities != null ? string.Join(",", unitReq.ExtraFacilities) : null,
-                    Status = FranchiseStatus.Pending
-                };
-
-                await _unitRepo.AddAsync(unit);
-
-                for (int j = 0; j < unitReq.Images.Count; j++)
-                {
-                    var imgUrl = unitReq.Images[j];
-                    await _unitImageRepo.AddAsync(new GD1.Domain.Entities.LotUnitImage
-                    {
-                        LotUnitId = unit.Id,
-                        UploadedBy = "Owner",
-                        IsMain = j == 0,
-                        ImageUrl = imgUrl,
-                        Remark = null
-                    });
-                }
+                    ApplicationId = application.Id,
+                    SlotNumber = s.SlotNumber,
+                    SquareFeet = s.SquareFeet,
+                    HeightFeet = s.HeightFeet,
+                    ImageUrl = s.ImageUrl
+                });
             }
 
-            return BaseResponse<long>.Ok(application.Id,
-                "Application submitted. Fee of Rs 2000 is pending payment.");
+            return BaseResponse<long>.Ok(application.Id, "Application submitted successfully.");
         }
     }
 }

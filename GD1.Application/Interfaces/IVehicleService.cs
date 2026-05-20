@@ -1,4 +1,4 @@
-﻿using GD1.Application.Features.Vehicle.DTOs;
+using GD1.Application.Features.Vehicle.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +10,7 @@ namespace GD1.Application.Interfaces
     public interface IVehicleService
     {
         Task<List<VehicleLookupDto>> SearchAsync(string term, string? brand = null);
+        Task<(double Length, double Width, double Height)> GetDimensionsAsync(string brand, string model, string type);
     }
 
 }

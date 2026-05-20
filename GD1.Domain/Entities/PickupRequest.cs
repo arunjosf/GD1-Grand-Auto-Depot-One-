@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace GD1.Domain.Entities
     {
         public long BookingId { get; set; }
         public long? ManagerId { get; set; }
-        public DateTime RequestedPickupTime { get; set; }
+        public DateTime? RequestedPickupTime { get; set; }
         public DateTime? ManagerArrivalTime { get; set; }
         public bool IsApprovedByLotOwner { get; set; }
         public string? OtpHash { get; set; }

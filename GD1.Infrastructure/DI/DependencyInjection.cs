@@ -1,6 +1,7 @@
 using Dapper;
 using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
+using GD1.Application.Interfaces.Services;
 using GD1.Domain.Interfaces;
 using GD1.Infrastructure.Data;
 using GD1.Infrastructure.Repositories;
@@ -38,7 +39,9 @@ namespace GD1.Infrastructure
             services.AddHttpClient();
             services.AddScoped<IOcrService, TesseractOcrService>();
             services.AddScoped<IFileService, FileService>();
+            services.AddScoped<IGeminiService, GeminiService>();
 
+            services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
             return services;
         }
     }

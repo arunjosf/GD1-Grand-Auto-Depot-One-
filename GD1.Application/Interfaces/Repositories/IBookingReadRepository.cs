@@ -1,4 +1,4 @@
-﻿using GD1.Application.Features.LotBooking.DTOs;
+using GD1.Application.Features.LotBooking.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +11,7 @@ namespace GD1.Application.Interfaces.Repositories
     {
         Task<IEnumerable<BookingDto>> GetByOwnerIdAsync(long ownerId);
         Task<BookingDto?> GetDetailAsync(long bookingId, long ownerId);
-        Task<IEnumerable<BookingDto>> GetByLotIdAsync(long lotId);
+        Task<IEnumerable<BookingDto>> GetByPropertyIdAsync(long propertyId);
+        Task<Dictionary<long, int>> GetOccupiedCountsAsync();
     }
 }

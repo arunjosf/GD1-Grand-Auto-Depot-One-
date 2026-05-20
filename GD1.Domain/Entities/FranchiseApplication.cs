@@ -32,19 +32,30 @@ namespace GD1.Domain.Entities
         public string? OwnerIdProofUrl { get; set; }
         public string? PropertyProofUrl { get; set; }
 
-        
-        public decimal ApplicationFee { get; set; } = 2000;
+        public decimal PricePerDay { get; set; }
 
+        public decimal ApplicationFee { get; set; } = 2000;
         public string FeeStatus { get; set; } = "Pending";
         public string? FeeTransactionId { get; set; }
 
         public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
+        public bool IsAiVerified { get; set; }
         public string? AdminNotes { get; set; }
         public long? ReviewedBy { get; set; }
         public DateTime? ReviewedAt { get; set; }
 
+        // Application-level facility declarations
+        public bool HasCCTV { get; set; }
+        public bool HasSecurity { get; set; }
+        public bool HasFireSafety { get; set; }
+        public bool HasWorkshop { get; set; }
+        public bool HasWashingArea { get; set; }
+
         public User Applicant { get; set; } = null!;
-        public ICollection<LotUnit> LotUnits { get; set; } = [];
+        
+        // Direct Slots (Garages) proposed by owner
+        public ICollection<FranchiseSlot> Slots { get; set; } = [];
+        
         public ICollection<InspectionAssignment> Assignments { get; set; } = [];
         public ICollection<PropertyImage> PropertyImages { get; set; } = [];
     }

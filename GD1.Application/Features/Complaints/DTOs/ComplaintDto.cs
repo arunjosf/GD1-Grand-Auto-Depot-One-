@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -33,7 +33,7 @@ namespace GD1.Application.Features.Complaints.DTOs
 
         [Required]
         [StringLength(150)]
-        public string LotName { get; set; } = string.Empty;
+        public string PropertyName { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; }
     }

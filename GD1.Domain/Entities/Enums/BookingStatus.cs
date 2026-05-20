@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,13 @@ namespace GD1.Domain.Entities.Enums
     {
         Pending = 0,
         Confirmed = 1,
+        AwaitingAgreement = 5,
+        AgreementDeclined = 6,
+        AwaitingPickupAssignment = 7,
+        PickupAssigned = 8,
+        ManagerArrived = 9,
+        PickupVerified = 10,
+        InTransit = 11,
         InLot = 2,
         Completed = 3,
         Cancelled = 4

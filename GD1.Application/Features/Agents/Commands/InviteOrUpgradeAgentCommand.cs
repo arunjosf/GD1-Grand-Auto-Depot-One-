@@ -105,16 +105,14 @@ namespace GD1.Application.Features.Agents.Commands
                     await _userRepo.UpdateAsync(existingUser);
                 }
 
-                var agentProfile = (await _agentRepo.FindAsync(a => a.UserId == existingUser.Id)).FirstOrDefault();
+                var agentProfile = (await _agentRepo.FindAsync(a => a.Id == existingUser.Id)).FirstOrDefault();
                 var token = Guid.NewGuid().ToString("N");
 
                 if (agentProfile == null)
                 {
                     agentProfile = new Agent
                     {
-                        UserId = existingUser.Id,
-                        FullName = existingUser.FullName,
-                        Email = existingUser.Email,
+                        Id = existingUser.Id,
                         City = cmd.City ?? "Unknown",
                         State = cmd.State ?? "Unknown",
                         PostalCode = cmd.PostalCode,
@@ -157,9 +155,7 @@ namespace GD1.Application.Features.Agents.Commands
 
                 var newAgent = new Agent
                 {
-                    UserId = newUser.Id,
-                    FullName = cmd.FullName,
-                    Email = email,
+                    Id = newUser.Id,
                     City = cmd.City ?? "Unknown",
                     State = cmd.State ?? "Unknown",
                     PostalCode = cmd.PostalCode,

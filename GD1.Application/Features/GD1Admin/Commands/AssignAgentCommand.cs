@@ -67,6 +67,9 @@ namespace GD1.Application.Features.GD1Admin.Commands
             var applicant = await _userRepo.GetByIdAsync(application.ApplicantId);
             if (applicant is null) throw new KeyNotFoundException("Applicant user not found.");
 
+            var agentUser = await _userRepo.GetByIdAsync(agent.Id);
+            if (agentUser is null) throw new KeyNotFoundException("Agent user account not found.");
+
             // 1. Create a new assignment
             var assignment = new InspectionAssignment
             {
@@ -83,15 +86,18 @@ namespace GD1.Application.Features.GD1Admin.Commands
 
             // 3. Notify Agent
             var agentMsg = $"GD1: You are assigned to inspect {application.BusinessName} on {cmd.ScheduledDate:dd MMM yyyy}. Log in for details.";
-            await _sms.SendAsync(agent.PhoneNumber, agentMsg);
-            if (!string.IsNullOrEmpty(agent.Email))
+            if (!string.IsNullOrEmpty(agentUser.PhoneNumber))
             {
-                await _email.SendAsync(agent.Email, "New Inspection Assignment", agentMsg);
+                await _sms.SendAsync(agentUser.PhoneNumber, agentMsg);
+            }
+            if (!string.IsNullOrEmpty(agentUser.Email))
+            {
+                await _email.SendAsync(agentUser.Email, "New Inspection Assignment", agentMsg);
             }
 
             // 4. Notify Applicant (Mail + Website Notification)
             var applicantMsg = $"An agent has been assigned for your franchise inspection.\n\n" +
-                               $"Agent: {agent.FullName}\n" +
+                               $"Agent: {agentUser.FullName}\n" +
                                $"Scheduled Date: {cmd.ScheduledDate:dd MMM yyyy} at your property.\n" +
                                $"Agent Photo: {agent.SelfieUrl}\n" +
                                $"Agent ID Proof: {agent.IdProofUrl}\n\n" +
@@ -105,7 +111,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             {
                 UserId = applicant.Id,
                 Title = "Inspection Scheduled",
-                Body = $"Agent {agent.FullName} will visit on {cmd.ScheduledDate:dd MMM yyyy}.",
+                Body = $"Agent {agentUser.FullName} will visit on {cmd.ScheduledDate:dd MMM yyyy}.",
                 IsRead = false
             });
 
@@ -113,7 +119,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             { 
                 AssignmentId = assignment.Id,
                 AgentId = agent.Id, 
-                AgentName = agent.FullName 
+                AgentName = agentUser.FullName 
             }, $"Agent assigned and applicant notified successfully.");
         }
     }

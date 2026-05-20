@@ -53,7 +53,7 @@ namespace GD1.Application.Features.Agents.Commands
             var agent = (await _agentRepo.FindAsync(a => a.InvitationToken == cmd.Token)).FirstOrDefault();
             if (agent == null) return BaseResponse<AuthResponse>.Fail("Invalid or expired invitation token.");
 
-            var user = await _userRepo.GetByIdAsync(agent.UserId);
+            var user = await _userRepo.GetByIdAsync(agent.Id);
             if (user == null) return BaseResponse<AuthResponse>.Fail("User record not found.");
 
             if (string.IsNullOrEmpty(user.PasswordHash))
@@ -76,7 +76,6 @@ namespace GD1.Application.Features.Agents.Commands
             user.IsEmailVerified = true; 
             await _userRepo.UpdateAsync(user);
 
-            agent.PhoneNumber = user.PhoneNumber ?? string.Empty;
             agent.IsActive = true;
             agent.InvitationToken = null;
             agent.ApprovalStatus = AgentApprovalStatus.Pending;

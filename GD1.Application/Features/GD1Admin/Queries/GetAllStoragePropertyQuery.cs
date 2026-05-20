@@ -1,115 +1,177 @@
 using GD1.Application.Common;
+using GD1.Application.Features.GD1Admin.DTOs;
 using GD1.Application.Interfaces.Repositories;
+using GD1.Domain.Entities;
+using GD1.Domain.Interfaces;
 using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using GD1.Application.Features.GD1Admin.DTOs;
-using GD1.Domain.Interfaces;
-using GD1.Domain.Entities;
-using GD1.Domain.Entities.Enums;
 
 namespace GD1.Application.Features.GD1Admin.Queries
 {
-    public class GetAllStoragePropertyQuery
-       : IRequest<BaseResponse<IEnumerable<StoragePropertyListDto>>>
+    public class GetAllStoragePropertyQuery : IRequest<BaseResponse<IEnumerable<StoragePropertyListDto>>>
     {
         public string? City { get; set; }
-        public string? Status { get; set; }
+        public long? VehicleId { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        
+        // New search parameters
+        public string? Name { get; set; }
+        public string? ExtraFacilities { get; set; }
+        public bool? HasCCTV { get; set; }
+        public bool? HasSecurity { get; set; }
+        public bool? HasFireSafety { get; set; }
+        
+        public bool Recommend { get; set; }
     }
 
-
-    public class GetAllStorageLotsQueryHandler
-        : IRequestHandler<GetAllStoragePropertyQuery,
-                          BaseResponse<IEnumerable<StoragePropertyListDto>>>
+    public class GetAllStoragePropertyQueryHandler : IRequestHandler<GetAllStoragePropertyQuery, BaseResponse<IEnumerable<StoragePropertyListDto>>>
     {
-        private readonly IGenericRepository<StorageLot> _lotRepo;
-        private readonly IGenericRepository<LotUnit> _unitRepo;
-        private readonly IFranchiseReadRepository _franchiseRead;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
 
-        public GetAllStorageLotsQueryHandler(
-            IGenericRepository<StorageLot> lotRepo,
-            IGenericRepository<LotUnit> unitRepo,
-            IFranchiseReadRepository franchiseRead)
+        public GetAllStoragePropertyQueryHandler(
+            IGenericRepository<VehicleStorageProperty> propertyRepo,
+            IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo)
         {
-            _lotRepo = lotRepo;
-            _unitRepo = unitRepo;
-            _franchiseRead = franchiseRead;
+            _propertyRepo = propertyRepo;
+            _vehicleRepo = vehicleRepo;
         }
 
-        public async Task<BaseResponse<IEnumerable<StoragePropertyListDto>>> Handle(
-            GetAllStoragePropertyQuery query, CancellationToken ct)
+        public async Task<BaseResponse<IEnumerable<StoragePropertyListDto>>> Handle(GetAllStoragePropertyQuery query, CancellationToken ct)
         {
-            var allLots = await _lotRepo.GetAllAsync();
-            var activeLots = allLots.Where(l => l.Status == "Active");
+            var properties = await _propertyRepo.FindAsync(p => 
+                p.Status == "Active" &&
+                (string.IsNullOrEmpty(query.City) || p.City.ToLower() == query.City.ToLower()) && 
+                (string.IsNullOrEmpty(query.Name) || p.Name.Contains(query.Name)) &&
+                (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
+                (!query.HasCCTV.HasValue || p.HasCCTV == query.HasCCTV.Value) &&
+                (!query.HasSecurity.HasValue || p.HasSecurity == query.HasSecurity.Value) &&
+                (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots");
 
-            if (!string.IsNullOrEmpty(query.City))
-                activeLots = activeLots.Where(l => l.City.Equals(query.City, StringComparison.OrdinalIgnoreCase));
-
-            var results = new List<StoragePropertyListDto>();
-
-            foreach (var l in activeLots)
+            GD1.Domain.Entities.Vehicle? vehicle = null;
+            if (query.VehicleId.HasValue)
             {
-                if (!l.LotUnitId.HasValue) continue;
-
-                var unitEntity = await _unitRepo.GetByIdAsync(l.LotUnitId.Value);
-                if (unitEntity == null) continue;
-
-                var app = await _franchiseRead.GetByIdAsync(unitEntity.FranchiseApplicationId, 0);
-                
-                if (app == null || app.Status != FranchiseStatus.Approved) 
-                    continue;
-
-                var unitData = app.LotUnits.FirstOrDefault(u => u.Id == l.LotUnitId.Value);
-
-                var dto = new StoragePropertyListDto
-                {
-                    Id = l.Id,
-                    LotCode = l.LotCode,
-                    Name = l.Name,
-                    City = l.City,
-                    State = l.State,
-                    Status = l.Status,
-                    Tier = l.Tier,
-                    TotalSlots = l.TotalSlots,
-                    PricePerDay = l.PricePerDay,
-                    AverageRating = l.AverageRating,
-                    AddressLine = l.AddressLine,
-                    ExtraFacilities = l.ExtraFacilities?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() ?? [],
-                    
-                    HasCCTV = unitEntity.HasCCTV,
-                    HasSecurity = unitEntity.HasSecurity,
-                    HasWorkshop = unitEntity.HasWorkshop,
-                    HasWashingArea = unitEntity.HasWashingArea,
-                    HasFireSafety = unitEntity.HasFireSafety,
-                    Capacity = unitEntity.Capacity,
-                    UnitLabel = unitData?.Label ?? unitEntity.Label,
-
-                    OwnerName = app.OwnerName,
-                    OwnerEmail = app.ContactEmail,
-                    FrontImageUrl = app.FrontImageUrl,
-                    OtherImageUrls = app.OtherImageUrls
-                };
-
-                // Hydrate Unit Images
-                var unitImages = unitData?.OwnerImages
-                    .Where(i => !string.IsNullOrEmpty(i.ImageUrl))
-                    .Select(i => i.ImageUrl).ToList() ?? [];
-
-                if (!unitImages.Any())
-                {
-                    // FAIL-SAFE: Use the direct repository method which uses Dapper internally
-                    var fallbackImages = await _franchiseRead.GetUnitImageUrlsAsync(l.LotUnitId.Value);
-                    unitImages = fallbackImages.ToList();
-                }
-
-                dto.UnitImages = unitImages;
-                results.Add(dto);
+                vehicle = await _vehicleRepo.GetByIdAsync(query.VehicleId.Value);
             }
 
-            return BaseResponse<IEnumerable<StoragePropertyListDto>>.Ok(results);
+            var resultDtos = new List<StoragePropertyListDto>();
+
+            foreach (var prop in properties)
+            {
+                var availableSlots = prop.Slots.Where(s => !s.IsOccupied);
+                bool hasCompatibleSlots = true;
+
+                if (vehicle != null)
+                {
+                    var vehicleArea = vehicle.LengthFeet * vehicle.WidthFeet;
+                    var vehicleHeight = vehicle.HeightFeet;
+
+                    var compSlots = availableSlots.Where(s => 
+                        s.SquareFeet >= vehicleArea && 
+                        s.HeightFeet >= vehicleHeight);
+                        
+                    hasCompatibleSlots = compSlots.Any();
+                    
+                    if (query.Recommend)
+                    {
+                        availableSlots = compSlots;
+                    }
+                }
+
+                // If Recommend is false, we still show the property even if it doesn't have compatible slots.
+                if (availableSlots.Any() || (vehicle == null && string.IsNullOrEmpty(query.City)) || (!query.Recommend))
+                {
+                    double distanceKm = 0;
+                    bool isPickupAvailable = false;
+                    
+                    if (query.Latitude.HasValue && query.Longitude.HasValue && prop.Latitude.HasValue && prop.Longitude.HasValue)
+                    {
+                        distanceKm = CalculateDistance(query.Latitude.Value, query.Longitude.Value, prop.Latitude.Value, prop.Longitude.Value);
+                        if (distanceKm <= 40) 
+                        {
+                            isPickupAvailable = true;
+                        }
+                    }
+
+                    var dto = new StoragePropertyListDto
+                    {
+                        Id = prop.Id,
+                        LotCode = prop.LotCode,
+                        Name = prop.Name,
+                        City = prop.City,
+                        State = prop.State,
+                        Status = prop.Status,
+                        Tier = "Premium Private Garage",
+                        TotalSlots = prop.Slots.Count,
+                        PricePerDay = prop.PricePerDay,
+                        AverageRating = prop.AverageRating,
+                        TotalReviews = prop.TotalReviews,
+                        Latitude = prop.Latitude,
+                        Longitude = prop.Longitude,
+                        DistanceKm = distanceKm,
+                        IsPickupAvailable = isPickupAvailable,
+                        HasCompatibleSlots = hasCompatibleSlots,
+                        ContactInfo = new LotContactDto
+                        {
+                            AddressLine = prop.AddressLine
+                        },
+                        PropertyDetails = new LotPropertyDetailDto
+                        {
+                            AddressLine = prop.AddressLine,
+                            HasCCTV = prop.HasCCTV,
+                            HasSecurity = prop.HasSecurity,
+                            HasWorkshop = prop.HasWorkshopBay,
+                            HasWashingArea = prop.HasWashingArea,
+                            HasFireSafety = prop.HasFireSafety,
+                            ExtraFacilities = prop.ExtraFacilities
+                        },
+                        Slots = prop.Slots.Select(s => new LotSlotDto
+                        {
+                            Id = s.Id,
+                            SlotNumber = s.SlotNumber,
+                            IsOccupied = s.IsOccupied,
+                            ImageUrl = s.ImageUrl,
+                            SquareFeet = s.SquareFeet,
+                            HeightFeet = s.HeightFeet,
+                            IsCompatible = vehicle == null || (s.SquareFeet >= (vehicle.LengthFeet * vehicle.WidthFeet) && s.HeightFeet >= vehicle.HeightFeet)
+                        }).ToList()
+                    };
+
+                    resultDtos.Add(dto);
+                }
+            }
+
+            // If recommending, sort by distance or price etc. Here we sort by distance.
+            if (query.Recommend)
+            {
+                resultDtos = resultDtos.OrderBy(d => d.DistanceKm).ToList();
+            }
+
+            return BaseResponse<IEnumerable<StoragePropertyListDto>>.Ok(resultDtos);
+        }
+        
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            var R = 6371d; // Radius of the earth in km
+            var dLat = Deg2Rad(lat2 - lat1);
+            var dLon = Deg2Rad(lon2 - lon1);
+            var a =
+                Math.Sin(dLat / 2d) * Math.Sin(dLat / 2d) +
+                Math.Cos(Deg2Rad(lat1)) * Math.Cos(Deg2Rad(lat2)) *
+                Math.Sin(dLon / 2d) * Math.Sin(dLon / 2d);
+            var c = 2d * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1d - a));
+            var d = R * c; // Distance in km
+            return d;
+        }
+
+        private double Deg2Rad(double deg)
+        {
+            return deg * (Math.PI / 180d);
         }
     }
 }

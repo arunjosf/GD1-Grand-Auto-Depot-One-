@@ -51,7 +51,7 @@ namespace GD1.Infrastructure.Repositories
                        a.Id as AgentId, a.City, a.State, a.PostalCode, a.SelfieUrl, a.IdProofUrl, a.ApprovalStatus, a.Latitude, a.Longitude,
                        CASE WHEN u.Role = 3 THEN (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = a.Id AND Status IN ('Assigned', 'InProgress')) ELSE NULL END as PendingInspections
                 FROM Users u
-                LEFT JOIN GD1Agents a ON u.Id = a.UserId
+                LEFT JOIN GD1Agents a ON u.Id = a.Id
                 WHERE u.Role < 5 
                 AND (@Role IS NULL OR u.Role = @Role)
                 AND (@Search IS NULL 
@@ -91,7 +91,7 @@ namespace GD1.Infrastructure.Repositories
                     FROM InspectionAssignments ia
                     INNER JOIN FranchiseApplications fa ON ia.ApplicationId = fa.Id
                     INNER JOIN GD1Agents a ON ia.AgentId = a.Id
-                    WHERE a.UserId = @UserId AND ia.Status NOT IN ('Completed', 'Cancelled')
+                    WHERE a.Id = @UserId AND ia.Status NOT IN ('Completed', 'Cancelled')
                     ORDER BY ia.ScheduledDate ASC";
                 
                 user.CurrentAssignments = (await _db.QueryAsync<GD1.Application.Features.GD1Admin.DTOs.AgentAssignmentSummaryDto>(assignSql, new { UserId = user.Id })).ToList();

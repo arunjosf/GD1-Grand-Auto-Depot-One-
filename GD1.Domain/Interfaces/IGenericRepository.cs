@@ -15,6 +15,6 @@ namespace GD1.Domain.Interfaces
         Task DeleteAsync(T entity);
         Task<bool> ExistsAsync(long id);
         Task<IEnumerable<T>> GetAllAsync();
-        Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+        Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, params string[] includes);
     }
 }

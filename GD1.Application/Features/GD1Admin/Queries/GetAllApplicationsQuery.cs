@@ -6,91 +6,70 @@ using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace GD1.Application.Features.GD1Admin.Queries
 {
-    public class GetAllApplicationsQuery : IRequest<BaseResponse<IEnumerable<AdminApplicationDto>>>
+    public class GetAllApplicationsQuery : IRequest<BaseResponse<IEnumerable<ApplicationListDto>>>
     {
         public FranchiseStatus? Status { get; set; }
-        public string? SearchTerm { get; set; } 
-        public string? SortBy { get; set; } = "CreatedAt";
-        public bool Descending { get; set; } = true;
+        public string? SearchTerm { get; set; }
+        public string? SortBy { get; set; }
+        public bool Descending { get; set; }
     }
 
-    public class GetAllApplicationsQueryHandler : IRequestHandler<GetAllApplicationsQuery, BaseResponse<IEnumerable<AdminApplicationDto>>>
+    public class GetAllApplicationsQueryHandler : IRequestHandler<GetAllApplicationsQuery, BaseResponse<IEnumerable<ApplicationListDto>>>
     {
         private readonly IFranchiseReadRepository _repo;
 
-        public GetAllApplicationsQueryHandler(IFranchiseReadRepository repo) => _repo = repo;
-
-        public async Task<BaseResponse<IEnumerable<AdminApplicationDto>>> Handle(GetAllApplicationsQuery query, CancellationToken ct)
+        public GetAllApplicationsQueryHandler(IFranchiseReadRepository repo)
         {
-            var result = await _repo.GetAllApplicationsAsync(query.Status, query.SearchTerm, query.SortBy, query.Descending);
+            _repo = repo;
+        }
 
-            var adminDtos = result.Select(app =>
+        public async Task<BaseResponse<IEnumerable<ApplicationListDto>>> Handle(GetAllApplicationsQuery query, CancellationToken ct)
+        {
+            var statusStr = query.Status?.ToString();
+            var result = await _repo.GetAllApplicationsAsync(statusStr);
+            
+            var adminDtos = result.Select(app => new ApplicationListDto
             {
-                var dto = new AdminApplicationDto
-                {
-                    Id = app.Id,
-                    ApplicationType = app.ApplicationType,
-                    BusinessName = app.BusinessName,
-                    OwnerName = app.OwnerName,
-                    ContactEmail = app.ContactEmail,
-                    PhoneNumber = app.PhoneNumber,
-                    AddressLine = app.AddressLine,
-                    City = app.City,
-                    State = app.State,
-                    PostalCode = app.PostalCode,
-                    Latitude = app.Latitude,
-                    Longitude = app.Longitude,
-                    Status = app.Status ?? FranchiseStatus.Pending,
-                    AdminNotes = app.AdminNotes,
-                    ApplicationFee = app.ApplicationFee,
-                    FeeStatus = app.FeeStatus ?? "Pending",
-                    CreatedAt = app.CreatedAt,
-                    PreferredInspectionDate = app.PreferredInspectionDate,
-                    
-                    PropertyFrontImageUrl = app.FrontImageUrl,
-                    OtherImageUrls = app.OtherImageUrls,
-
-
-                    // Re-application Logic
-                    IsReapplication = app.PastRejections?.Any() ?? false,
-                    RejectionHistory = app.PastRejections ?? [],
-
-                    LotUnits = app.LotUnits.Select(lot => new AdminLotUnitDto
-                    {
-                        Id = lot.Id,
-                        Label = lot.Label,
-                        Tier = lot.Tier,
-                        Capacity = lot.Capacity,
-                        HasCCTV = lot.HasCCTV,
-                        HasSecurity = lot.HasSecurity,
-                        HasWorkshop = lot.HasWorkshop,
-                        HasWashingArea = lot.HasWashingArea,
-                        HasFireSafety = lot.HasFireSafety,
-                        ExtraFacilities = lot.ExtraFacilities,
-                        Status = lot.Status ?? FranchiseStatus.Pending,
-                        
-                        LotImages = lot.OwnerImages.Select(img => new AdminPropertyImageDto
-                        {
-                            Id = img.Id,
-                            Label = img.Label,
-                            ImageUrl = img.ImageUrl,
-                            UploadedBy = img.UploadedBy,
-                            Remark = img.Remark
-                        }).ToList()
-                    }).ToList()
-                };
-
-                // Assigned Agent and Inspection Report removed from List API as requested
-
-                return dto;
+                Id = app.Id,
+                ApplicationType = app.ApplicationType,
+                BusinessName = app.BusinessName,
+                OwnerName = app.OwnerName,
+                ContactEmail = app.ContactEmail,
+                PhoneNumber = app.PhoneNumber,
+                City = app.City,
+                State = app.State,
+                Status = app.Status ?? FranchiseStatus.Pending,
+                IsAiVerified = app.IsAiVerified,
+                CreatedAt = app.CreatedAt,
+                PropertyFrontImageUrl = app.FrontImageUrl,
+                SlotCount = app.Slots.Count
             });
 
-            return BaseResponse<IEnumerable<AdminApplicationDto>>.Ok(adminDtos.ToList());
+            if (!string.IsNullOrEmpty(query.SearchTerm))
+            {
+                var term = query.SearchTerm.ToLower();
+                adminDtos = adminDtos.Where(a => 
+                    a.BusinessName.ToLower().Contains(term) || 
+                    a.OwnerName.ToLower().Contains(term) || 
+                    a.City.ToLower().Contains(term));
+            }
+
+            if (!string.IsNullOrEmpty(query.SortBy))
+            {
+                if (query.SortBy.Equals("Date", StringComparison.OrdinalIgnoreCase) || query.SortBy.Equals("CreatedAt", StringComparison.OrdinalIgnoreCase))
+                {
+                    adminDtos = query.Descending 
+                        ? adminDtos.OrderByDescending(x => x.CreatedAt) 
+                        : adminDtos.OrderBy(x => x.CreatedAt);
+                }
+            }
+
+            return BaseResponse<IEnumerable<ApplicationListDto>>.Ok(adminDtos);
         }
     }
 }

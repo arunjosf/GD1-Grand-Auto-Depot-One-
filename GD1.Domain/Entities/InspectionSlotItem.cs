@@ -7,16 +7,17 @@ using System.Threading.Tasks;
 
 namespace GD1.Domain.Entities
 {
-    public class InspectionItem : BaseEntity
+    public class InspectionSlotItem : BaseEntity
     {
         public long ReportId { get; set; }
-        public long LotUnitId { get; set; }
-        
-        public string TaskName { get; set; } = string.Empty; // e.g. "CCTV matches", "Security present"
+        public string SlotNumber { get; set; } = string.Empty;
         public bool IsVerified { get; set; }
-        public string? Remarks { get; set; }
+        public string? ImageUrl { get; set; }
+        
+        // Verified dimensions by agent
+        public double SquareFeet { get; set; }
+        public double HeightFeet { get; set; }
 
         public InspectionReport Report { get; set; } = null!;
-        public LotUnit LotUnit { get; set; } = null!;
     }
 }

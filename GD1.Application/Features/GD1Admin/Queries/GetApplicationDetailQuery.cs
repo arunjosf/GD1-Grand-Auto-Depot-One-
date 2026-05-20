@@ -1,38 +1,37 @@
 using GD1.Application.Common;
+using GD1.Application.Features.GD1Admin.DTOs;
 using GD1.Application.Interfaces.Repositories;
+using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using GD1.Domain.Entities.Enums;
-
-// Using aliases to prevent any naming collision
-using FranchiseDTOs = GD1.Application.Features.FranchiseApplication.DTOs;
-using AdminDTOs = GD1.Application.Features.GD1Admin.DTOs;
 
 namespace GD1.Application.Features.GD1Admin.Queries
 {
-    public class GetApplicationDetailQuery : IRequest<BaseResponse<AdminDTOs.AdminApplicationDto>>
+    public class GetApplicationDetailQuery : IRequest<BaseResponse<AdminApplicationDto>>
     {
         public long Id { get; set; }
     }
 
-    public class GetApplicationDetailQueryHandler : IRequestHandler<GetApplicationDetailQuery, BaseResponse<AdminDTOs.AdminApplicationDto>>
+    public class GetApplicationDetailQueryHandler : IRequestHandler<GetApplicationDetailQuery, BaseResponse<AdminApplicationDto>>
     {
         private readonly IFranchiseReadRepository _repo;
 
-        public GetApplicationDetailQueryHandler(IFranchiseReadRepository repo) => _repo = repo;
-
-        public async Task<BaseResponse<AdminDTOs.AdminApplicationDto>> Handle(GetApplicationDetailQuery req, CancellationToken ct)
+        public GetApplicationDetailQueryHandler(IFranchiseReadRepository repo)
         {
-            // For admin view, we pass 0 as applicantId to ignore ownership check in repository
-            var app = await _repo.GetByIdAsync(req.Id, 0);
-            if (app == null) return BaseResponse<AdminDTOs.AdminApplicationDto>.Fail("Application not found.");
+            _repo = repo;
+        }
 
-            var dto = new AdminDTOs.AdminApplicationDto
+        public async Task<BaseResponse<AdminApplicationDto>> Handle(GetApplicationDetailQuery query, CancellationToken ct)
+        {
+            var app = await _repo.GetByIdAsync(query.Id, 0); // Admin can see all
+            if (app == null) return BaseResponse<AdminApplicationDto>.Fail("Application not found.");
+
+            var adminDto = new AdminApplicationDto
             {
                 Id = app.Id,
                 ApplicationType = app.ApplicationType,
@@ -47,27 +46,59 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 Latitude = app.Latitude,
                 Longitude = app.Longitude,
                 Status = app.Status ?? FranchiseStatus.Pending,
+                IsAiVerified = app.IsAiVerified,
                 AdminNotes = app.AdminNotes,
                 ApplicationFee = app.ApplicationFee,
+                PricePerDay = app.PricePerDay,
                 FeeStatus = app.FeeStatus ?? "Pending",
                 CreatedAt = app.CreatedAt,
                 PreferredInspectionDate = app.PreferredInspectionDate,
-                PropertyFrontImageUrl = app.FrontImageUrl,
-                OtherImageUrls = app.OtherImageUrls,
-                LotUnits = app.LotUnits.Select(u => new AdminDTOs.AdminLotUnitDto
+                
+                HasCCTV = app.HasCCTV,
+                HasSecurity = app.HasSecurity,
+                HasWorkshop = app.HasWorkshop,
+                HasWashingArea = app.HasWashingArea,
+                HasFireSafety = app.HasFireSafety,
+
+                PropertyFrontImageUrl = app.PropertyImages.FirstOrDefault(i => i.IsMain)?.ImageUrl ?? app.FrontImageUrl,
+                OtherImageUrls = app.PropertyImages.Where(i => !i.IsMain).Select(i => i.ImageUrl).ToList(),
+                
+                Slots = app.Slots.Select(s => new AdminFranchiseSlotDto
                 {
-                    Id = u.Id,
-                    Label = u.Label,
-                    Tier = u.Tier,
-                    Capacity = u.Capacity,
-                    HasCCTV = u.HasCCTV,
-                    HasSecurity = u.HasSecurity,
-                    HasWorkshop = u.HasWorkshop,
-                    HasWashingArea = u.HasWashingArea,
-                    HasFireSafety = u.HasFireSafety,
-                    ExtraFacilities = u.ExtraFacilities,
-                    Status = u.Status ?? FranchiseStatus.Pending,
-                    LotImages = u.OwnerImages.Select(img => new AdminDTOs.AdminPropertyImageDto
+                    Id = s.Id,
+                    SlotNumber = s.SlotNumber,
+                    SquareFeet = s.SquareFeet,
+                    HeightFeet = s.HeightFeet,
+                    ImageUrl = s.ImageUrl
+                }).ToList(),
+
+                Assignments = app.Assignments.Select(a => new GD1.Application.Features.FranchiseApplication.DTOs.InspectionAssignmentDto
+                {
+                    Id = a.Id,
+                    ScheduledDate = a.ScheduledDate,
+                    Status = a.Status,
+                    AgentName = a.AgentName
+                }).ToList()
+            };
+
+            var latestAssignment = app.Assignments.OrderByDescending(a => a.ScheduledDate).FirstOrDefault(a => a.Report != null);
+            if (latestAssignment?.Report != null)
+            {
+                adminDto.InspectionReport = new AdminInspectionReportDto
+                {
+                    Id = latestAssignment.Report.Id,
+                    StartedAt = latestAssignment.Report.StartedAt,
+                    CompletedAt = latestAssignment.Report.CompletedAt,
+                    OverallDescription = latestAssignment.Report.OverallDescription,
+                    SlotVerifications = latestAssignment.Report.SlotVerifications.Select(sv => new AdminInspectionSlotDto
+                    {
+                        SlotNumber = sv.SlotNumber,
+                        IsVerified = sv.IsVerified,
+                        SquareFeet = sv.SquareFeet,
+                        HeightFeet = sv.HeightFeet,
+                        ImageUrl = sv.ImageUrl
+                    }).ToList(),
+                    SiteImages = latestAssignment.Report.SiteImages.Select(img => new AdminPropertyImageDto
                     {
                         Id = img.Id,
                         Label = img.Label,
@@ -75,63 +106,10 @@ namespace GD1.Application.Features.GD1Admin.Queries
                         UploadedBy = img.UploadedBy,
                         Remark = img.Remark
                     }).ToList()
-                }).ToList()
-            };
-
-            // Get the report from the latest assignment
-            var currentAssignment = app.Assignments.OrderByDescending(a => a.ScheduledDate).FirstOrDefault();
-            if (currentAssignment != null)
-            {
-                dto.AssignedAgent = new AdminDTOs.AdminAgentSummaryDto
-                {
-                    Id = currentAssignment.AgentId,
-                    Name = currentAssignment.AgentName,
-                    City = currentAssignment.AgentCity,
-                    SelfieUrl = currentAssignment.AgentSelfieUrl,
-                    PhoneNumber = currentAssignment.PhoneNumber 
                 };
-
-                if (currentAssignment.Report != null)
-                {
-                    // Explicitly use the unique Franchise version of the DTO
-                    var sourceReport = currentAssignment.Report;
-
-                    dto.InspectionReport = new AdminDTOs.AdminInspectionReportDto
-                    {
-                        Id = sourceReport.Id,
-                        StartedAt = sourceReport.StartedAt,
-                        CompletedAt = sourceReport.CompletedAt,
-                        OverallDescription = sourceReport.OverallDescription,
-                        PropertyImages = sourceReport.PropertyImages.Select(i => new AdminDTOs.AdminPropertyImageDto
-                        {
-                            Id = i.Id,
-                            Label = i.Label,
-                            ImageUrl = i.ImageUrl,
-                            UploadedBy = i.UploadedBy,
-                            Remark = i.Remark
-                        }).ToList(),
-                        Items = sourceReport.Items.Select(item => new AdminDTOs.AdminInspectionItemDto
-                        {
-                            Id = item.Id,
-                            LotUnitId = item.LotUnitId,
-                            LotLabel = item.LotLabel,
-                            TaskName = item.TaskName,
-                            IsVerified = item.IsVerified,
-                            Remarks = item.Remarks,
-                            UnitImages = item.UnitImages.Select(img => new AdminDTOs.AdminPropertyImageDto
-                            {
-                                Id = img.Id,
-                                Label = img.Label,
-                                ImageUrl = img.ImageUrl,
-                                UploadedBy = img.UploadedBy,
-                                Remark = img.Remark
-                            }).ToList()
-                        }).ToList()
-                    };
-                }
             }
 
-            return BaseResponse<AdminDTOs.AdminApplicationDto>.Ok(dto);
+            return BaseResponse<AdminApplicationDto>.Ok(adminDto);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,6 +16,9 @@ namespace GD1.Application.Features.Vehicle.DTOs
         public string? Color { get; set; }
         public string? FuelType { get; set; }
         public string VehicleType { get; set; } = string.Empty;
+        public double LengthFeet { get; set; }
+        public double WidthFeet { get; set; }
+        public double HeightFeet { get; set; }
         public string? DocumentUrls { get; set; }
         public int HealthScore { get; set; }
         public DateTime CreatedAt { get; set; }

@@ -31,13 +31,16 @@ namespace GD1.Application.Features.Vehicle.Commands
     {
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Booking> _bookingRepo;
+        private readonly GD1.Application.Interfaces.IVehicleService _vehicleService;
 
         public EditVehicleCommandHandler(
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
-            IGenericRepository<GD1.Domain.Entities.Booking> bookingRepo)
+            IGenericRepository<GD1.Domain.Entities.Booking> bookingRepo,
+            GD1.Application.Interfaces.IVehicleService vehicleService)
         {
             _vehicleRepo = vehicleRepo;
             _bookingRepo = bookingRepo;
+            _vehicleService = vehicleService;
         }
 
         public async Task<BaseResponse<string>> Handle(EditVehicleCommand cmd, CancellationToken cancellationToken)
@@ -46,8 +49,7 @@ namespace GD1.Application.Features.Vehicle.Commands
             if (vehicle is null)
                 throw new KeyNotFoundException("Vehicle not found.");
 
-
-            var allBookings = await _bookingRepo.GetAllAsync();
+            var allBookings = await _bookingRepo.FindAsync(b => true, "Property");
             var activeBooking = allBookings.FirstOrDefault(b => b.VehicleId == cmd.VehicleId && b.Status == BookingStatus.InLot);
             
             if (activeBooking is not null)
@@ -59,11 +61,11 @@ namespace GD1.Application.Features.Vehicle.Commands
             }
             else if (cmd.UserRole == UserRole.LotOwner)
             {
-                var relatedBooking = allBookings.FirstOrDefault(b => b.VehicleId == cmd.VehicleId && b.Lot.LotOwnerId == cmd.UserId);
+                var relatedBooking = allBookings.FirstOrDefault(b => b.VehicleId == cmd.VehicleId && b.Property?.LotOwnerId == cmd.UserId);
                 if (relatedBooking is null)
-                    throw new UnauthorizedAccessException("You are not the lot owner for this vehicle's booking.");
+                    throw new UnauthorizedAccessException("You are not the property owner for this vehicle's booking.");
 
-                Console.WriteLine($"[NOTIFICATION] Vehicle {vehicle.RegistrationNo} details were updated by Lot Owner.");
+                Console.WriteLine($"[NOTIFICATION] Vehicle {vehicle.RegistrationNo} details were updated by Property Owner.");
             }
 
             vehicle.Brand = cmd.Brand;
@@ -73,6 +75,11 @@ namespace GD1.Application.Features.Vehicle.Commands
             vehicle.Color = cmd.Color;
             vehicle.FuelType = cmd.FuelType;
             vehicle.VehicleType = cmd.VehicleType;
+            
+            var dims = await _vehicleService.GetDimensionsAsync(cmd.Brand, cmd.Model, cmd.VehicleType);
+            vehicle.LengthFeet = dims.Length;
+            vehicle.WidthFeet = dims.Width;
+            vehicle.HeightFeet = dims.Height;
             vehicle.DocumentUrls = cmd.DocumentUrls;
 
             await _vehicleRepo.UpdateAsync(vehicle);

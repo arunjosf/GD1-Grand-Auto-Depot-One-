@@ -36,7 +36,7 @@ namespace GD1.Api.Controllers
         public async Task<IActionResult> GetMyInspections([FromServices] IGenericRepository<Agent> agentRepo)
         {
             var userId = GetUserId();
-            var agent = (await agentRepo.FindAsync(a => a.UserId == userId)).FirstOrDefault();
+            var agent = (await agentRepo.FindAsync(a => a.Id == userId)).FirstOrDefault();
 
             if (agent == null || !agent.IsVerified)
             {
@@ -58,8 +58,16 @@ namespace GD1.Api.Controllers
                 new SubmitInspectionCommand
                 {
                     AssignmentId = id,
-                    Request = req,
-                    UserId = GetUserId()
+                    OverallDescription = req.OverallDescription,
+                    SiteImages = req.SiteImages,
+                    SlotVerifications = req.Slots.Select(s => new SlotVerificationRequest
+                    {
+                        SlotNumber = s.SlotNumber,
+                        IsVerified = s.IsVerified,
+                        SquareFeet = s.SquareFeet,
+                        HeightFeet = s.HeightFeet,
+                        ImageUrl = s.ImageUrl ?? ""
+                    }).ToList()
                 });
             return Ok(result);
         }
