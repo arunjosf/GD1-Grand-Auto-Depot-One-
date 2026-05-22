@@ -16,7 +16,7 @@ namespace GD1.Application.Features.Pickup.Commands
     public record VerifyOtpCommand(
         long PickupRequestId,
         string Otp
-    ) : IRequest<string>;
+    ) : IRequest<GD1.Application.Common.BaseResponse<string>>;
 
     public class VerifyOtpCommandValidator : AbstractValidator<VerifyOtpCommand>
     {
@@ -28,7 +28,7 @@ namespace GD1.Application.Features.Pickup.Commands
     }
 
     public class VerifyOtpCommandHandler
-        : IRequestHandler<VerifyOtpCommand, string>
+        : IRequestHandler<VerifyOtpCommand, GD1.Application.Common.BaseResponse<string>>
     {
         private readonly IGenericRepository<PickupRequest> _pickupRepo;
         private readonly IOtpService _otp;
@@ -41,7 +41,7 @@ namespace GD1.Application.Features.Pickup.Commands
             _otp = otp;
         }
 
-        public async Task<string> Handle(
+        public async Task<GD1.Application.Common.BaseResponse<string>> Handle(
             VerifyOtpCommand request,
             CancellationToken cancellationToken)
         {
@@ -50,15 +50,26 @@ namespace GD1.Application.Features.Pickup.Commands
             if (pickup == null)
                 throw new Exception("Pickup request not found");
 
+            if (pickup.OwnerSubmittedOtp == null)
+                throw new Exception("The Vehicle Owner has not submitted their OTP yet. Please wait for their approval.");
+
+            if (request.Otp != pickup.OwnerSubmittedOtp)
+                throw new Exception("The OTP you entered does not match the one submitted by the Vehicle Owner.");
+
             if (!_otp.VerifyOtp(request.Otp, pickup.OtpHash!))
                 throw new Exception("Invalid OTP");
 
             pickup.IsOtpVerified = true;
-            pickup.Status = PickupStatus.Verified;
+            pickup.Status = PickupStatus.VehiclePicked;
+            
+            // Secure Cleanup
+            pickup.OtpHash = null;
+            pickup.OwnerSubmittedOtp = null;
+            pickup.OtpExpiry = null;
 
             await _pickupRepo.UpdateAsync(pickup);
 
-            return "OTP verified";
+            return GD1.Application.Common.BaseResponse<string>.Ok("Handover verified successfully. You may now start the ride to the lot.");
         }
     }
 }

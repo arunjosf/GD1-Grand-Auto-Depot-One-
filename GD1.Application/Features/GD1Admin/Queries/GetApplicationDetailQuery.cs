@@ -45,6 +45,8 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 PostalCode = app.PostalCode,
                 Latitude = app.Latitude,
                 Longitude = app.Longitude,
+                OemCertificateUrl = app.OemCertificateUrl,
+                SupportedBrand = app.SupportedBrand,
                 Status = app.Status ?? FranchiseStatus.Pending,
                 IsAiVerified = app.IsAiVerified,
                 AdminNotes = app.AdminNotes,

@@ -19,7 +19,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public string State { get; set; } = string.Empty;
         public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public bool IsAiVerified { get; set; }
-        public string ApplicationType { get; set; } = string.Empty;
+        public GD1.Domain.Entities.Enums.ApplicationType ApplicationType { get; set; }
         public DateTime CreatedAt { get; set; }
         
         public int SlotCount { get; set; }

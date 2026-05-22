@@ -16,41 +16,102 @@ namespace GD1.Infrastructure.Repositories
             _db = db;
         }
 
-        public async Task<IEnumerable<AssignedPickupDto>> GetAssignedPickupsAsync(long managerId)
+        public async Task<IEnumerable<PickupRequestDto>> GetPropertyPickupsAsync(long propertyId, long? managerId)
         {
-            const string sql = @"
+            var sql = @"
                 SELECT 
                     pr.Id AS PickupRequestId,
                     pr.BookingId,
                     pr.RequestedPickupTime,
-                    CASE pr.Status
-                        WHEN 0 THEN 'Requested'
-                        WHEN 1 THEN 'Assigned'
-                        WHEN 2 THEN 'ManagerScheduled'
-                        WHEN 3 THEN 'Approved'
-                        WHEN 4 THEN 'OtpSent'
-                        WHEN 5 THEN 'Verified'
-                        WHEN 6 THEN 'VehiclePicked'
-                        ELSE 'Unknown'
-                    END AS Status,
-                    v.Brand AS VehicleBrand,
-                    v.Model AS VehicleModel,
+                    pr.Id as PickupRequestId,
+                    b.Id as BookingId,
+                    pr.RequestedPickupTime,
+                    pr.Status,
+                    pr.OwnerSubmittedOtp,
+                    v.Brand as VehicleBrand,
+                    v.Model as VehicleModel,
                     v.RegistrationNo,
-                    u.FullName AS CustomerName,
-                    u.Email AS CustomerEmail,
-                    u.PhoneNumber AS CustomerPhone,
+                    o.FullName as CustomerName,
+                    o.Email as CustomerEmail,
+                    o.PhoneNumber as CustomerPhone,
                     b.PickupAddress,
                     b.PickupPincode,
                     b.PickupLatitude,
-                    b.PickupLongitude
+                    b.PickupLongitude,
+                    pv_pickup.FrontImageUrl,
+                    pv_pickup.RearImageUrl,
+                    pv_pickup.LeftSideImageUrl,
+                    pv_pickup.RightSideImageUrl,
+                    pv_pickup.SelfieUrl,
+                    pv_pickup.InteriorImageUrl,
+                    pv_pickup.OdometerImageUrl,
+                    pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
+                    pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
+                    pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
+                    pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
+                    pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
+                    pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
                 FROM PickupRequests pr
                 INNER JOIN Bookings b ON pr.BookingId = b.Id
                 INNER JOIN Vehicles v ON b.VehicleId = v.Id
-                INNER JOIN Users u ON b.OwnerId = u.Id
-                WHERE pr.ManagerId = @ManagerId
+                INNER JOIN Users o ON b.OwnerId = o.Id
+                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
+                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                WHERE b.PropertyId = @PropertyId";
+
+            if (managerId.HasValue)
+            {
+                sql += " AND pr.ManagerId = @ManagerId";
+            }
+
+            sql += " ORDER BY pr.RequestedPickupTime ASC";
+
+            return await _db.QueryAsync<PickupRequestDto>(sql, new { PropertyId = propertyId, ManagerId = managerId });
+        }
+
+        public async Task<IEnumerable<PickupRequestDto>> GetMyAssignmentsAsync(long managerUserId)
+        {
+            var sql = @"
+                SELECT 
+                    pr.Id as PickupRequestId,
+                    b.Id as BookingId,
+                    pr.RequestedPickupTime,
+                    pr.Status,
+                    pr.OwnerSubmittedOtp,
+                    v.Brand as VehicleBrand,
+                    v.Model as VehicleModel,
+                    v.RegistrationNo,
+                    o.FullName as CustomerName,
+                    o.Email as CustomerEmail,
+                    o.PhoneNumber as CustomerPhone,
+                    b.PickupAddress,
+                    b.PickupPincode,
+                    b.PickupLatitude,
+                    b.PickupLongitude,
+                    pv_pickup.FrontImageUrl,
+                    pv_pickup.RearImageUrl,
+                    pv_pickup.LeftSideImageUrl,
+                    pv_pickup.RightSideImageUrl,
+                    pv_pickup.SelfieUrl,
+                    pv_pickup.InteriorImageUrl,
+                    pv_pickup.OdometerImageUrl,
+                    pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
+                    pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
+                    pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
+                    pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
+                    pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
+                    pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                FROM PickupRequests pr
+                INNER JOIN Bookings b ON pr.BookingId = b.Id
+                INNER JOIN Vehicles v ON b.VehicleId = v.Id
+                INNER JOIN Users o ON b.OwnerId = o.Id
+                INNER JOIN LotManagers lm ON pr.ManagerId = lm.Id
+                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
+                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                WHERE lm.ManagerId = @ManagerUserId AND pr.Status != 9
                 ORDER BY pr.RequestedPickupTime ASC";
 
-            return await _db.QueryAsync<AssignedPickupDto>(sql, new { ManagerId = managerId });
+            return await _db.QueryAsync<PickupRequestDto>(sql, new { ManagerUserId = managerUserId });
         }
     }
 }

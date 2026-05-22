@@ -27,6 +27,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
         public bool? HasFireSafety { get; set; }
         
         public bool Recommend { get; set; }
+        public GD1.Domain.Entities.Enums.UserRole UserRole { get; set; }
     }
 
     public class GetAllStoragePropertyQueryHandler : IRequestHandler<GetAllStoragePropertyQuery, BaseResponse<IEnumerable<StoragePropertyListDto>>>
@@ -44,6 +45,25 @@ namespace GD1.Application.Features.GD1Admin.Queries
 
         public async Task<BaseResponse<IEnumerable<StoragePropertyListDto>>> Handle(GetAllStoragePropertyQuery query, CancellationToken ct)
         {
+            bool isAdmin = query.UserRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin || query.UserRole == GD1.Domain.Entities.Enums.UserRole.Manager;
+
+            if (!isAdmin)
+            {
+                if (string.IsNullOrWhiteSpace(query.City))
+                    return BaseResponse<IEnumerable<StoragePropertyListDto>>.Fail("City is a required field to find partnered lots.");
+                
+                if (!query.VehicleId.HasValue || query.VehicleId <= 0)
+                    return BaseResponse<IEnumerable<StoragePropertyListDto>>.Fail("Vehicle ID is a required field to find partnered lots with compatible dimensions.");
+            }
+
+            GD1.Domain.Entities.Vehicle? vehicle = null;
+            if (query.VehicleId.HasValue)
+            {
+                vehicle = await _vehicleRepo.GetByIdAsync(query.VehicleId.Value);
+                if (vehicle == null && !isAdmin)
+                    return BaseResponse<IEnumerable<StoragePropertyListDto>>.Fail("Vehicle not found.");
+            }
+
             var properties = await _propertyRepo.FindAsync(p => 
                 p.Status == "Active" &&
                 (string.IsNullOrEmpty(query.City) || p.City.ToLower() == query.City.ToLower()) && 
@@ -51,19 +71,14 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
                 (!query.HasCCTV.HasValue || p.HasCCTV == query.HasCCTV.Value) &&
                 (!query.HasSecurity.HasValue || p.HasSecurity == query.HasSecurity.Value) &&
-                (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots");
-
-            GD1.Domain.Entities.Vehicle? vehicle = null;
-            if (query.VehicleId.HasValue)
-            {
-                vehicle = await _vehicleRepo.GetByIdAsync(query.VehicleId.Value);
-            }
+                (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots", "LotOwner");
 
             var resultDtos = new List<StoragePropertyListDto>();
 
             foreach (var prop in properties)
             {
                 var availableSlots = prop.Slots.Where(s => !s.IsOccupied);
+                
                 bool hasCompatibleSlots = true;
 
                 if (vehicle != null)
@@ -74,17 +89,15 @@ namespace GD1.Application.Features.GD1Admin.Queries
                     var compSlots = availableSlots.Where(s => 
                         s.SquareFeet >= vehicleArea && 
                         s.HeightFeet >= vehicleHeight);
-                        
+
+                    // STRICT FILTER: Only consider compatible slots
+                    availableSlots = compSlots;
                     hasCompatibleSlots = compSlots.Any();
-                    
-                    if (query.Recommend)
-                    {
-                        availableSlots = compSlots;
-                    }
                 }
 
-                // If Recommend is false, we still show the property even if it doesn't have compatible slots.
-                if (availableSlots.Any() || (vehicle == null && string.IsNullOrEmpty(query.City)) || (!query.Recommend))
+                // If Admin, hasCompatibleSlots defaults to true and availableSlots is just unoccupied slots
+                // Only show properties that have AT LEAST ONE compatible slot (or if Admin without vehicle filter, at least one unoccupied slot or even empty lot if desired. Actually, show if any available)
+                if (hasCompatibleSlots && (availableSlots.Any() || isAdmin))
                 {
                     double distanceKm = 0;
                     bool isPickupAvailable = false;
@@ -118,7 +131,8 @@ namespace GD1.Application.Features.GD1Admin.Queries
                         HasCompatibleSlots = hasCompatibleSlots,
                         ContactInfo = new LotContactDto
                         {
-                            AddressLine = prop.AddressLine
+                            AddressLine = prop.AddressLine,
+                            OwnerPhone = prop.LotOwner?.PhoneNumber
                         },
                         PropertyDetails = new LotPropertyDetailDto
                         {

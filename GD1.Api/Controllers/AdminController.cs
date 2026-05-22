@@ -27,19 +27,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("agents/pending-login-requests")]
-        public async Task<IActionResult> GetPendingRequests()
-        {
-            var result = await _mediator.Send(new GetPendingAgentsQuery());
-            return Ok(result);
-        }
-
-        [HttpPost("agents/login-access")]
-        public async Task<IActionResult> ReviewAgentAccess([FromBody] ReviewAgentRequestCommand command)
-        {
-            var result = await _mediator.Send(command);
-            return Ok(result);
-        }
 
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers([FromQuery] UserFilterRole? role, [FromQuery] string? search)
@@ -48,12 +35,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("users/{id}/toggle-block-or-unblock")]
-        public async Task<IActionResult> ToggleUserStatus(long id)
-        {
-            var result = await _mediator.Send(new ToggleUserStatusCommand { UserId = id });
-            return Ok(result);
-        }
 
 
         [HttpGet("franchise/applications")]
@@ -73,6 +54,33 @@ namespace GD1.Api.Controllers
         public async Task<IActionResult> GetApplicationDetail(long id)
         {
             var result = await _mediator.Send(new GetApplicationDetailQuery { Id = id });
+            return Ok(result);
+        }
+
+        [HttpGet("service-centers/applications")]
+        public async Task<IActionResult> GetAllServiceCenters([FromQuery] long? id, [FromQuery] string? status, [FromQuery] string? search, [FromQuery] string? sortBy = "CreatedAt", [FromQuery] bool descending = true)
+        {
+            var result = await _mediator.Send(new GetAllServiceCenterApplicationsQuery
+            {
+                Id = id,
+                Status = status,
+                SearchTerm = search,
+                SortBy = sortBy,
+                Descending = descending
+            });
+            return Ok(result);
+        }
+
+        [HttpPost("service-centers/{id}/update-status")]
+        public async Task<IActionResult> UpdateServiceCenterStatus(long id, [FromForm] UpdateSCStatusRequest req)
+        {
+            var result = await _mediator.Send(new UpdateServiceCenterStatusCommand
+            {
+                Id = id,
+                Decision = req.Decision,
+                AdminNotes = req.AdminNotes,
+                AdminId = GetUserId()
+            });
             return Ok(result);
         }
 
@@ -131,6 +139,9 @@ namespace GD1.Api.Controllers
                 ?? throw new UnauthorizedAccessException("User not found in token.");
             return long.Parse(value);
         }
+
+        private bool IsLotOwner() =>
+            User.IsInRole("LotOwner");
     }
 
     public class AssignAgentRequest
@@ -146,6 +157,11 @@ namespace GD1.Api.Controllers
         public string? AdminNotes { get; set; }
     }
 
+    public class UpdateSCStatusRequest
+    {
+        public GD1.Domain.Entities.Enums.ApplicationReviewDecision Decision { get; set; }
+        public string? AdminNotes { get; set; }
+    }
 
     public class CancelAssignmentRequest
     {

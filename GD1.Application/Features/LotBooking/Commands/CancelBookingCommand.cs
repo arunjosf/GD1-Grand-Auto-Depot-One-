@@ -21,14 +21,14 @@ namespace GD1.Application.Features.LotBooking.Commands
         private readonly IGenericRepository<Booking> _bookingRepo;
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<User> _userRepo;
-        private readonly IGenericRepository<LotManager> _managerRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _managerRepo;
         private readonly IEmailService _emailService;
 
         public CancelBookingCommandHandler(
             IGenericRepository<Booking> bookingRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<User> userRepo,
-            IGenericRepository<LotManager> managerRepo,
+            IGenericRepository<GD1.Domain.Entities.LotManager> managerRepo,
             IEmailService emailService)
         {
             _bookingRepo = bookingRepo;

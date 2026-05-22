@@ -7,7 +7,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
     public class ApplicationDto
     {
         public long Id { get; set; }
-        public string ApplicationType { get; set; } = string.Empty;
+        public GD1.Domain.Entities.Enums.ApplicationType ApplicationType { get; set; }
         public string BusinessName { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string ContactEmail { get; set; } = string.Empty;
@@ -18,8 +18,10 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string? PostalCode { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public GD1.Domain.Entities.Enums.FranchiseStatus? Status { get; set; }
 
-        public FranchiseStatus? Status { get; set; }
+        public string? OemCertificateUrl { get; set; }
+        public string? SupportedBrand { get; set; }
         public bool IsAiVerified { get; set; }
         public string? AdminNotes { get; set; }
         public decimal ApplicationFee { get; set; }
@@ -45,7 +47,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
     public class UserApplicationDto
     {
         public long Id { get; set; }
-        public string ApplicationType { get; set; } = string.Empty;
+        public GD1.Domain.Entities.Enums.ApplicationType ApplicationType { get; set; }
         public string BusinessName { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string ContactEmail { get; set; } = string.Empty;

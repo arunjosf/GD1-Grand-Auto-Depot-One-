@@ -17,14 +17,15 @@ namespace GD1.Application.Features.Vehicle.Commands
         public long UserId { get; set; }
         public UserRole UserRole { get; set; }
         
-        public string Brand { get; set; } = string.Empty;
-        public string Model { get; set; } = string.Empty;
-        public int Year { get; set; }
-        public string RegistrationNo { get; set; } = string.Empty;
+        public string? Brand { get; set; }
+        public string? Model { get; set; }
+        public int? Year { get; set; }
+        public string? RegistrationNo { get; set; }
         public string? Color { get; set; }
         public string? FuelType { get; set; }
-        public string VehicleType { get; set; } = string.Empty;
-        public string? DocumentUrls { get; set; }
+        public string? VehicleType { get; set; }
+        public string? OwnerIdProofUrl { get; set; }
+        public string? VehicleRcUrl { get; set; }
     }
 
     public class EditVehicleCommandHandler : IRequestHandler<EditVehicleCommand, BaseResponse<string>>
@@ -68,19 +69,23 @@ namespace GD1.Application.Features.Vehicle.Commands
                 Console.WriteLine($"[NOTIFICATION] Vehicle {vehicle.RegistrationNo} details were updated by Property Owner.");
             }
 
-            vehicle.Brand = cmd.Brand;
-            vehicle.Model = cmd.Model;
-            vehicle.Year = cmd.Year;
-            vehicle.RegistrationNo = cmd.RegistrationNo;
-            vehicle.Color = cmd.Color;
-            vehicle.FuelType = cmd.FuelType;
-            vehicle.VehicleType = cmd.VehicleType;
+            if (!string.IsNullOrEmpty(cmd.Brand)) vehicle.Brand = cmd.Brand;
+            if (!string.IsNullOrEmpty(cmd.Model)) vehicle.Model = cmd.Model;
+            if (cmd.Year.HasValue) vehicle.Year = cmd.Year.Value;
+            if (!string.IsNullOrEmpty(cmd.RegistrationNo)) vehicle.RegistrationNo = cmd.RegistrationNo;
+            if (!string.IsNullOrEmpty(cmd.Color)) vehicle.Color = cmd.Color;
+            if (!string.IsNullOrEmpty(cmd.FuelType)) vehicle.FuelType = cmd.FuelType;
+            if (!string.IsNullOrEmpty(cmd.VehicleType)) vehicle.VehicleType = cmd.VehicleType;
+            if (!string.IsNullOrEmpty(cmd.OwnerIdProofUrl)) vehicle.OwnerIdProofUrl = cmd.OwnerIdProofUrl;
+            if (!string.IsNullOrEmpty(cmd.VehicleRcUrl)) vehicle.VehicleRcUrl = cmd.VehicleRcUrl;
             
-            var dims = await _vehicleService.GetDimensionsAsync(cmd.Brand, cmd.Model, cmd.VehicleType);
-            vehicle.LengthFeet = dims.Length;
-            vehicle.WidthFeet = dims.Width;
-            vehicle.HeightFeet = dims.Height;
-            vehicle.DocumentUrls = cmd.DocumentUrls;
+            if (!string.IsNullOrEmpty(cmd.Brand) || !string.IsNullOrEmpty(cmd.Model) || !string.IsNullOrEmpty(cmd.VehicleType))
+            {
+                var dims = await _vehicleService.GetDimensionsAsync(vehicle.Brand, vehicle.Model, vehicle.VehicleType);
+                vehicle.LengthFeet = dims.Length;
+                vehicle.WidthFeet = dims.Width;
+                vehicle.HeightFeet = dims.Height;
+            }
 
             await _vehicleRepo.UpdateAsync(vehicle);
 

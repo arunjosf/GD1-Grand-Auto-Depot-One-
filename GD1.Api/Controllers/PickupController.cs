@@ -25,42 +25,45 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("managers")]
+        [HttpGet("lot-owner/requests{propertyId}")]
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner")]
-        public async Task<IActionResult> GetManagers()
+        public async Task<IActionResult> GetPropertyPickups(long propertyId)
         {
-            var value = User.FindFirst("userId")?.Value ?? "0";
-            var result = await _mediator.Send(new GetMyManagersQuery { PropertyOwnerId = long.Parse(value) });
+            var result = await _mediator.Send(new GetPropertyPickupsQuery 
+            { 
+                PropertyId = propertyId,
+                ManagerId = null
+            });
             return Ok(result);
         }
 
-        [HttpGet("assigned")]
-        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Manager")]
-        public async Task<IActionResult> GetAssignedPickups()
-        {
-            var value = User.FindFirst("userId")?.Value ?? "0";
-            var result = await _mediator.Send(new GetAssignedPickupsQuery { ManagerId = long.Parse(value) });
-            return Ok(result);
-        }
-
-        [HttpPost("assign")]
+        [HttpPost("lot-owner/assign-manager")]
         public async Task<IActionResult> Assign(AssignManagerCommand cmd)
         => Ok(await _mediator.Send(cmd));
 
-        [HttpPost("approve")]
-        public async Task<IActionResult> Approve(ApprovePickupCommand cmd)
+
+        [HttpPost("Manager-arrived/pickup-submission")]
+        public async Task<IActionResult> SubmitConditionReport(SubmitConditionReportCommand cmd)
             => Ok(await _mediator.Send(cmd));
 
-        [HttpPost("send-otp")]
-        public async Task<IActionResult> SendOtp(SendOtpCommand cmd)
+        [HttpPost("Manager-arrived/lot-submission")]
+        public async Task<IActionResult> SubmitLotArrivalReport(SubmitLotArrivalConditionCommand cmd)
             => Ok(await _mediator.Send(cmd));
 
-        [HttpPost("verify-otp")]
+        [HttpPost("vehicle-owner/submit-otp")]
+        public async Task<IActionResult> SubmitOwnerOtp(SubmitOwnerOtpCommand cmd)
+            => Ok(await _mediator.Send(cmd));
+
+        [HttpPost("manager/verify-otp")]
         public async Task<IActionResult> VerifyOtp(VerifyOtpCommand cmd)
             => Ok(await _mediator.Send(cmd));
 
-        [HttpPost("complete")]
-        public async Task<IActionResult> Complete(CompletePickupCommand cmd)
+        [HttpPost("manager/start-pickup-ride")]
+        public async Task<IActionResult> StartRide(StartRideCommand cmd)
             => Ok(await _mediator.Send(cmd));
+
+
+
+
     }
 }

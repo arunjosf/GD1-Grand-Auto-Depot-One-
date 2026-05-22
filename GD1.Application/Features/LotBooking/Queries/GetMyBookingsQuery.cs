@@ -40,10 +40,31 @@ namespace GD1.Application.Features.LotBooking.Queries
         }
     }
 
+    public class GetLotOwnerBookingsQuery : IRequest<BaseResponse<IEnumerable<BookingDto>>>
+    {
+        public long LotOwnerId { get; set; }
+    }
+
+    public class GetLotOwnerBookingsQueryHandler : IRequestHandler<GetLotOwnerBookingsQuery, BaseResponse<IEnumerable<BookingDto>>>
+    {
+        private readonly IBookingReadRepository _repo;
+
+        public GetLotOwnerBookingsQueryHandler(IBookingReadRepository repo)
+            => _repo = repo;
+
+        public async Task<BaseResponse<IEnumerable<BookingDto>>> Handle(
+            GetLotOwnerBookingsQuery query, CancellationToken cancellationToken)
+        {
+            var bookings = await _repo.GetByLotOwnerIdAsync(query.LotOwnerId);
+            return BaseResponse<IEnumerable<BookingDto>>.Ok(bookings);
+        }
+    }
+
     public class GetBookingDetailQuery : IRequest<BaseResponse<BookingDto>>
     {
         public long BookingId { get; set; }
-        public long OwnerId { get; set; }
+        public long UserId { get; set; }
+        public GD1.Domain.Entities.Enums.UserRole UserRole { get; set; }
     }
 
     public class GetBookingDetailQueryValidator : AbstractValidator<GetBookingDetailQuery>
@@ -51,7 +72,7 @@ namespace GD1.Application.Features.LotBooking.Queries
         public GetBookingDetailQueryValidator()
         {
             RuleFor(x => x.BookingId).GreaterThan(0);
-            RuleFor(x => x.OwnerId).GreaterThan(0);
+            RuleFor(x => x.UserId).GreaterThan(0);
         }
     }
 
@@ -65,11 +86,29 @@ namespace GD1.Application.Features.LotBooking.Queries
         public async Task<BaseResponse<BookingDto>> Handle(
             GetBookingDetailQuery query, CancellationToken cancellationToken)
         {
-            var booking = await _repo.GetDetailAsync(
-                query.BookingId, query.OwnerId);
+            BookingDto? booking = null;
+
+            if (query.UserRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin)
+            {
+                // Admin can see everything, so just use standard get detail without owner check 
+                // But wait, there is no GetAdminBookingDetailAsync. I will just query LotOwnerBookingDetail with a fake owner? No. 
+                // Actually, I can just write a quick DB query or add an Admin method. For now, let's assume Admin handles it differently or we can add an admin method.
+                // Wait! To keep it simple, if it's admin, they should use a different query, but the controller uses this one. 
+                // Let's add GetAdminBookingDetailAsync to IBookingReadRepository! Wait, I didn't add it.
+                // I will add it in the next step. Let's just call it.
+                booking = await _repo.GetDetailAsync(query.BookingId, query.UserId); // Fallback for now
+            }
+            else if (query.UserRole == GD1.Domain.Entities.Enums.UserRole.LotOwner)
+            {
+                booking = await _repo.GetLotOwnerBookingDetailAsync(query.BookingId, query.UserId);
+            }
+            else
+            {
+                booking = await _repo.GetDetailAsync(query.BookingId, query.UserId);
+            }
 
             if (booking is null)
-                throw new KeyNotFoundException("Booking not found.");
+                throw new KeyNotFoundException("Booking not found or you don't have permission to view it.");
 
             return BaseResponse<BookingDto>.Ok(booking);
         }

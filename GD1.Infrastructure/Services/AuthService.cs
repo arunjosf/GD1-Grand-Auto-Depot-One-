@@ -320,16 +320,132 @@ namespace GD1.Infrastructure.Services
             }
         }
 
+        public async Task<string> SendPasswordResetOtpAsync(string email)
+        {
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email == email.ToLower().Trim());
+
+            // Always return a generic message to prevent user enumeration
+            if (user is null)
+            {
+                _logger.LogWarning("Password reset OTP requested for unknown email {Email}.", email);
+                return "If an account with this email exists, a reset OTP has been sent.";
+            }
+
+            if (!user.IsActive)
+                throw new UnauthorizedAccessException("Account is deactivated.");
+
+            try
+            {
+                var plainOtp = new Random().Next(100000, 999999).ToString();
+                user.EmailOtp = BCrypt.Net.BCrypt.HashPassword(plainOtp);
+                user.EmailOtpExpiry = DateTime.UtcNow.AddMinutes(10);
+                await _db.SaveChangesAsync();
+
+                var subject = "GD1 — Password Reset OTP";
+                var body = $@"
+<!DOCTYPE html>
+<html>
+<body style='font-family: Arial, sans-serif; background:#f5f5f5; padding:30px;'>
+  <div style='max-width:480px; margin:auto; background:white; border-radius:8px;
+              padding:40px; box-shadow:0 2px 8px rgba(0,0,0,0.1);'>
+    <h2 style='color:#1a1a1a; margin-bottom:4px;'>GD1</h2>
+    <p style='color:#666; font-size:13px; margin-top:0;'>Grand Auto Depot One</p>
+    <hr style='border:none; border-top:1px solid #eee; margin:24px 0;'>
+    <h3 style='color:#1a1a1a;'>Reset your password</h3>
+    <p style='color:#444; font-size:14px;'>
+      Hi {user.FullName}, use the OTP below to reset your GD1 account password.
+      It is valid for <strong>10 minutes</strong>.
+    </p>
+    <div style='text-align:center; margin:32px 0;'>
+      <div style='display:inline-block; background:#fff4f0; border:1px solid #ffc7b3;
+                  border-radius:8px; padding:16px 40px;'>
+        <span style='font-size:36px; font-weight:bold; letter-spacing:12px;
+                     color:#e05a00;'>{plainOtp}</span>
+      </div>
+    </div>
+    <p style='color:#999; font-size:12px; text-align:center;'>
+      If you did not request a password reset, please ignore this email.
+      Your password will remain unchanged.
+    </p>
+  </div>
+</body>
+</html>";
+
+                await _email.SendAsync(user.Email, subject, body);
+
+                if (_config.GetValue<bool>("Email:UseDevMode"))
+                    return "DEV MODE: Password reset OTP sent to your backend console (terminal).";
+
+                return "If an account with this email exists, a reset OTP has been sent.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Password reset OTP email sending failed for {Email}.", email);
+                throw new Exception($"OTP generated but email sending failed: {ex.Message}.");
+            }
+        }
+
+        public async Task ResetPasswordAsync(string email, string otp, string newPassword)
+        {
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email == email.ToLower().Trim());
+
+            if (user is null)
+                throw new KeyNotFoundException("User not found.");
+
+            if (!user.IsActive)
+                throw new UnauthorizedAccessException("Account is deactivated.");
+
+            if (user.EmailOtp is null || user.EmailOtpExpiry is null)
+                throw new InvalidOperationException("No password reset OTP found. Please request a new one.");
+
+            if (user.EmailOtpExpiry < DateTime.UtcNow)
+                throw new InvalidOperationException("OTP has expired. Please request a new one.");
+
+            var submittedOtp = (otp ?? "").Trim();
+            _logger.LogInformation("Password reset OTP verification attempt for {Email}.", user.Email);
+
+            if (!BCrypt.Net.BCrypt.Verify(submittedOtp, user.EmailOtp))
+            {
+                _logger.LogWarning("Invalid password reset OTP for {Email}.", user.Email);
+                throw new UnauthorizedAccessException("Incorrect OTP.");
+            }
+
+            // Update password and clear OTP
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.EmailOtp = null;
+            user.EmailOtpExpiry = null;
+
+            // Revoke all existing refresh tokens for security
+            var tokens = await _db.RefreshTokens
+                .Where(t => t.UserId == user.Id && !t.IsRevoked)
+                .ToListAsync();
+            foreach (var token in tokens)
+                token.IsRevoked = true;
+
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Password reset successful for {Email}.", user.Email);
+        }
+
         private async Task<AuthResponse> BuildResponseAsync(User user)
         {
-            // Security: Block Agents who are not yet approved by Admin
+            // Block Agents who are not yet approved
             if (user.Role == UserRole.Agent)
             {
                 var agent = await _db.Agents.FirstOrDefaultAsync(a => a.Id == user.Id);
                 if (agent == null || agent.ApprovalStatus != AgentApprovalStatus.Approved)
-                {
                     throw new UnauthorizedAccessException("Your agent account is pending Admin approval. You will be able to login once approved.");
-                }
+            }
+
+            // Block Managers who are not yet approved by their LotOwner
+            if (user.Role == UserRole.Manager)
+            {
+                var hasApproved = await _db.LotManagers
+                    .AnyAsync(m => m.ManagerId == user.Id && m.ApprovalStatus == AgentApprovalStatus.Approved);
+                if (!hasApproved)
+                    throw new UnauthorizedAccessException("Your manager account is pending approval from your lot owner.");
             }
 
             var accessToken = GenerateAccessToken(user);

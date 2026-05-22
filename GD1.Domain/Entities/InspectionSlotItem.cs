@@ -14,7 +14,6 @@ namespace GD1.Domain.Entities
         public bool IsVerified { get; set; }
         public string? ImageUrl { get; set; }
         
-        // Verified dimensions by agent
         public double SquareFeet { get; set; }
         public double HeightFeet { get; set; }
 

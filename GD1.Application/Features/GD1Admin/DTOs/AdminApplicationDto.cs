@@ -8,7 +8,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
     public class AdminApplicationDto
     {
         public long Id { get; set; }
-        public string ApplicationType { get; set; } = string.Empty;
+        public ApplicationType ApplicationType { get; set; }
         public string BusinessName { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string ContactEmail { get; set; } = string.Empty;
@@ -45,6 +45,10 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         // Direct Slots (Garages)
         public List<AdminFranchiseSlotDto> Slots { get; set; } = [];
         public List<InspectionAssignmentDto> Assignments { get; set; } = [];
+
+        // Service Center Specific (Nullable)
+        public string? OemCertificateUrl { get; set; }
+        public string? SupportedBrand { get; set; }
     }
 
     public class AdminAgentSummaryDto

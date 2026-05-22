@@ -28,7 +28,7 @@ namespace GD1.Api.Controllers
             var result = await _mediator.Send(new SubmitApplicationCommand
             {
                 ApplicantId = GetUserId(),
-                ApplicationType = req.ApplicationType,
+                ApplicationType = Enum.TryParse<GD1.Domain.Entities.Enums.ApplicationType>(req.ApplicationType, out var type) ? type : GD1.Domain.Entities.Enums.ApplicationType.Franchise,
                 BusinessName = req.BusinessName,
                 OwnerName = req.OwnerName,
                 ContactEmail = req.ContactEmail,

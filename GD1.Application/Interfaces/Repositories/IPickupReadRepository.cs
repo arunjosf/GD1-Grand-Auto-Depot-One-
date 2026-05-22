@@ -6,6 +6,7 @@ namespace GD1.Application.Interfaces.Repositories
 {
     public interface IPickupReadRepository
     {
-        Task<IEnumerable<AssignedPickupDto>> GetAssignedPickupsAsync(long managerId);
+        Task<IEnumerable<PickupRequestDto>> GetPropertyPickupsAsync(long propertyId, long? managerId);
+        Task<IEnumerable<PickupRequestDto>> GetMyAssignmentsAsync(long managerUserId);
     }
 }

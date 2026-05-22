@@ -16,6 +16,7 @@ namespace GD1.Application.Features.Vehicle.Queries
     public class GetMyVehiclesQuery : IRequest<BaseResponse<IEnumerable<VehicleDto>>>
     {
         public long OwnerId { get; set; }
+        public long? Id { get; set; }
     }
 
     public class GetMyVehiclesQueryValidator : AbstractValidator<GetMyVehiclesQuery>
@@ -36,43 +37,8 @@ namespace GD1.Application.Features.Vehicle.Queries
         public async Task<BaseResponse<IEnumerable<VehicleDto>>> Handle(
             GetMyVehiclesQuery query, CancellationToken cancellationToken)
         {
-            var vehicles = await _repo.GetByOwnerIdAsync(query.OwnerId);
+            var vehicles = await _repo.GetByOwnerIdAsync(query.OwnerId, query.Id);
             return BaseResponse<IEnumerable<VehicleDto>>.Ok(vehicles);
-        }
-    }
-
-    public class GetVehicleDetailQuery : IRequest<BaseResponse<VehicleDto>>
-    {
-        public long VehicleId { get; set; }
-        public long OwnerId { get; set; }
-    }
-
-    public class GetVehicleDetailQueryValidator : AbstractValidator<GetVehicleDetailQuery>
-    {
-        public GetVehicleDetailQueryValidator()
-        {
-            RuleFor(x => x.VehicleId).GreaterThan(0);
-            RuleFor(x => x.OwnerId).GreaterThan(0);
-        }
-    }
-
-    public class GetVehicleDetailQueryHandler : IRequestHandler<GetVehicleDetailQuery, BaseResponse<VehicleDto>>
-    {
-        private readonly IVehicleReadRepository _repo;
-
-        public GetVehicleDetailQueryHandler(IVehicleReadRepository repo)
-            => _repo = repo;
-
-        public async Task<BaseResponse<VehicleDto>> Handle(
-            GetVehicleDetailQuery query, CancellationToken cancellationToken)
-        {
-            var vehicle = await _repo.GetDetailAsync(
-                query.VehicleId, query.OwnerId);
-
-            if (vehicle is null)
-                throw new KeyNotFoundException("Vehicle not found.");
-
-            return BaseResponse<VehicleDto>.Ok(vehicle);
         }
     }
 }

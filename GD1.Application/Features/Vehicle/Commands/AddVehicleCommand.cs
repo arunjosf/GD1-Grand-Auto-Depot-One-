@@ -27,6 +27,8 @@ namespace GD1.Application.Features.Vehicle.Commands
             RuleFor(x => x.Request.Brand).NotEmpty();
             RuleFor(x => x.Request.Model).NotEmpty();
             RuleFor(x => x.Request.RegistrationNo).NotEmpty();
+            RuleFor(x => x.Request.Color).NotEmpty();
+            RuleFor(x => x.Request.FuelType).NotEmpty();
             RuleFor(x => x.Request.OwnerIdProofUrl).NotEmpty().WithMessage("ID Proof is required for AI verification.");
             RuleFor(x => x.Request.VehicleRcUrl).NotEmpty().WithMessage("Vehicle RC is required for AI verification.");
             RuleFor(x => x.Request.Images).NotEmpty();
@@ -66,15 +68,7 @@ namespace GD1.Application.Features.Vehicle.Commands
             if (existingVehicle != null)
                 return BaseResponse<long>.Fail("A vehicle with this registration number already exists in our system.");
 
-            // 2. Mandatory Image Check (Front, Rear, Left, Right)
-            var labels = req.Images.Select(i => i.Label).ToList();
-            var required = new[] { "Front", "Rear", "LeftSide", "RightSide" };
-            var missing = required.Where(r => !labels.Contains(r)).ToList();
-
-            if (missing.Any())
-                throw new InvalidOperationException($"Missing required images: {string.Join(", ", missing)}");
-
-            // 3. AI Security Verification
+            // 2. AI Security Verification
             var user = await _userRepo.GetByIdAsync(cmd.OwnerId);
             if (user == null) throw new UnauthorizedAccessException("User not found.");
 
@@ -89,7 +83,7 @@ namespace GD1.Application.Features.Vehicle.Commands
                 isAiVerified = false;
             }
 
-            // 4. Automatic Dimension Lookup
+            // 3. Automatic Dimension Lookup
             var dims = await _vehicleService.GetDimensionsAsync(req.Brand, req.Model, req.VehicleType);
 
             // 4. Create Vehicle Entity
@@ -102,6 +96,7 @@ namespace GD1.Application.Features.Vehicle.Commands
                 RegistrationNo = req.RegistrationNo.ToUpper().Trim(),
                 Color = req.Color,
                 FuelType = req.FuelType,
+                IsHybrid = req.IsHybrid,
                 VehicleType = req.VehicleType,
                 
                 // Automatic dimensions
@@ -123,8 +118,7 @@ namespace GD1.Application.Features.Vehicle.Commands
                 {
                     Label = img.Label,
                     ImageUrl = img.ImageUrl,
-                    UploadedBy = "Owner",
-                    Remark = img.Remark
+                    UploadedBy = "Owner"
                 });
             }
 

@@ -16,7 +16,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
     public class SubmitApplicationCommand : IRequest<BaseResponse<long>>
     {
         public long ApplicantId { get; set; }
-        public string ApplicationType { get; set; } = string.Empty;
+        public GD1.Domain.Entities.Enums.ApplicationType ApplicationType { get; set; } = GD1.Domain.Entities.Enums.ApplicationType.Franchise;
         public string BusinessName { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string ContactEmail { get; set; } = string.Empty;

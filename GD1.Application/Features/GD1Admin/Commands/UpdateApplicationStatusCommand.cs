@@ -28,6 +28,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
         private readonly IGenericRepository<User> _userRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenter> _scRepo;
 
         public UpdateApplicationStatusCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> repo,
@@ -35,7 +36,8 @@ namespace GD1.Application.Features.GD1Admin.Commands
             IGenericRepository<InspectionReport> reportRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<VehicleStorageSlot> slotRepo,
-            IGenericRepository<User> userRepo)
+            IGenericRepository<User> userRepo,
+            IGenericRepository<GD1.Domain.Entities.ServiceCenter> scRepo)
         {
             _repo = repo;
             _assignRepo = assignRepo;
@@ -43,6 +45,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             _propertyRepo = propertyRepo;
             _slotRepo = slotRepo;
             _userRepo = userRepo;
+            _scRepo = scRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(UpdateApplicationStatusCommand cmd, CancellationToken ct)
@@ -61,54 +64,94 @@ namespace GD1.Application.Features.GD1Admin.Commands
                 if (!assignments.Any())
                     return BaseResponse<string>.Fail("Cannot approve without a completed inspection.");
 
-                // 1. Create Property
-                var storageProperty = new VehicleStorageProperty
+                if (app.ApplicationType == ApplicationType.ServiceCenter)
                 {
-                    LotOwnerId = app.ApplicantId,
-                    LotCode = $"GD1-{app.State[..2].ToUpper()}-{app.Id:D4}",
-                    Name = app.BusinessName,
-                    Description = $"{app.ApplicationType} Private Garage Property",
-                    AddressLine = app.AddressLine,
-                    City = app.City,
-                    State = app.State,
-                    Country = app.Country,
-                    Latitude = app.Latitude,
-                    Longitude = app.Longitude,
-                    Status = "Active",
-                    HasCCTV = app.HasCCTV,
-                    HasSecurity = app.HasSecurity,
-                    HasFireSafety = app.HasFireSafety,
-                    HasWorkshopBay = app.HasWorkshop,
-                    HasWashingArea = app.HasWashingArea,
-                    PricePerDay = 600,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await _propertyRepo.AddAsync(storageProperty);
-
-                // 2. Create Slots from Application (Assuming dimensions are verified or fallback)
-                // In a production app, we'd check the inspection report for verified dimensions.
-                foreach (var s in app.Slots)
-                {
-                    await _slotRepo.AddAsync(new VehicleStorageSlot
+                    // Provision Service Center
+                    var sc = new GD1.Domain.Entities.ServiceCenter
                     {
-                        PropertyId = storageProperty.Id,
-                        SlotNumber = s.SlotNumber,
-                        SlotType = "Private Garage",
-                        IsOccupied = false,
-                        SquareFeet = s.SquareFeet,
-                        HeightFeet = s.HeightFeet,
-                        ImageUrl = s.ImageUrl,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
+                        AdminId = app.ApplicantId,
+                        Name = app.BusinessName,
+                        PhoneNumber = app.PhoneNumber,
+                        AddressLine = app.AddressLine,
+                        City = app.City,
+                        State = app.State,
+                        Email = app.ContactEmail,
+                        Latitude = app.Latitude,
+                        Longitude = app.Longitude,
+                        OemCertificateUrl = app.OemCertificateUrl,
+                        SupportedBrand = app.SupportedBrand,
+                        IsActive = true
+                    };
+                    await _scRepo.AddAsync(sc);
 
-                // Promote Role
-                var user = await _userRepo.GetByIdAsync(app.ApplicantId);
-                if (user != null && user.Role == UserRole.VehicleOwner)
+                    // Promote Role
+                    var user = await _userRepo.GetByIdAsync(app.ApplicantId);
+                    if (user != null)
+                    {
+                        if (user.Role == UserRole.VehicleOwner || user.Role == UserRole.Agent)
+                            user.Role = UserRole.ServiceCenter;
+                        
+                        if (string.IsNullOrEmpty(user.PhoneNumber))
+                            user.PhoneNumber = app.PhoneNumber;
+
+                        await _userRepo.UpdateAsync(user);
+                    }
+                }
+                else
                 {
-                    user.Role = UserRole.LotOwner;
-                    await _userRepo.UpdateAsync(user);
+                    // 1. Create Property (Franchise)
+                    var storageProperty = new VehicleStorageProperty
+                    {
+                        LotOwnerId = app.ApplicantId,
+                        LotCode = $"GD1-{app.State[..2].ToUpper()}-{app.Id:D4}",
+                        Name = app.BusinessName,
+                        Description = $"{app.ApplicationType} Private Garage Property",
+                        AddressLine = app.AddressLine,
+                        City = app.City,
+                        State = app.State,
+                        Country = app.Country,
+                        Latitude = app.Latitude,
+                        Longitude = app.Longitude,
+                        Status = "Active",
+                        HasCCTV = app.HasCCTV,
+                        HasSecurity = app.HasSecurity,
+                        HasFireSafety = app.HasFireSafety,
+                        HasWorkshopBay = app.HasWorkshop,
+                        HasWashingArea = app.HasWashingArea,
+                        PricePerDay = 600,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _propertyRepo.AddAsync(storageProperty);
+
+                    // 2. Create Slots from Application
+                    foreach (var s in app.Slots)
+                    {
+                        await _slotRepo.AddAsync(new VehicleStorageSlot
+                        {
+                            PropertyId = storageProperty.Id,
+                            SlotNumber = s.SlotNumber,
+                            SlotType = "Private Garage",
+                            IsOccupied = false,
+                            SquareFeet = s.SquareFeet,
+                            HeightFeet = s.HeightFeet,
+                            ImageUrl = s.ImageUrl,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+
+                    // Promote Role and Sync Phone Number
+                    var user = await _userRepo.GetByIdAsync(app.ApplicantId);
+                    if (user != null)
+                    {
+                        if (user.Role == UserRole.VehicleOwner)
+                            user.Role = UserRole.LotOwner;
+                        
+                        if (string.IsNullOrEmpty(user.PhoneNumber))
+                            user.PhoneNumber = app.PhoneNumber;
+
+                        await _userRepo.UpdateAsync(user);
+                    }
                 }
             }
 

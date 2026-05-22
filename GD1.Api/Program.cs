@@ -41,6 +41,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Register Dapper Enum Handlers
 SqlMapper.AddTypeHandler(new DapperEnumHandler<FranchiseStatus>());
 SqlMapper.AddTypeHandler(new DapperEnumHandler<InspectionDecision>());
+SqlMapper.AddTypeHandler(new DapperEnumHandler<MaintenanceTaskType>());
+SqlMapper.AddTypeHandler(new DapperEnumHandler<MaintenanceTaskStatus>());
 
 
 
@@ -63,6 +65,7 @@ builder.Services.AddHttpClient<GD1.Application.Interfaces.IGeocodingService, GD1
 builder.Services.AddScoped<GD1.Application.Interfaces.Services.IPdfGeneratorService, GD1.Infrastructure.Services.PdfGeneratorService>();
 builder.Services.AddHostedService<UnverifiedUserCleanupService>();
 builder.Services.AddHostedService<BookingCleanupService>();
+builder.Services.AddHostedService<GD1.Infrastructure.Services.WeeklyMaintenanceService>();
 
 builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(GD1.Application.Features.Auth.Commands.LoginCommand).Assembly);
@@ -142,7 +145,7 @@ builder.Services.AddControllers()
         {
             var errors = context.ModelState.Values
                 .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage.Contains("Path:") ? "Invalid JSON format or value." : e.ErrorMessage)
+                .Select(e => e.Exception?.Message ?? e.ErrorMessage)
                 .ToList();
 
             return new BadRequestObjectResult(GD1.Application.Common.BaseResponse<object>.Fail(string.Join("\n", errors)));
@@ -155,6 +158,7 @@ builder.Services.AddSwaggerGen(opt =>
 {
     opt.SwaggerDoc("v1", new OpenApiInfo { Title = "GD1 API", Version = "v1" });
     opt.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+    opt.SchemaFilter<EditVehicleRequestSchemaFilter>();
 
     opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -203,5 +207,24 @@ app.MapControllers();
 
 app.Run();  
 
-
-
+public class EditVehicleRequestSchemaFilter : Swashbuckle.AspNetCore.SwaggerGen.ISchemaFilter
+{
+    public void Apply(Microsoft.OpenApi.Models.OpenApiSchema schema, Swashbuckle.AspNetCore.SwaggerGen.SchemaFilterContext context)
+    {
+        if (context.Type == typeof(GD1.Application.Features.Vehicle.DTOs.EditVehicleRequest))
+        {
+            schema.Example = new Microsoft.OpenApi.Any.OpenApiObject
+            {
+                ["brand"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["model"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["year"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["registrationNo"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["color"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["fuelType"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["vehicleType"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["ownerIdProofUrl"] = new Microsoft.OpenApi.Any.OpenApiNull(),
+                ["vehicleRcUrl"] = new Microsoft.OpenApi.Any.OpenApiNull()
+            };
+        }
+    }
+}

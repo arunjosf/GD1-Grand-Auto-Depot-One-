@@ -12,16 +12,19 @@ namespace GD1.Application.Features.Vehicle.Commands
 {
     public class AddVehicleImagesCommand : IRequest<BaseResponse<string>>
     {
+        [System.Text.Json.Serialization.JsonIgnore]
         public long VehicleId { get; set; }
-        public long UploadedBy { get; set; }
-        public List<ImageDto> Images { get; set; } = [];
-    }
 
-    public class ImageDto
-    {
-        public string Label { get; set; } = string.Empty;
-        public string ImageUrl { get; set; } = string.Empty;
-        public string? Remark { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public long UploadedBy { get; set; }
+
+        // Specific image labels
+        public string FrontImageUrl { get; set; } = string.Empty;
+        public string RearImageUrl { get; set; } = string.Empty;
+        public string LeftSideImageUrl { get; set; } = string.Empty;
+        public string RightSideImageUrl { get; set; } = string.Empty;
+        public string InteriorImageUrl { get; set; } = string.Empty;
+        public string OdometerImageUrl { get; set; } = string.Empty;
     }
 
     public class AddVehicleImagesCommandHandler : IRequestHandler<AddVehicleImagesCommand, BaseResponse<string>>
@@ -35,17 +38,22 @@ namespace GD1.Application.Features.Vehicle.Commands
 
         public async Task<BaseResponse<string>> Handle(AddVehicleImagesCommand cmd, CancellationToken cancellationToken)
         {
-            foreach (var img in cmd.Images)
+            var labels = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
+            var urls = new[] { cmd.FrontImageUrl, cmd.RearImageUrl, cmd.LeftSideImageUrl, cmd.RightSideImageUrl, cmd.InteriorImageUrl, cmd.OdometerImageUrl };
+
+            for (int i = 0; i < labels.Length; i++)
             {
-                var vehicleImage = new GD1.Domain.Entities.VehicleImage
+                if (!string.IsNullOrEmpty(urls[i]))
                 {
-                    VehicleId = cmd.VehicleId,
-                    UploadedBy = cmd.UploadedBy.ToString(),
-                    Label = img.Label,
-                    ImageUrl = img.ImageUrl,
-                    Remark = img.Remark
-                };
-                await _imageRepo.AddAsync(vehicleImage);
+                    var vehicleImage = new GD1.Domain.Entities.VehicleImage
+                    {
+                        VehicleId = cmd.VehicleId,
+                        UploadedBy = cmd.UploadedBy.ToString(),
+                        Label = labels[i],
+                        ImageUrl = urls[i]
+                    };
+                    await _imageRepo.AddAsync(vehicleImage);
+                }
             }
 
             return BaseResponse<string>.Ok(string.Empty, "Vehicle images uploaded successfully.");

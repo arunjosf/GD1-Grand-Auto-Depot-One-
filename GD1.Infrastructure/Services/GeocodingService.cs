@@ -63,6 +63,29 @@ namespace GD1.Infrastructure.Services
             return null;
         }
 
+        public async Task<int?> GetDrivingDurationSecondsAsync(double startLat, double startLon, double endLat, double endLon)
+        {
+            try
+            {
+                // OSRM format: lon,lat;lon,lat
+                var url = $"http://router.project-osrm.org/route/v1/driving/{startLon},{startLat};{endLon},{endLat}?overview=false";
+                var response = await _httpClient.GetAsync(url);
+                
+                if (!response.IsSuccessStatusCode) return null;
+
+                var data = await response.Content.ReadFromJsonAsync<OsrmResponse>();
+                if (data != null && data.Code == "Ok" && data.Routes.Count > 0)
+                {
+                    return (int)data.Routes[0].Duration;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "OSRM routing error from {StartLat},{StartLon} to {EndLat},{EndLon}", startLat, startLon, endLat, endLon);
+            }
+            return null;
+        }
+
         private class NominatimResponse
         {
             [JsonPropertyName("lat")]
@@ -73,6 +96,21 @@ namespace GD1.Infrastructure.Services
 
             [JsonPropertyName("display_name")]
             public string DisplayName { get; set; } = string.Empty;
+        }
+
+        private class OsrmResponse
+        {
+            [JsonPropertyName("code")]
+            public string Code { get; set; } = string.Empty;
+
+            [JsonPropertyName("routes")]
+            public List<OsrmRoute> Routes { get; set; } = [];
+        }
+
+        private class OsrmRoute
+        {
+            [JsonPropertyName("duration")]
+            public double Duration { get; set; }
         }
     }
 }

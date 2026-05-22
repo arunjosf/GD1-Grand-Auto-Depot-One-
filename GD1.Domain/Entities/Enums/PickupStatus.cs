@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,7 +13,10 @@ namespace GD1.Domain.Entities.Enums
         ManagerScheduled,
         Approved,
         OtpSent,
+        OwnerOtpSubmitted,
         Verified,
-        VehiclePicked
+        VehiclePicked,
+        InTransit,
+        Stored
     }
 }

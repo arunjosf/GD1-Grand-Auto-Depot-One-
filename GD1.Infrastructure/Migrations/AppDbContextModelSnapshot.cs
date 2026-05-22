@@ -470,6 +470,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<double>("Longitude")
                         .HasColumnType("float");
 
+                    b.Property<string>("OemCertificateUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("OwnerIdProofUrl")
                         .HasColumnType("nvarchar(max)");
 
@@ -506,6 +509,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupportedBrand")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -758,8 +764,14 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<long>("AddedBy")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("ApprovalStatus")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("IdProofUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -773,6 +785,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<long>("PropertyId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("SelfieUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -783,6 +798,67 @@ namespace GD1.Infrastructure.Migrations
                     b.HasIndex("PropertyId");
 
                     b.ToTable("LotManagers");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.MaintenanceTask", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BookingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool?>("CarWashCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("DailyStartupsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("ManagerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ManagerRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("TyrePressureChecked")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("VehicleId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("ManagerId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("MaintenanceTasks");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
@@ -905,6 +981,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("OtpHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OwnerSubmittedOtp")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("RequestedPickupTime")
                         .HasColumnType("datetime2");
 
@@ -937,10 +1016,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("EngineBayImageUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("FrontImageUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -965,6 +1040,10 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("ManagerRemarks")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OdometerImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("RearImageUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -975,6 +1054,12 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("RightSideImageUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SelfieUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1143,6 +1228,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<long>("AdminId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<decimal>("AverageRating")
                         .HasColumnType("decimal(18,2)");
 
@@ -1159,6 +1247,10 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
@@ -1182,8 +1274,21 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OemCertificateUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerIdProofUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PostalCode")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("State")
@@ -1194,6 +1299,9 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("SupportedBrand")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1202,6 +1310,127 @@ namespace GD1.Infrastructure.Migrations
                     b.HasIndex("AdminId");
 
                     b.ToTable("ServiceCenters");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterImage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("ApplicationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("ServiceCenterId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.HasIndex("ServiceCenterId");
+
+                    b.ToTable("ServiceCenterImages");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterPartneringApplication", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AddressLine")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("ApplicantId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OemCertificateUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerIdProofUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PostalCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupportedBrand")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ServiceCenterPartneringApplications");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.ServiceRequest", b =>
@@ -1352,6 +1581,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("GoogleId")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("InvitationToken")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1420,6 +1652,9 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("float");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsHybrid")
                         .HasColumnType("bit");
 
                     b.Property<double>("LengthFeet")
@@ -1491,10 +1726,6 @@ namespace GD1.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Label")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Remark")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -1915,7 +2146,7 @@ namespace GD1.Infrastructure.Migrations
                     b.HasOne("GD1.Domain.Entities.User", "Manager")
                         .WithMany()
                         .HasForeignKey("ManagerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("GD1.Domain.Entities.VehicleStorageProperty", "Property")
@@ -1927,6 +2158,33 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Manager");
 
                     b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.MaintenanceTask", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.LotManager", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.Vehicle", "Vehicle")
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Manager");
+
+                    b.Navigation("Vehicle");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
@@ -2037,6 +2295,23 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("ServiceCenterAdmin");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterImage", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.ServiceCenterPartneringApplication", "Application")
+                        .WithMany("Images")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("GD1.Domain.Entities.ServiceCenter", "ServiceCenter")
+                        .WithMany("Images")
+                        .HasForeignKey("ServiceCenterId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Application");
+
+                    b.Navigation("ServiceCenter");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.ServiceRequest", b =>
@@ -2180,9 +2455,16 @@ namespace GD1.Infrastructure.Migrations
 
             modelBuilder.Entity("GD1.Domain.Entities.ServiceCenter", b =>
                 {
+                    b.Navigation("Images");
+
                     b.Navigation("Mechanics");
 
                     b.Navigation("ServiceRequests");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterPartneringApplication", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.User", b =>

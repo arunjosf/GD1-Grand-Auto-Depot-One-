@@ -15,5 +15,8 @@ namespace GD1.Application.Interfaces
         Task<string> SendVerificationOtpAsync(string email);
         Task<AuthResponse> VerifyEmailOtpAsync(VerifyOtpRequest request);
         Task<AuthResponse> CreateAuthResponseAsync(User user);
+
+        Task<string> SendPasswordResetOtpAsync(string email);
+        Task ResetPasswordAsync(string email, string otp, string newPassword);
     }
 }

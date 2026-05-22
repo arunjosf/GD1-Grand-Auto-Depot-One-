@@ -12,7 +12,7 @@ namespace GD1.Domain.Entities
     {
         public long ApplicantId { get; set; }
 
-        public string ApplicationType { get; set; } = string.Empty;
+        public ApplicationType ApplicationType { get; set; } = ApplicationType.Franchise;
         public string BusinessName { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string ContactEmail { get; set; } = string.Empty;
@@ -31,6 +31,10 @@ namespace GD1.Domain.Entities
         public string? LicenseDocumentUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? PropertyProofUrl { get; set; }
+        
+        // Service Center fields
+        public string? OemCertificateUrl { get; set; }
+        public string? SupportedBrand { get; set; }
 
         public decimal PricePerDay { get; set; }
 

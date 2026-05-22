@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,11 +12,9 @@ namespace GD1.Domain.Entities
         public long VehicleId { get; set; }
         public long? EventId { get; set; }
 
-        public string Label { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;
-
-        public string UploadedBy { get; set; } = string.Empty;
-        public string? Remark { get; set; }
+        public string? Label { get; set; } // Front, Rear, Interior, etc.
+        public string UploadedBy { get; set; } = string.Empty; // Agent or Owner
 
         public Vehicle Vehicle { get; set; } = null!;
         public VehicleJourneyEvent? Event { get; set; }

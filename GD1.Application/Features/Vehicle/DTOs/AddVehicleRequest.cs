@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace GD1.Application.Features.Vehicle.DTOs
@@ -19,6 +20,7 @@ namespace GD1.Application.Features.Vehicle.DTOs
 
         [Required]
         [StringLength(20)]
+        [RegularExpression(@"^[a-zA-Z0-9-\s]+$", ErrorMessage = "Registration number can only contain letters, numbers, hyphens, and spaces.")]
         public string RegistrationNo { get; set; } = string.Empty;
 
         [Required]
@@ -27,11 +29,16 @@ namespace GD1.Application.Features.Vehicle.DTOs
         [Required]
         public string VehicleRcUrl { get; set; } = string.Empty;
 
+        [Required]
         [StringLength(50)]
-        public string? Color { get; set; }
+        public string Color { get; set; } = string.Empty;
 
+        [Required]
         [StringLength(50)]
-        public string? FuelType { get; set; }
+        public string FuelType { get; set; } = string.Empty;
+        
+        [DefaultValue(false)]
+        public bool IsHybrid { get; set; } = false;
 
         [Required]
         [StringLength(50)]
@@ -43,15 +50,11 @@ namespace GD1.Application.Features.Vehicle.DTOs
 
     public class VehicleImageRequest
     {
-        [Required]
         [StringLength(100)]
-        public string Label { get; set; } = string.Empty;
+        public string? Label { get; set; }
 
         [Required]
         [Url(ErrorMessage = "Invalid image URL.")]
         public string ImageUrl { get; set; } = string.Empty;
-
-        [StringLength(300)]
-        public string? Remark { get; set; }
     }
 }

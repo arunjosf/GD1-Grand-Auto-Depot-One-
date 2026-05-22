@@ -17,7 +17,7 @@ namespace GD1.Application.Features.Pickup.Commands
         string PickupAddress,
         string? Pincode = null,
         DateTime? RequestedPickupTime = null  // null = ASAP
-    ) : IRequest<long>;
+    ) : IRequest<GD1.Application.Common.BaseResponse<long>>;
 
     public class RequestPickupCommandValidator : AbstractValidator<RequestPickupCommand>
     {
@@ -37,7 +37,7 @@ namespace GD1.Application.Features.Pickup.Commands
     }
 
     public class RequestPickupCommandHandler
-        : IRequestHandler<RequestPickupCommand, long>
+        : IRequestHandler<RequestPickupCommand, GD1.Application.Common.BaseResponse<long>>
     {
         private readonly IGenericRepository<PickupRequest> _pickupRepo;
         private readonly IGenericRepository<Booking> _bookingRepo;
@@ -56,7 +56,7 @@ namespace GD1.Application.Features.Pickup.Commands
             _geocodingService = geocodingService;
         }
 
-        public async Task<long> Handle(RequestPickupCommand request, CancellationToken cancellationToken)
+        public async Task<GD1.Application.Common.BaseResponse<long>> Handle(RequestPickupCommand request, CancellationToken cancellationToken)
         {
             var booking = await _bookingRepo.GetByIdAsync(request.BookingId);
             if (booking == null)
@@ -104,12 +104,13 @@ namespace GD1.Application.Features.Pickup.Commands
             {
                 BookingId = request.BookingId,
                 RequestedPickupTime = request.RequestedPickupTime, // null = ASAP
-                Status = PickupStatus.Requested
+                Status = PickupStatus.Approved, // Auto-approved since it passed 40km validation
+                IsApprovedByLotOwner = true
             };
 
             await _pickupRepo.AddAsync(pickup);
 
-            return pickup.Id;
+            return GD1.Application.Common.BaseResponse<long>.Ok(pickup.Id, "Pickup requested successfully.");
         }
 
         private static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)

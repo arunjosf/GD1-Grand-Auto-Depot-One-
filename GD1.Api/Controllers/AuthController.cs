@@ -1,4 +1,5 @@
 using GD1.Application.Features.Auth.Commands;
+using GD1.Application.Features.Agents.Commands;
 using GD1.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -78,6 +79,33 @@ namespace GD1.Api.Controllers
             var result = await _mediator.Send(
                 new LogoutCommand { RefreshToken = refreshToken ?? "" });
             ClearTokenCookies();
+            return Ok(result);
+        }
+
+
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand cmd)
+        {
+            var result = await _mediator.Send(cmd);
+            return Ok(result);
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand cmd)
+        {
+            var result = await _mediator.Send(cmd);
+            return Ok(result);
+        }
+
+        [HttpPost("onboarding/finalize")]
+        [AllowAnonymous]
+        public async Task<IActionResult> FinalizeOnboarding([FromBody] FinalizeOnboardingCommand cmd)
+        {
+            var result = await _mediator.Send(cmd);
+            if (result.Success && result.Data != null)
+                SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
             return Ok(result);
         }
 

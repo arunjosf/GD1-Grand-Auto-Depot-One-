@@ -12,6 +12,8 @@ namespace GD1.Application.Features.GD1Admin.Commands
     public class ToggleUserStatusCommand : IRequest<BaseResponse<bool>>
     {
         public long UserId { get; set; }
+        /// <summary>Null when called by GD1Admin. Set to LotOwner's UserId when called by LotOwner.</summary>
+        public long? LotOwnerId { get; set; }
     }
 
     public class ToggleUserStatusCommandHandler : IRequestHandler<ToggleUserStatusCommand, BaseResponse<bool>>
@@ -21,19 +23,22 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<Agent> _agentRepo;
         private readonly IGenericRepository<InspectionAssignment> _assignmentRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _lotManagerRepo;
 
         public ToggleUserStatusCommandHandler(
             IGenericRepository<User> userRepo,
             IGenericRepository<Booking> bookingRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<Agent> agentRepo,
-            IGenericRepository<InspectionAssignment> assignmentRepo)
+            IGenericRepository<InspectionAssignment> assignmentRepo,
+            IGenericRepository<GD1.Domain.Entities.LotManager> lotManagerRepo)
         {
             _userRepo = userRepo;
             _bookingRepo = bookingRepo;
             _propertyRepo = propertyRepo;
             _agentRepo = agentRepo;
             _assignmentRepo = assignmentRepo;
+            _lotManagerRepo = lotManagerRepo;
         }
 
         public async Task<BaseResponse<bool>> Handle(ToggleUserStatusCommand req, CancellationToken ct)
@@ -43,6 +48,21 @@ namespace GD1.Application.Features.GD1Admin.Commands
 
             if (user.Role == UserRole.GD1Admin)
                 return BaseResponse<bool>.Fail("Admins cannot be blocked.");
+
+            // LotOwner scope check — can only toggle their own managers
+            if (req.LotOwnerId.HasValue)
+            {
+                if (user.Role != UserRole.Manager)
+                    return BaseResponse<bool>.Fail("As a LotOwner you can only block/unblock your own managers.");
+
+                var ownedProps = await _propertyRepo.FindAsync(p => p.LotOwnerId == req.LotOwnerId.Value);
+                var ownedPropIds = ownedProps.Select(p => p.Id).ToList();
+                var managerRecord = await _lotManagerRepo.FindAsync(
+                    m => m.ManagerId == req.UserId && ownedPropIds.Contains(m.PropertyId));
+
+                if (!managerRecord.Any())
+                    return BaseResponse<bool>.Fail("This user is not a manager of any of your properties.");
+            }
 
             if (user.IsActive)
             {

@@ -5,6 +5,9 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using GD1.Application.Common;
 using System.Threading.Tasks;
 using System;
 
@@ -22,11 +25,7 @@ namespace GD1.Api.Controllers
             _mediator = mediator;
         }
 
-        [HttpGet("debug-claims")]
-        public IActionResult DebugClaims()
-        {
-            return Ok(User.Claims.Select(c => new { c.Type, c.Value }));
-        }
+
 
         [HttpGet("search-vehicle")]
         public async Task<IActionResult> Search([FromQuery] string? model, [FromQuery] string? brand)
@@ -46,7 +45,7 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPut("{id}")]
+        [HttpPatch("{id}/vehicle-owner/Update-vehicle")]
         public async Task<IActionResult> Edit(long id, [FromBody] EditVehicleRequest req)
         {
             var roleIdStr = User.FindFirst("role")?.Value ?? "0";
@@ -64,30 +63,71 @@ namespace GD1.Api.Controllers
                 Color = req.Color,
                 FuelType = req.FuelType,
                 VehicleType = req.VehicleType,
-                DocumentUrls = req.DocumentUrls
+                OwnerIdProofUrl = req.OwnerIdProofUrl,
+                VehicleRcUrl = req.VehicleRcUrl
             };
             var result = await _mediator.Send(cmd);
             return Ok(result);
         }
 
         [HttpGet("my-vehicle")]
-        public async Task<IActionResult> GetMy()
+        public async Task<IActionResult> GetMy([FromQuery] long? id)
         {
             var result = await _mediator.Send(
-                new GetMyVehiclesQuery { OwnerId = GetUserId() });
+                new GetMyVehiclesQuery { OwnerId = GetUserId(), Id = id });
+
+            if (id.HasValue)
+            {
+                if (!result.Success || result.Data == null || !result.Data.Any())
+                    return NotFound(BaseResponse<VehicleDto>.Fail("Vehicle not found."));
+
+                return Ok(BaseResponse<VehicleDto>.Ok(result.Data.First()));
+            }
+
             return Ok(result);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetDetail(long id)
+        [HttpGet("{id}/lot-owner/manager/vehicle-journey")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,LotOwner,Manager")]
+        public async Task<IActionResult> GetJourney(long id, [FromQuery] int? month, [FromQuery] int? year)
         {
-            var result = await _mediator.Send(
-                new GetVehicleDetailQuery { VehicleId = id, OwnerId = GetUserId() });
-            return Ok(result);
+            var roleIdStr = User.FindFirst("role")?.Value ?? "0";
+            var role = (GD1.Domain.Entities.Enums.UserRole)int.Parse(roleIdStr);
+
+            var query = new GetVehicleJourneyQuery 
+            { 
+                VehicleId = id, 
+                Month = month, 
+                Year = year,
+                UserId = GetUserId(),
+                UserRole = role
+            };
+            var response = await _mediator.Send(query);
+            return Ok(response);
         }
 
-        [HttpGet("all")]
-        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,LotOwner,LotManager")]
+        [HttpPost("{id}/vehicle-owner/request-images")]
+        [Authorize(Policy = "VehicleOwner")]
+        public async Task<IActionResult> RequestImages(long id)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdStr) || !long.TryParse(userIdStr, out long ownerId))
+            {
+                return Unauthorized(BaseResponse<string>.Fail("Invalid user token."));
+            }
+
+            var command = new GD1.Application.Features.Vehicle.Commands.RequestMaintenanceCommand
+            {
+                VehicleId = id,
+                OwnerId = ownerId
+            };
+
+            var response = await _mediator.Send(command);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+
+        [HttpGet("admin/lot-owner/manager/all-vehicles")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,LotOwner,Manager")]
         public async Task<IActionResult> GetAll([FromQuery] string? search)
         {
             var roleIdStr = User.FindFirst("role")?.Value ?? "0";
@@ -108,15 +148,7 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("{id}/images")]
-        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner,LotManager")]
-        public async Task<IActionResult> UploadImages(long id, [FromBody] AddVehicleImagesCommand cmd)
-        {
-            cmd.VehicleId = id;
-            cmd.UploadedBy = GetUserId();
-            var result = await _mediator.Send(cmd);
-            return Ok(result);
-        }
+
 
         private long GetUserId()
         {

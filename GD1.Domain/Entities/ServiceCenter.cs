@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +17,8 @@ namespace GD1.Domain.Entities
         public string City { get; set; } = string.Empty;
         public string State { get; set; } = string.Empty;
         public string Country { get; set; } = "India";
+        public string? PostalCode { get; set; }
+        public string District { get; set; } = string.Empty;
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
@@ -27,9 +29,16 @@ namespace GD1.Domain.Entities
         public bool IsVerified { get; set; } = false;
         public bool IsActive { get; set; } = true;
 
-        public User ServiceCenterAdmin { get; set; } = null;
+        public string? OemCertificateUrl { get; set; }
+        public string? SupportedBrand { get; set; }
+        public string OwnerName { get; set; } = string.Empty;
+        public string? OwnerIdProofUrl { get; set; }
+        public string? AdminNotes { get; set; }
+
+        public User ServiceCenterAdmin { get; set; } = null!;
         public ICollection<Mechanics> Mechanics { get; set; } = [];
         public ICollection<ServiceRequest> ServiceRequests { get; set; } = [];
-
+        
+        public ICollection<ServiceCenterImage> Images { get; set; } = [];
     }
 }

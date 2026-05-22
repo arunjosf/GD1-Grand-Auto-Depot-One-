@@ -1,4 +1,4 @@
-﻿using GD1.Application.Features.Vehicle.DTOs;
+using GD1.Application.Features.Vehicle.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,6 @@ namespace GD1.Application.Interfaces.Repositories
 {
     public interface IVehicleReadRepository
     {
-        Task<IEnumerable<VehicleDto>> GetByOwnerIdAsync(long ownerId);
-        Task<VehicleDto?> GetDetailAsync(long vehicleId, long ownerId);
+        Task<IEnumerable<VehicleDto>> GetByOwnerIdAsync(long ownerId, long? vehicleId = null);
     }
 }

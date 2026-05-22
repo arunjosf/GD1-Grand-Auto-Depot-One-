@@ -37,6 +37,9 @@ namespace GD1.Api.Controllers
             [FromQuery] bool? hasFireSafety,
             [FromQuery] bool recommend = false)
         {
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "VehicleOwner";
+            Enum.TryParse<GD1.Domain.Entities.Enums.UserRole>(roleClaim, out var userRole);
+
             var result = await _mediator.Send(new GetAllStoragePropertyQuery 
             { 
                 City = city, 
@@ -48,7 +51,8 @@ namespace GD1.Api.Controllers
                 HasCCTV = hasCctv,
                 HasSecurity = hasSecurity,
                 HasFireSafety = hasFireSafety,
-                Recommend = recommend
+                Recommend = recommend,
+                UserRole = userRole
             });
             return Ok(result);
         }
@@ -73,21 +77,36 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("My-Bookings")]
-        [Authorize(Roles = "VehicleOwner")]
-        public async Task<IActionResult> GetMy()
+        [HttpGet("bookings")]
+        [Authorize(Roles = "VehicleOwner,LotOwner,GD1Admin")]
+        public async Task<IActionResult> GetCommonBookings()
         {
-            var result = await _mediator.Send(
-                new GetMyBookingsQuery { OwnerId = GetUserId() });
-            return Ok(result);
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "VehicleOwner";
+            Enum.TryParse<GD1.Domain.Entities.Enums.UserRole>(roleClaim, out var userRole);
+
+            if (userRole == GD1.Domain.Entities.Enums.UserRole.LotOwner)
+            {
+                var result = await _mediator.Send(
+                    new GD1.Application.Features.LotBooking.Queries.GetLotOwnerBookingsQuery { LotOwnerId = GetUserId() });
+                return Ok(result);
+            }
+            else
+            {
+                var result = await _mediator.Send(
+                    new GD1.Application.Features.LotBooking.Queries.GetMyBookingsQuery { OwnerId = GetUserId() });
+                return Ok(result);
+            }
         }
 
-        [HttpGet("{id}")]
-        [Authorize(Roles = "VehicleOwner,GD1Admin")]
-        public async Task<IActionResult> GetDetail(long id)
+        [HttpGet("/{id}booking-By-Id")]
+        [Authorize(Roles = "VehicleOwner,GD1Admin,LotOwner")]
+        public async Task<IActionResult> GetCommonDetail(long id)
         {
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "VehicleOwner";
+            Enum.TryParse<GD1.Domain.Entities.Enums.UserRole>(roleClaim, out var userRole);
+
             var result = await _mediator.Send(
-                new GetBookingDetailQuery { BookingId = id, OwnerId = GetUserId() });
+                new GD1.Application.Features.LotBooking.Queries.GetBookingDetailQuery { BookingId = id, UserId = GetUserId(), UserRole = userRole });
             return Ok(result);
         }
 
@@ -125,7 +144,7 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("Agreement/{id}/Pdf")]
+        [HttpGet("Agreement/{id}/download-Pdf")]
         [Authorize(Roles = "VehicleOwner,LotOwner,GD1Admin,Manager")]
         public async Task<IActionResult> GetAgreementPdf(long id)
         {
@@ -137,7 +156,7 @@ namespace GD1.Api.Controllers
             return File(result.Data!, "application/pdf", $"Agreement_{id}.pdf");
         }
 
-        [HttpPut("Property/{id}/Pricing")]
+        [HttpPut("Property/{id}/lot-owner/update-Pricing")]
         [Authorize(Roles = "LotOwner,GD1Admin")]
         [Consumes("application/x-www-form-urlencoded", "multipart/form-data")]
         public async Task<IActionResult> UpdatePropertyPricing(long id, [FromForm] decimal pricePerDay)

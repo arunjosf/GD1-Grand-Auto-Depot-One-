@@ -23,6 +23,7 @@ namespace GD1.Domain.Entities
         public UserRole Role { get; set; } = UserRole.VehicleOwner;
         public bool IsActive { get; set; } = true;
         public bool IsEmailVerified { get; set; } = false;
+        public string? InvitationToken { get; set; }
 
         public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
         public ICollection<Notification> Notifications { get; set; } = [];

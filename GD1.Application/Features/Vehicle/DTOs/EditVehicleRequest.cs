@@ -6,24 +6,25 @@ using System.Text;
 using System.Threading.Tasks;
 
 
+    using System.ComponentModel;
+    using System.ComponentModel.DataAnnotations;
+
     namespace GD1.Application.Features.Vehicle.DTOs
     {
         public class EditVehicleRequest
         {
-            [Required]
             [StringLength(100)]
-            public string Brand { get; set; } = string.Empty;
+            public string? Brand { get; set; }
 
-            [Required]
             [StringLength(100)]
-            public string Model { get; set; } = string.Empty;
+            public string? Model { get; set; }
 
             [Range(1900, 2100, ErrorMessage = "Invalid vehicle year.")]
-            public int Year { get; set; }
+            public int? Year { get; set; }
 
-            [Required]
             [StringLength(20)]
-            public string RegistrationNo { get; set; } = string.Empty;
+            [RegularExpression(@"^[a-zA-Z0-9-\s]+$", ErrorMessage = "Registration number can only contain letters, numbers, hyphens, and spaces.")]
+            public string? RegistrationNo { get; set; }
 
             [StringLength(50)]
             public string? Color { get; set; }
@@ -31,12 +32,12 @@ using System.Threading.Tasks;
             [StringLength(50)]
             public string? FuelType { get; set; }
 
-            [Required]
             [StringLength(50)]
-            public string VehicleType { get; set; } = string.Empty;
+            public string? VehicleType { get; set; }
 
-            [Url(ErrorMessage = "Invalid document URL.")]
-            public string? DocumentUrls { get; set; }
+            public string? OwnerIdProofUrl { get; set; }
+
+            public string? VehicleRcUrl { get; set; }
         }
     }
 

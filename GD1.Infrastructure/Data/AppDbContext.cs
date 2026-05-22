@@ -15,6 +15,7 @@ namespace GD1.Infrastructure.Data
         public DbSet<LotManager> LotManagers { get; set; }
         public DbSet<Vehicle> Vehicles { get; set; }
         public DbSet<VehicleImage> VehicleImages { get; set; }
+        public DbSet<MaintenanceTask> MaintenanceTasks { get; set; }
         public DbSet<Booking> Bookings { get; set; }
         public DbSet<PickupRequest> PickupRequests { get; set; }
         public DbSet<VehicleJourneyEvent> VehicleJourneyEvents { get; set; }
@@ -37,9 +38,24 @@ namespace GD1.Infrastructure.Data
         public DbSet<FranchiseSlot> FranchiseSlots { get; set; }
         public DbSet<InspectionSlotItem> InspectionSlotItems { get; set; }
         public DbSet<PickupVerification> PickupVerifications { get; set; }
+        public DbSet<ServiceCenterPartneringApplication> ServiceCenterPartneringApplications { get; set; }
+        public DbSet<ServiceCenterImage> ServiceCenterImages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
+            base.OnModelCreating(mb);
+
+            mb.Entity<ServiceCenterImage>()
+                .HasOne(i => i.Application)
+                .WithMany(a => a.Images)
+                .HasForeignKey(i => i.ApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<ServiceCenterImage>()
+                .HasOne(i => i.ServiceCenter)
+                .WithMany(s => s.Images)
+                .HasForeignKey(i => i.ServiceCenterId)
+                .OnDelete(DeleteBehavior.Cascade);
             mb.Entity<User>()
                 .HasIndex(u => u.Email).IsUnique();
             mb.Entity<User>()
@@ -115,7 +131,7 @@ namespace GD1.Infrastructure.Data
                 .HasOne(lm => lm.Manager)
                 .WithMany()
                 .HasForeignKey(lm => lm.ManagerId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             mb.Entity<Booking>()
                 .HasOne(b => b.Vehicle)
@@ -169,7 +185,7 @@ namespace GD1.Infrastructure.Data
 
             mb.Entity<PickupRequest>()
                 .HasOne(p => p.Booking)
-                .WithMany()
+                .WithMany(b => b.PickupRequests)
                 .HasForeignKey(p => p.BookingId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -209,6 +225,10 @@ namespace GD1.Infrastructure.Data
                 .OnDelete(DeleteBehavior.Restrict);
             mb.Entity<ServiceRequest>()
                 .Property(s => s.ServiceCost).HasPrecision(10, 2);
+
+            mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
+                .Property(x => x.ApplicationType)
+                .HasConversion<string>();
 
             mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
                 .HasOne(f => f.Applicant)
@@ -314,6 +334,24 @@ namespace GD1.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(p => p.BookingId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<MaintenanceTask>()
+                .HasOne(m => m.Vehicle)
+                .WithMany()
+                .HasForeignKey(m => m.VehicleId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            mb.Entity<MaintenanceTask>()
+                .HasOne(m => m.Booking)
+                .WithMany()
+                .HasForeignKey(m => m.BookingId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            mb.Entity<MaintenanceTask>()
+                .HasOne(m => m.Manager)
+                .WithMany()
+                .HasForeignKey(m => m.ManagerId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

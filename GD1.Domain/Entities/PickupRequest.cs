@@ -18,6 +18,7 @@ namespace GD1.Domain.Entities
         public string? OtpHash { get; set; }
         public DateTime? OtpExpiry { get; set; }
         public bool IsOtpVerified { get; set; }
+        public string? OwnerSubmittedOtp { get; set; }
 
         public PickupStatus Status { get; set; } = PickupStatus.Requested;
         public Booking Booking { get; set; } = null!;

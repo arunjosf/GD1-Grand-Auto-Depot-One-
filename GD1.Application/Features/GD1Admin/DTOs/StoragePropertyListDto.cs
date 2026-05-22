@@ -33,6 +33,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
     public class LotContactDto
     {
         public string AddressLine { get; set; } = string.Empty;
+        public string? OwnerPhone { get; set; }
     }
 
     public class LotPropertyDetailDto

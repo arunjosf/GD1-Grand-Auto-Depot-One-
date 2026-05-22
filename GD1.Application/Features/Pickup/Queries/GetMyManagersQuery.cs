@@ -25,11 +25,11 @@ namespace GD1.Application.Features.Pickup.Queries
 
     public class GetMyManagersQueryHandler : IRequestHandler<GetMyManagersQuery, BaseResponse<IEnumerable<ManagerDto>>>
     {
-        private readonly IGenericRepository<LotManager> _managerRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _managerRepo;
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
 
         public GetMyManagersQueryHandler(
-            IGenericRepository<LotManager> managerRepo,
+            IGenericRepository<GD1.Domain.Entities.LotManager> managerRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo)
         {
             _managerRepo = managerRepo;
@@ -45,7 +45,7 @@ namespace GD1.Application.Features.Pickup.Queries
             
             var result = allManagers.Select(m => new ManagerDto
             {
-                Id = m.ManagerId,
+                Id = m.Id,
                 FullName = m.Manager?.FullName ?? "Unknown",
                 Email = m.Manager?.Email ?? "Unknown",
                 PropertyId = m.PropertyId

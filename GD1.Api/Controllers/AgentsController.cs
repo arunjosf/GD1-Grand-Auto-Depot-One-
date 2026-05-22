@@ -1,6 +1,7 @@
 using GD1.Application.Features.Agents.Commands;
 using GD1.Application.Features.Agents.Queries;
 using GD1.Application.Features.FranchiseApplication.DTOs;
+using GD1.Application.Features.FranchiseApplication.Commands;
 using GD1.Domain.Entities;
 using GD1.Domain.Interfaces;
 using MediatR;
@@ -17,19 +18,7 @@ namespace GD1.Api.Controllers
 
         public AgentsController(IMediator mediator) => _mediator = mediator;
 
-        [HttpPost("onboarding/finalize")]
-        [AllowAnonymous]
-        public async Task<IActionResult> FinalizeOnboarding([FromBody] FinalizeAgentOnboardingCommand command)
-        {
-            var result = await _mediator.Send(command);
-            
-            if (result.Success && result.Data != null)
-            {
-                SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
-            }
-            
-            return Ok(result);
-        }
+
 
         [HttpGet("my-inspections")]
         [Authorize(Roles = "Agent")]
@@ -72,6 +61,18 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpPost("inspections/service-center/{assignmentId}/submit")]
+        public async Task<IActionResult> SubmitServiceCenterInspectionReport(long assignmentId, [FromBody] SubmitServiceCenterInspectionRequest req)
+        {
+            var result = await _mediator.Send(new SubmitServiceCenterInspectionCommand
+            {
+                AgentId = GetUserId(),
+                AssignmentId = assignmentId,
+                OverallDescription = req.OverallDescription
+            });
+            return Ok(result);
+        }
+
 
         private void SetTokenCookies(string accessToken, string refreshToken)
         {
@@ -95,4 +96,8 @@ namespace GD1.Api.Controllers
         }
     }
 
+    public class SubmitServiceCenterInspectionRequest
+    {
+        public string OverallDescription { get; set; } = string.Empty;
+    }
 }

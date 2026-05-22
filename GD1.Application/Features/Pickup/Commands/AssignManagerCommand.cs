@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using FluentValidation;
+using GD1.Application.Common;
 
 namespace GD1.Application.Features.Pickup.Commands
 {
@@ -16,7 +17,7 @@ namespace GD1.Application.Features.Pickup.Commands
          long PickupRequestId,
          long ManagerId,
          DateTime ArrivalTime
-     ) : IRequest<string>;
+     ) : IRequest<BaseResponse<string>>;
 
     public class AssignManagerCommandValidator : AbstractValidator<AssignManagerCommand>
     {
@@ -29,17 +30,26 @@ namespace GD1.Application.Features.Pickup.Commands
     }
 
     public class AssignManagerCommandHandler
-        : IRequestHandler<AssignManagerCommand, string>
+        : IRequestHandler<AssignManagerCommand, BaseResponse<string>>
     {
         private readonly IGenericRepository<PickupRequest> _pickupRepo;
+        private readonly IGenericRepository<Booking> _bookingRepo;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _lotManagerRepo;
 
         public AssignManagerCommandHandler(
-            IGenericRepository<PickupRequest> pickupRepo)
+            IGenericRepository<PickupRequest> pickupRepo,
+            IGenericRepository<Booking> bookingRepo,
+            IGenericRepository<VehicleStorageProperty> propertyRepo,
+            IGenericRepository<GD1.Domain.Entities.LotManager> lotManagerRepo)
         {
             _pickupRepo = pickupRepo;
+            _bookingRepo = bookingRepo;
+            _propertyRepo = propertyRepo;
+            _lotManagerRepo = lotManagerRepo;
         }
 
-        public async Task<string> Handle(
+        public async Task<BaseResponse<string>> Handle(
             AssignManagerCommand request,
             CancellationToken cancellationToken)
         {
@@ -48,13 +58,30 @@ namespace GD1.Application.Features.Pickup.Commands
             if (pickup == null)
                 throw new Exception("Pickup request not found");
 
-            pickup.ManagerId = request.ManagerId;
+            var booking = await _bookingRepo.GetByIdAsync(pickup.BookingId);
+            if (booking == null)
+                throw new Exception("Booking not found");
+
+            var property = await _propertyRepo.GetByIdAsync(booking.PropertyId);
+            if (property == null)
+                throw new Exception("Property not found");
+
+            // Safely resolve the LotManager record regardless of whether the frontend passed the User ID or the LotManager ID
+            var managerRecords = await _lotManagerRepo.FindAsync(m => 
+                m.PropertyId == property.Id && 
+                (m.ManagerId == request.ManagerId || m.Id == request.ManagerId));
+                
+            var actualManager = managerRecords.FirstOrDefault();
+            if (actualManager == null)
+                throw new Exception("The specified manager is not assigned to this property.");
+
+            pickup.ManagerId = actualManager.Id;
             pickup.ManagerArrivalTime = request.ArrivalTime;
             pickup.Status = PickupStatus.Assigned;
 
             await _pickupRepo.UpdateAsync(pickup);
 
-            return "Manager assigned successfully";
+            return BaseResponse<string>.Ok("Manager assigned successfully");
         }
     }
 }
