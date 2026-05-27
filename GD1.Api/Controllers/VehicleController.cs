@@ -28,10 +28,29 @@ namespace GD1.Api.Controllers
 
 
         [HttpGet("search-vehicle")]
-        public async Task<IActionResult> Search([FromQuery] string? model, [FromQuery] string? brand)
+        [AllowAnonymous]
+        public async Task<IActionResult> Search([FromQuery] string? model, [FromQuery] string? brand, [FromQuery] string? category)
         {
-            var result = await _mediator.Send(new SearchVehicleQuery { SearchTerm = model, SelectedBrand = brand });
+            var result = await _mediator.Send(new SearchVehicleQuery { SearchTerm = model, SelectedBrand = brand, Category = category });
             return Ok(result);
+        }
+
+        [HttpGet("decode-vin")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DecodeVin([FromQuery] string vin)
+        {
+            try
+            {
+                var result = await _mediator.Send(new DecodeVinQuery { Vin = vin });
+                if (result == null)
+                    return NotFound(BaseResponse<string>.Fail("Invalid VIN or vehicle not found."));
+
+                return Ok(BaseResponse<VehicleLookupDto>.Ok(result));
+            }
+            catch (System.InvalidOperationException ex)
+            {
+                return BadRequest(BaseResponse<string>.Fail(ex.Message));
+            }
         }
 
         [HttpPost("add-vehicle")]
@@ -62,7 +81,7 @@ namespace GD1.Api.Controllers
                 RegistrationNo = req.RegistrationNo,
                 Color = req.Color,
                 FuelType = req.FuelType,
-                VehicleType = req.VehicleType,
+                
                 OwnerIdProofUrl = req.OwnerIdProofUrl,
                 VehicleRcUrl = req.VehicleRcUrl
             };

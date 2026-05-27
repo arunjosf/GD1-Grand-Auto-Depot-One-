@@ -52,7 +52,8 @@ namespace GD1.Api.Controllers
                 HasSecurity = hasSecurity,
                 HasFireSafety = hasFireSafety,
                 Recommend = recommend,
-                UserRole = userRole
+                UserRole = userRole,
+                UserId = GetUserId()
             });
             return Ok(result);
         }
@@ -84,7 +85,12 @@ namespace GD1.Api.Controllers
             var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "VehicleOwner";
             Enum.TryParse<GD1.Domain.Entities.Enums.UserRole>(roleClaim, out var userRole);
 
-            if (userRole == GD1.Domain.Entities.Enums.UserRole.LotOwner)
+            if (userRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin)
+            {
+                var result = await _mediator.Send(new GD1.Application.Features.LotBooking.Queries.GetAllBookingsQuery());
+                return Ok(result);
+            }
+            else if (userRole == GD1.Domain.Entities.Enums.UserRole.LotOwner)
             {
                 var result = await _mediator.Send(
                     new GD1.Application.Features.LotBooking.Queries.GetLotOwnerBookingsQuery { LotOwnerId = GetUserId() });
@@ -110,51 +116,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("Generate-Agreement")]
-        [Authorize(Roles = "VehicleOwner")]
-        public async Task<IActionResult> GenerateAgreement([FromBody] GenerateAgreementCommand cmd)
-        {
-            cmd.OwnerId = GetUserId();
-            var result = await _mediator.Send(cmd);
-            return Ok(result);
-        }
-
-        [HttpPost("Respond-Agreement")]
-        [Authorize(Roles = "VehicleOwner")]
-        [Consumes("application/x-www-form-urlencoded", "multipart/form-data")]
-        public async Task<IActionResult> RespondAgreement([FromForm] long bookingId, [FromForm] GD1.Domain.Entities.Enums.AgreementStatus response)
-        {
-            var cmd = new RespondAgreementCommand
-            {
-                BookingId = bookingId,
-                Response = response,
-                OwnerId = GetUserId(),
-                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
-            };
-            var result = await _mediator.Send(cmd);
-            return Ok(result);
-        }
-
-        [HttpGet("Agreement/{id}")]
-        [Authorize(Roles = "VehicleOwner,GD1Admin")]
-        public async Task<IActionResult> GetAgreement(long id)
-        {
-            var result = await _mediator.Send(
-                new GetAgreementQuery { BookingId = id, OwnerId = GetUserId() });
-            return Ok(result);
-        }
-
-        [HttpGet("Agreement/{id}/download-Pdf")]
-        [Authorize(Roles = "VehicleOwner,LotOwner,GD1Admin,Manager")]
-        public async Task<IActionResult> GetAgreementPdf(long id)
-        {
-            var result = await _mediator.Send(
-                new GetAgreementPdfQuery { BookingId = id, RequesterId = GetUserId() });
-            
-            if (!result.Success) return BadRequest(result);
-            
-            return File(result.Data!, "application/pdf", $"Agreement_{id}.pdf");
-        }
 
         [HttpPut("Property/{id}/lot-owner/update-Pricing")]
         [Authorize(Roles = "LotOwner,GD1Admin")]

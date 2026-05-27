@@ -122,7 +122,7 @@ namespace GD1.Application.Features.Pickup.Commands
                     VehicleId = booking.VehicleId,
                     BookingId = booking.Id,
                     EventType = "VehiclePickedUp",
-                    Description = "Manager has arrived at the pickup location and captured the initial condition report.",
+                    Description = "Initial Condition Report",
                     TriggeredBy = pickup.ManagerId,
                     Images = new List<VehicleImage>
                     {
@@ -165,3 +165,4 @@ namespace GD1.Application.Features.Pickup.Commands
         }
     }
 }
+

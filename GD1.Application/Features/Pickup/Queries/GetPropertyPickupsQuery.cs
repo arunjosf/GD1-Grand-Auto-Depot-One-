@@ -38,7 +38,6 @@ namespace GD1.Application.Features.Pickup.Queries
         public string? PickupPincode { get; set; }
         public double? PickupLatitude { get; set; }
         public double? PickupLongitude { get; set; }
-        public string? OwnerSubmittedOtp { get; set; }
 
         // --- INTERNAL FLAT FIELDS FROM DB ---
         [JsonIgnore] public string? FrontImageUrl { get; set; }

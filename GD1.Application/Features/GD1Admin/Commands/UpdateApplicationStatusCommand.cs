@@ -28,16 +28,13 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
         private readonly IGenericRepository<User> _userRepo;
-        private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenter> _scRepo;
-
         public UpdateApplicationStatusCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> repo,
             IGenericRepository<InspectionAssignment> assignRepo,
             IGenericRepository<InspectionReport> reportRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<VehicleStorageSlot> slotRepo,
-            IGenericRepository<User> userRepo,
-            IGenericRepository<GD1.Domain.Entities.ServiceCenter> scRepo)
+            IGenericRepository<User> userRepo)
         {
             _repo = repo;
             _assignRepo = assignRepo;
@@ -45,7 +42,6 @@ namespace GD1.Application.Features.GD1Admin.Commands
             _propertyRepo = propertyRepo;
             _slotRepo = slotRepo;
             _userRepo = userRepo;
-            _scRepo = scRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(UpdateApplicationStatusCommand cmd, CancellationToken ct)
@@ -64,41 +60,6 @@ namespace GD1.Application.Features.GD1Admin.Commands
                 if (!assignments.Any())
                     return BaseResponse<string>.Fail("Cannot approve without a completed inspection.");
 
-                if (app.ApplicationType == ApplicationType.ServiceCenter)
-                {
-                    // Provision Service Center
-                    var sc = new GD1.Domain.Entities.ServiceCenter
-                    {
-                        AdminId = app.ApplicantId,
-                        Name = app.BusinessName,
-                        PhoneNumber = app.PhoneNumber,
-                        AddressLine = app.AddressLine,
-                        City = app.City,
-                        State = app.State,
-                        Email = app.ContactEmail,
-                        Latitude = app.Latitude,
-                        Longitude = app.Longitude,
-                        OemCertificateUrl = app.OemCertificateUrl,
-                        SupportedBrand = app.SupportedBrand,
-                        IsActive = true
-                    };
-                    await _scRepo.AddAsync(sc);
-
-                    // Promote Role
-                    var user = await _userRepo.GetByIdAsync(app.ApplicantId);
-                    if (user != null)
-                    {
-                        if (user.Role == UserRole.VehicleOwner || user.Role == UserRole.Agent)
-                            user.Role = UserRole.ServiceCenter;
-                        
-                        if (string.IsNullOrEmpty(user.PhoneNumber))
-                            user.PhoneNumber = app.PhoneNumber;
-
-                        await _userRepo.UpdateAsync(user);
-                    }
-                }
-                else
-                {
                     // 1. Create Property (Franchise)
                     var storageProperty = new VehicleStorageProperty
                     {
@@ -152,7 +113,6 @@ namespace GD1.Application.Features.GD1Admin.Commands
 
                         await _userRepo.UpdateAsync(user);
                     }
-                }
             }
 
             app.Status = targetStatus;

@@ -13,6 +13,7 @@ namespace GD1.Infrastructure.Data
         public DbSet<VehicleStorageProperty> VehicleStorageProperties { get; set; }
         public DbSet<VehicleStorageSlot> VehicleStorageSlots { get; set; }
         public DbSet<LotManager> LotManagers { get; set; }
+        public DbSet<StoredVehicle> StoredVehicles { get; set; }
         public DbSet<Vehicle> Vehicles { get; set; }
         public DbSet<VehicleImage> VehicleImages { get; set; }
         public DbSet<MaintenanceTask> MaintenanceTasks { get; set; }
@@ -21,9 +22,7 @@ namespace GD1.Infrastructure.Data
         public DbSet<VehicleJourneyEvent> VehicleJourneyEvents { get; set; }
         public DbSet<Handoff> Handoffs { get; set; }
         public DbSet<DamageReport> DamageReports { get; set; }
-        public DbSet<ServiceCenter> ServiceCenters { get; set; }
-        public DbSet<Mechanics> Mechanics { get; set; }
-        public DbSet<ServiceRequest> ServiceRequests { get; set; }
+        public DbSet<VehicleCatalogItem> VehicleCatalog { get; set; }
         public DbSet<GD1.Domain.Entities.FranchiseApplication> FranchiseApplications { get; set; }
         public DbSet<InspectionAssignment> InspectionAssignments { get; set; }
         public DbSet<InspectionReport> InspectionReports { get; set; }
@@ -33,29 +32,35 @@ namespace GD1.Infrastructure.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Complaint> Complaints { get; set; }
         public DbSet<TermsAndConditions> TermsAndConditions { get; set; }
-        public DbSet<DigitalAgreement> DigitalAgreements { get; set; }
+        
         public DbSet<BookingAgreement> BookingAgreements { get; set; }
         public DbSet<FranchiseSlot> FranchiseSlots { get; set; }
         public DbSet<InspectionSlotItem> InspectionSlotItems { get; set; }
         public DbSet<PickupVerification> PickupVerifications { get; set; }
-        public DbSet<ServiceCenterPartneringApplication> ServiceCenterPartneringApplications { get; set; }
-        public DbSet<ServiceCenterImage> ServiceCenterImages { get; set; }
+        public DbSet<Agreement> Agreements { get; set; }
+        public DbSet<JourneyLocation> JourneyLocations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
             base.OnModelCreating(mb);
+            
+            mb.Entity<Agreement>().Property(a => a.Type).HasConversion<string>();
+            mb.Entity<Agreement>().Property(a => a.Status).HasConversion<string>();
+            
+            // Fix for multiple cascade paths in StoredVehicles
+            mb.Entity<StoredVehicle>()
+                .HasOne(sv => sv.Property)
+                .WithMany()
+                .HasForeignKey(sv => sv.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            mb.Entity<ServiceCenterImage>()
-                .HasOne(i => i.Application)
-                .WithMany(a => a.Images)
-                .HasForeignKey(i => i.ApplicationId)
-                .OnDelete(DeleteBehavior.Cascade);
+            mb.Entity<StoredVehicle>()
+                .HasOne(sv => sv.Slot)
+                .WithMany()
+                .HasForeignKey(sv => sv.SlotId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            mb.Entity<ServiceCenterImage>()
-                .HasOne(i => i.ServiceCenter)
-                .WithMany(s => s.Images)
-                .HasForeignKey(i => i.ServiceCenterId)
-                .OnDelete(DeleteBehavior.Cascade);
+        // ServiceCenter images removed
             mb.Entity<User>()
                 .HasIndex(u => u.Email).IsUnique();
             mb.Entity<User>()
@@ -201,30 +206,7 @@ namespace GD1.Infrastructure.Data
                 .HasForeignKey<DamageReport>(d => d.HandoffId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            mb.Entity<ServiceCenter>()
-                .HasOne(sc => sc.ServiceCenterAdmin)
-                .WithMany()
-                .HasForeignKey(sc => sc.AdminId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            mb.Entity<Mechanics>()
-                .HasOne(m => m.ServiceCenter)
-                .WithMany(sc => sc.Mechanics)
-                .HasForeignKey(m => m.ServiceCenterId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            mb.Entity<ServiceRequest>()
-                .HasOne(sr => sr.Booking)
-                .WithMany(b => b.ServiceRequests)
-                .HasForeignKey(sr => sr.BookingId)
-                .OnDelete(DeleteBehavior.Restrict);
-            mb.Entity<ServiceRequest>()
-                .HasOne(sr => sr.ServiceCenter)
-                .WithMany(sc => sc.ServiceRequests)
-                .HasForeignKey(sr => sr.ServiceCenterId)
-                .OnDelete(DeleteBehavior.Restrict);
-            mb.Entity<ServiceRequest>()
-                .Property(s => s.ServiceCost).HasPrecision(10, 2);
+            // Service Center relationships removed
 
             mb.Entity<GD1.Domain.Entities.FranchiseApplication>()
                 .Property(x => x.ApplicationType)
@@ -311,17 +293,6 @@ namespace GD1.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(c => c.BookingId)
                 .OnDelete(DeleteBehavior.NoAction);
-
-            mb.Entity<DigitalAgreement>()
-                .HasOne(d => d.User)
-                .WithMany()
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-            mb.Entity<DigitalAgreement>()
-                .HasOne(d => d.Terms)
-                .WithMany()
-                .HasForeignKey(d => d.TermsId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             mb.Entity<BookingAgreement>()
                 .HasOne(a => a.Booking)

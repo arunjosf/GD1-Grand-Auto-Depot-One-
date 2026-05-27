@@ -54,7 +54,7 @@ namespace GD1.Application.Features.LotBooking.Queries
                 vehicleModel: vehicle.Model,
                 vehicleYear: vehicle.Year.ToString(),
                 registrationNo: vehicle.RegistrationNo,
-                vehicleType: vehicle.VehicleType,
+                vehicleType: vehicle.Category,
                 propertyName: property.Name,
                 propertyAddress: property.AddressLine,
                 propertyCity: property.City,

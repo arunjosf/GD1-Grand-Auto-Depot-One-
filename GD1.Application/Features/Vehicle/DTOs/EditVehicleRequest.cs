@@ -33,7 +33,7 @@ using System.Threading.Tasks;
             public string? FuelType { get; set; }
 
             [StringLength(50)]
-            public string? VehicleType { get; set; }
+            public string? Category { get; set; }
 
             public string? OwnerIdProofUrl { get; set; }
 

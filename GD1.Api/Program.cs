@@ -134,7 +134,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
     options.MultipartBodyLengthLimit = 104857600; 
 });
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options => { options.Filters.Add<GD1.Api.Filters.UniqueUrlValidationFilter>(); })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
@@ -151,6 +151,8 @@ builder.Services.AddControllers()
             return new BadRequestObjectResult(GD1.Application.Common.BaseResponse<object>.Fail(string.Join("\n", errors)));
         };
     });
+
+builder.Services.AddSignalR();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -204,6 +206,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<GD1.Api.Hubs.TrackingHub>("/hubs/tracking");
 
 app.Run();  
 
@@ -228,3 +231,4 @@ public class EditVehicleRequestSchemaFilter : Swashbuckle.AspNetCore.SwaggerGen.
         }
     }
 }
+

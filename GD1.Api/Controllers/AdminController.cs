@@ -57,33 +57,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("service-centers/applications")]
-        public async Task<IActionResult> GetAllServiceCenters([FromQuery] long? id, [FromQuery] string? status, [FromQuery] string? search, [FromQuery] string? sortBy = "CreatedAt", [FromQuery] bool descending = true)
-        {
-            var result = await _mediator.Send(new GetAllServiceCenterApplicationsQuery
-            {
-                Id = id,
-                Status = status,
-                SearchTerm = search,
-                SortBy = sortBy,
-                Descending = descending
-            });
-            return Ok(result);
-        }
-
-        [HttpPost("service-centers/{id}/update-status")]
-        public async Task<IActionResult> UpdateServiceCenterStatus(long id, [FromForm] UpdateSCStatusRequest req)
-        {
-            var result = await _mediator.Send(new UpdateServiceCenterStatusCommand
-            {
-                Id = id,
-                Decision = req.Decision,
-                AdminNotes = req.AdminNotes,
-                AdminId = GetUserId()
-            });
-            return Ok(result);
-        }
-
         [HttpPost("franchise/applications/{id}/update-status")]
         public async Task<IActionResult> UpdateStatus(long id, [FromForm] UpdateStatusRequest req)
         {
@@ -152,12 +125,6 @@ namespace GD1.Api.Controllers
 
 
     public class UpdateStatusRequest
-    {
-        public GD1.Domain.Entities.Enums.ApplicationReviewDecision Decision { get; set; }
-        public string? AdminNotes { get; set; }
-    }
-
-    public class UpdateSCStatusRequest
     {
         public GD1.Domain.Entities.Enums.ApplicationReviewDecision Decision { get; set; }
         public string? AdminNotes { get; set; }

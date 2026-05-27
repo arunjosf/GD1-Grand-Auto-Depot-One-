@@ -90,13 +90,7 @@ namespace GD1.Application.Features.LotBooking.Queries
 
             if (query.UserRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin)
             {
-                // Admin can see everything, so just use standard get detail without owner check 
-                // But wait, there is no GetAdminBookingDetailAsync. I will just query LotOwnerBookingDetail with a fake owner? No. 
-                // Actually, I can just write a quick DB query or add an Admin method. For now, let's assume Admin handles it differently or we can add an admin method.
-                // Wait! To keep it simple, if it's admin, they should use a different query, but the controller uses this one. 
-                // Let's add GetAdminBookingDetailAsync to IBookingReadRepository! Wait, I didn't add it.
-                // I will add it in the next step. Let's just call it.
-                booking = await _repo.GetDetailAsync(query.BookingId, query.UserId); // Fallback for now
+                booking = await _repo.GetDetailAdminAsync(query.BookingId);
             }
             else if (query.UserRole == GD1.Domain.Entities.Enums.UserRole.LotOwner)
             {
@@ -109,6 +103,11 @@ namespace GD1.Application.Features.LotBooking.Queries
 
             if (booking is null)
                 throw new KeyNotFoundException("Booking not found or you don't have permission to view it.");
+
+            if (query.UserRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin || query.UserRole == GD1.Domain.Entities.Enums.UserRole.LotOwner)
+            {
+                // Removed the IsAgreementSigned == 1 check so they can view rejected and pending bookings.
+            }
 
             return BaseResponse<BookingDto>.Ok(booking);
         }

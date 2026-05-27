@@ -15,7 +15,8 @@ namespace GD1.Application.Features.Pickup.Commands
     public record StartRideCommand(
         long PickupRequestId,
         string InteriorImageUrl,
-        string OdometerImageUrl
+        string OdometerImageUrl,
+        string Description = ""
     ) : IRequest<BaseResponse<string>>;
 
     public class StartRideCommandValidator : AbstractValidator<StartRideCommand>
@@ -25,6 +26,7 @@ namespace GD1.Application.Features.Pickup.Commands
             RuleFor(x => x.PickupRequestId).GreaterThan(0);
             RuleFor(x => x.InteriorImageUrl).NotEmpty();
             RuleFor(x => x.OdometerImageUrl).NotEmpty();
+            RuleFor(x => x.Description).NotEmpty().WithMessage("Condition description is required.");
         }
     }
 
@@ -35,19 +37,25 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly IGenericRepository<Booking> _bookingRepo;
         private readonly IGenericRepository<PickupVerification> _verificationRepo;
         private readonly IGeminiService _gemini;
+        private readonly IGenericRepository<User> _userRepo;
+        private readonly IEmailService _email;
 
         public StartRideCommandHandler(
             IGenericRepository<PickupRequest> pickupRepo,
             IGenericRepository<VehicleJourneyEvent> journeyRepo,
             IGenericRepository<Booking> bookingRepo,
             IGenericRepository<PickupVerification> verificationRepo,
-            IGeminiService gemini)
+            IGeminiService gemini,
+            IGenericRepository<User> userRepo,
+            IEmailService email)
         {
             _pickupRepo = pickupRepo;
             _journeyRepo = journeyRepo;
             _bookingRepo = bookingRepo;
             _verificationRepo = verificationRepo;
             _gemini = gemini;
+            _userRepo = userRepo;
+            _email = email;
         }
 
         public async Task<BaseResponse<string>> Handle(StartRideCommand request, CancellationToken cancellationToken)
@@ -80,7 +88,7 @@ namespace GD1.Application.Features.Pickup.Commands
                 VehicleId = booking.VehicleId,
                 BookingId = pickup.BookingId,
                 EventType = "RideStarted",
-                Description = "Manager started the ride to the storage lot.",
+                Description = $"Ride started: {request.Description}",
                 TriggeredBy = pickup.ManagerId,
                 Images = new List<VehicleImage>
                 {
@@ -102,6 +110,15 @@ namespace GD1.Application.Features.Pickup.Commands
 
             pickup.Status = PickupStatus.InTransit;
             await _pickupRepo.UpdateAsync(pickup);
+
+            // Send Email to Vehicle Owner
+            var owner = await _userRepo.GetByIdAsync(booking.OwnerId);
+            if (owner != null)
+            {
+                string subject = "Your Ride Has Started";
+                string body = $"Hello {owner.FullName},\n\nYour vehicle is now securely in transit to the storage lot. You can track its location in real-time through the application.\n\nDescription: {request.Description}\n\nThank you for using Grand Auto Depot One!";
+                await _email.SendAsync(owner.Email, subject, body);
+            }
 
             return BaseResponse<string>.Ok("Ride started successfully. Drive safely to the storage lot.");
         }

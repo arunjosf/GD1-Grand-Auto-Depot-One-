@@ -18,7 +18,7 @@ namespace GD1.Domain.Entities
         public string? FuelType { get; set; }
         public bool IsHybrid { get; set; } = false;
 
-        public string VehicleType { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
         public double LengthFeet { get; set; }
         public double WidthFeet { get; set; }
         public double HeightFeet { get; set; }

@@ -28,6 +28,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
         
         public bool Recommend { get; set; }
         public GD1.Domain.Entities.Enums.UserRole UserRole { get; set; }
+        public long UserId { get; set; }
     }
 
     public class GetAllStoragePropertyQueryHandler : IRequestHandler<GetAllStoragePropertyQuery, BaseResponse<IEnumerable<StoragePropertyListDto>>>
@@ -62,6 +63,9 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 vehicle = await _vehicleRepo.GetByIdAsync(query.VehicleId.Value);
                 if (vehicle == null && !isAdmin)
                     return BaseResponse<IEnumerable<StoragePropertyListDto>>.Fail("Vehicle not found.");
+
+                if (vehicle != null && !isAdmin && vehicle.OwnerId != query.UserId)
+                    return BaseResponse<IEnumerable<StoragePropertyListDto>>.Fail("You can only search using your own vehicle.");
             }
 
             var properties = await _propertyRepo.FindAsync(p => 
@@ -77,7 +81,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
 
             foreach (var prop in properties)
             {
-                var availableSlots = prop.Slots.Where(s => !s.IsOccupied);
+                var availableSlots = prop.Slots.AsEnumerable();
                 
                 bool hasCompatibleSlots = true;
 
@@ -144,7 +148,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
                             HasFireSafety = prop.HasFireSafety,
                             ExtraFacilities = prop.ExtraFacilities
                         },
-                        Slots = prop.Slots.Select(s => new LotSlotDto
+                        Slots = availableSlots.Select(s => new LotSlotDto
                         {
                             Id = s.Id,
                             SlotNumber = s.SlotNumber,
@@ -152,7 +156,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
                             ImageUrl = s.ImageUrl,
                             SquareFeet = s.SquareFeet,
                             HeightFeet = s.HeightFeet,
-                            IsCompatible = vehicle == null || (s.SquareFeet >= (vehicle.LengthFeet * vehicle.WidthFeet) && s.HeightFeet >= vehicle.HeightFeet)
+                            IsCompatible = true
                         }).ToList()
                     };
 

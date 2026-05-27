@@ -1,0 +1,15 @@
+INSERT INTO VehicleCatalog (Brand, Model, Category, LengthFeet, WidthFeet, HeightFeet, ValidYearsCsv, CreatedAt, UpdatedAt, IsDeleted) VALUES
+('Maruti Suzuki', 'Swift', 'Hatchback', 12.6, 5.7, 5.0, '2005-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Baleno', 'Hatchback', 13.1, 5.7, 4.9, '2015-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Alto 800', 'Hatchback', 11.3, 4.9, 4.8, '2000-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'WagonR', 'Hatchback', 12.0, 4.8, 5.5, '1999-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Dzire', 'Sedan', 13.1, 5.7, 5.0, '2008-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Ertiga', 'Van', 14.4, 5.7, 5.5, '2012-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Brezza', 'SUV', 13.1, 5.8, 5.4, '2016-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Celerio', 'Hatchback', 12.1, 5.2, 5.1, '2014-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Ignis', 'Hatchback', 12.1, 5.5, 5.2, '2017-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'S-Presso', 'Hatchback', 11.7, 5.0, 5.1, '2019-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Fronx', 'SUV', 13.1, 5.8, 5.1, '2023-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Grand Vitara', 'SUV', 14.3, 5.9, 5.4, '2022-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'Ciaz', 'Sedan', 14.7, 5.7, 4.9, '2014-2024', GETUTCDATE(), GETUTCDATE(), 0),
+('Maruti Suzuki', 'XL6', 'Van', 14.6, 5.8, 5.7, '2019-2024', GETUTCDATE(), GETUTCDATE(), 0);

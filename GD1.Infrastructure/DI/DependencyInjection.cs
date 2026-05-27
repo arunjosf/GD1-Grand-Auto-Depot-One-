@@ -31,8 +31,7 @@ namespace GD1.Infrastructure
             services.AddScoped<IUserReadRepository, UserReadRepository>();
 
             services.AddHttpClient<IVehicleService, VehicleService>();
-
-
+            // External Vehicle API (Local JSON)
             services.AddScoped<IAuthService, AuthService>();
 
             // AI and File Services
@@ -40,6 +39,8 @@ namespace GD1.Infrastructure
             services.AddScoped<IOcrService, TesseractOcrService>();
             services.AddScoped<IFileService, FileService>();
             services.AddScoped<IGeminiService, GeminiService>();
+            services.AddScoped<IOtpService, OtpService>();
+            services.AddScoped<IVehicleService, VehicleService>();
 
             services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
             return services;

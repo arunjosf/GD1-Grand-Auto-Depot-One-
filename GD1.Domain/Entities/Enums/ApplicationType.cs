@@ -2,7 +2,6 @@ namespace GD1.Domain.Entities.Enums
 {
     public enum ApplicationType
     {
-        Franchise = 1,
-        ServiceCenter = 2
+        Franchise = 1
     }
 }

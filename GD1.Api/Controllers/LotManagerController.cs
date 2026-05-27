@@ -80,6 +80,14 @@ namespace GD1.Api.Controllers
             return response.Success ? Ok(response) : BadRequest(response);
         }
 
+        [HttpPost("recommend-service")]
+        public async Task<IActionResult> RecommendService([FromBody] GD1.Application.Features.LotManager.Commands.RecommendServiceCommand command)
+        {
+            command.ManagerId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var response = await _mediator.Send(command);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+
         
 
         private long GetUserId()

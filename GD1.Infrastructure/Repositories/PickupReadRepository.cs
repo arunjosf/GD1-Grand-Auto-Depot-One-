@@ -20,14 +20,11 @@ namespace GD1.Infrastructure.Repositories
         {
             var sql = @"
                 SELECT 
-                    pr.Id AS PickupRequestId,
-                    pr.BookingId,
-                    pr.RequestedPickupTime,
                     pr.Id as PickupRequestId,
                     b.Id as BookingId,
                     pr.RequestedPickupTime,
                     pr.Status,
-                    pr.OwnerSubmittedOtp,
+                    
                     v.Brand as VehicleBrand,
                     v.Model as VehicleModel,
                     v.RegistrationNo,
@@ -64,7 +61,7 @@ namespace GD1.Infrastructure.Repositories
                 sql += " AND pr.ManagerId = @ManagerId";
             }
 
-            sql += " ORDER BY pr.RequestedPickupTime ASC";
+            sql += " ORDER BY pr.RequestedPickupTime DESC";
 
             return await _db.QueryAsync<PickupRequestDto>(sql, new { PropertyId = propertyId, ManagerId = managerId });
         }
@@ -77,7 +74,7 @@ namespace GD1.Infrastructure.Repositories
                     b.Id as BookingId,
                     pr.RequestedPickupTime,
                     pr.Status,
-                    pr.OwnerSubmittedOtp,
+                    
                     v.Brand as VehicleBrand,
                     v.Model as VehicleModel,
                     v.RegistrationNo,
@@ -109,7 +106,7 @@ namespace GD1.Infrastructure.Repositories
                 LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
                 LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
                 WHERE lm.ManagerId = @ManagerUserId AND pr.Status != 9
-                ORDER BY pr.RequestedPickupTime ASC";
+                ORDER BY pr.RequestedPickupTime DESC";
 
             return await _db.QueryAsync<PickupRequestDto>(sql, new { ManagerUserId = managerUserId });
         }

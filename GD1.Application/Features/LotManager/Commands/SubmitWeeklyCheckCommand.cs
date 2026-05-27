@@ -115,6 +115,15 @@ namespace GD1.Application.Features.LotManager.Commands
             var labels = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
             var urls = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
 
+            // Strict URL Validation (Async loop checking for vehicleId)
+            foreach (var url in urls)
+            {
+                if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{vehicleId}"))
+                {
+                    return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {vehicleId}.");
+                }
+            }
+
             for (int i = 0; i < labels.Length; i++)
             {
                 if (!string.IsNullOrEmpty(urls[i]))
@@ -136,3 +145,4 @@ namespace GD1.Application.Features.LotManager.Commands
         }
     }
 }
+

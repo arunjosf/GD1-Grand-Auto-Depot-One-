@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GD1.Domain.Entities.Enums;
 
@@ -23,7 +24,7 @@ namespace GD1.Application.Features.Vehicle.Commands
         public string? RegistrationNo { get; set; }
         public string? Color { get; set; }
         public string? FuelType { get; set; }
-        public string? VehicleType { get; set; }
+        public string? Category { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? VehicleRcUrl { get; set; }
     }
@@ -65,28 +66,43 @@ namespace GD1.Application.Features.Vehicle.Commands
                 var relatedBooking = allBookings.FirstOrDefault(b => b.VehicleId == cmd.VehicleId && b.Property?.LotOwnerId == cmd.UserId);
                 if (relatedBooking is null)
                     throw new UnauthorizedAccessException("You are not the property owner for this vehicle's booking.");
-
-                Console.WriteLine($"[NOTIFICATION] Vehicle {vehicle.RegistrationNo} details were updated by Property Owner.");
             }
 
-            if (!string.IsNullOrEmpty(cmd.Brand)) vehicle.Brand = cmd.Brand;
-            if (!string.IsNullOrEmpty(cmd.Model)) vehicle.Model = cmd.Model;
-            if (cmd.Year.HasValue) vehicle.Year = cmd.Year.Value;
+            var newBrand = string.IsNullOrEmpty(cmd.Brand) ? vehicle.Brand : cmd.Brand;
+            var newModel = string.IsNullOrEmpty(cmd.Model) ? vehicle.Model : cmd.Model;
+            var newYear = cmd.Year ?? vehicle.Year;
+            var newCategory = vehicle.Category;
+
+            if (!string.IsNullOrEmpty(cmd.Brand) || !string.IsNullOrEmpty(cmd.Model) || cmd.Year.HasValue)
+            {
+                var validationResult = await _vehicleService.ValidateVehicleYearAsync(newBrand, newModel, newYear);
+                if (!validationResult.IsValid)
+                {
+                    return BaseResponse<string>.Fail("The updated vehicle (" + newYear + " " + newBrand + " " + newModel + ") could not be validated via external specs API.");
+                }
+                newCategory = validationResult.Category; // Force override with true API category
+            }
+            else if (!string.IsNullOrEmpty(cmd.Category))
+            {
+                newCategory = cmd.Category;
+            }
+
+            vehicle.Brand = newBrand;
+            vehicle.Model = newModel;
+            vehicle.Year = newYear;
+            vehicle.Category = newCategory;
+
             if (!string.IsNullOrEmpty(cmd.RegistrationNo)) vehicle.RegistrationNo = cmd.RegistrationNo;
             if (!string.IsNullOrEmpty(cmd.Color)) vehicle.Color = cmd.Color;
             if (!string.IsNullOrEmpty(cmd.FuelType)) vehicle.FuelType = cmd.FuelType;
-            if (!string.IsNullOrEmpty(cmd.VehicleType)) vehicle.VehicleType = cmd.VehicleType;
             if (!string.IsNullOrEmpty(cmd.OwnerIdProofUrl)) vehicle.OwnerIdProofUrl = cmd.OwnerIdProofUrl;
             if (!string.IsNullOrEmpty(cmd.VehicleRcUrl)) vehicle.VehicleRcUrl = cmd.VehicleRcUrl;
             
-            if (!string.IsNullOrEmpty(cmd.Brand) || !string.IsNullOrEmpty(cmd.Model) || !string.IsNullOrEmpty(cmd.VehicleType))
-            {
-                var dims = await _vehicleService.GetDimensionsAsync(vehicle.Brand, vehicle.Model, vehicle.VehicleType);
-                vehicle.LengthFeet = dims.Length;
-                vehicle.WidthFeet = dims.Width;
-                vehicle.HeightFeet = dims.Height;
-            }
-
+            var dims = await _vehicleService.GetDimensionsAsync(vehicle.Brand, vehicle.Model, vehicle.Category);
+            vehicle.LengthFeet = dims.Length;
+            vehicle.WidthFeet = dims.Width;
+            vehicle.HeightFeet = dims.Height;
+            
             await _vehicleRepo.UpdateAsync(vehicle);
 
             return BaseResponse<string>.Ok(string.Empty, "Vehicle details updated successfully.");

@@ -12,7 +12,14 @@ using System.Linq;
 
 namespace GD1.Application.Features.LotBooking.Commands
 {
-    public class CreateBookingCommand : IRequest<BaseResponse<long>>
+    public class CreateBookingResponse
+    {
+        public long BookingId { get; set; }
+        public long AgreementId { get; set; }
+        public string AgreementContent { get; set; } = string.Empty;
+    }
+
+    public class CreateBookingCommand : IRequest<BaseResponse<CreateBookingResponse>>
     {
         public CreateBookingRequest Request { get; set; } = null!;
         public long OwnerId { get; set; }
@@ -30,39 +37,46 @@ namespace GD1.Application.Features.LotBooking.Commands
         }
     }
 
-    public class CreateBookingCommandHandler : IRequestHandler<CreateBookingCommand, BaseResponse<long>>
+    public class CreateBookingCommandHandler : IRequestHandler<CreateBookingCommand, BaseResponse<CreateBookingResponse>>
     {
         private readonly IGenericRepository<Booking> _repo;
-        private readonly IGenericRepository<BookingAgreement> _agreementRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.Agreement> _agreementRepo;
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
 
+        private readonly IGenericRepository<GD1.Domain.Entities.User> _userRepo;
+        private readonly IGenericRepository<StoredVehicle> _storedVehicleRepo;
+
         public CreateBookingCommandHandler(
             IGenericRepository<Booking> repo,
-            IGenericRepository<BookingAgreement> agreementRepo,
+            IGenericRepository<GD1.Domain.Entities.Agreement> agreementRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<VehicleStorageSlot> slotRepo,
-            IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo)
+            IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
+            IGenericRepository<GD1.Domain.Entities.User> userRepo,
+            IGenericRepository<StoredVehicle> storedVehicleRepo)
         {
             _repo = repo;
             _agreementRepo = agreementRepo;
             _propertyRepo = propertyRepo;
             _slotRepo = slotRepo;
             _vehicleRepo = vehicleRepo;
+            _userRepo = userRepo;
+            _storedVehicleRepo = storedVehicleRepo;
         }
 
-        public async Task<BaseResponse<long>> Handle(CreateBookingCommand cmd, CancellationToken cancellationToken)
+        public async Task<BaseResponse<CreateBookingResponse>> Handle(CreateBookingCommand cmd, CancellationToken cancellationToken)
         {
             var req = cmd.Request;
 
             // Booking will be created in a temporary state until agreement is signed
 
             var property = await _propertyRepo.GetByIdAsync(req.PropertyId);
-            if (property == null) return BaseResponse<long>.Fail("Selected property not found.");
+            if (property == null) return BaseResponse<CreateBookingResponse>.Fail("Selected property not found.");
 
             var vehicle = await _vehicleRepo.GetByIdAsync(req.VehicleId);
-            if (vehicle == null) return BaseResponse<long>.Fail("Vehicle not found.");
+            if (vehicle == null) return BaseResponse<CreateBookingResponse>.Fail("Vehicle not found.");
 
             // Check if property has any slot that fits the vehicle
             var allSlots = await _slotRepo.FindAsync(s => s.PropertyId == property.Id);
@@ -71,7 +85,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                 s.HeightFeet >= vehicle.HeightFeet);
             
             if (!hasCompatibleSlot)
-                return BaseResponse<long>.Fail("The selected property does not have any slots large enough for your vehicle.");
+                return BaseResponse<CreateBookingResponse>.Fail("The selected property does not have any slots large enough for your vehicle.");
 
             // Check for Vehicle Overlap
             var vehicleBookings = await _repo.FindAsync(b => 
@@ -84,14 +98,20 @@ namespace GD1.Application.Features.LotBooking.Commands
                 req.StartDate < b.EndDate && req.EndDate > b.StartDate);
                 
             if (hasVehicleOverlap)
-                return BaseResponse<long>.Fail("This vehicle is already booked during the selected dates.");
+                return BaseResponse<CreateBookingResponse>.Fail("This vehicle is already booked during the selected dates.");
 
             // Verify Slot availability
             if (req.SlotId.HasValue)
             {
                 var slot = await _slotRepo.GetByIdAsync(req.SlotId.Value);
                 if (slot == null || slot.PropertyId != req.PropertyId)
-                    return BaseResponse<long>.Fail("Selected garage (slot) is invalid for this property.");
+                    return BaseResponse<CreateBookingResponse>.Fail("Selected garage (slot) is invalid for this property.");
+
+                // Check specifically if THIS slot fits the vehicle
+                if (slot.SquareFeet < (vehicle.LengthFeet * vehicle.WidthFeet) || slot.HeightFeet < vehicle.HeightFeet)
+                {
+                    return BaseResponse<CreateBookingResponse>.Fail("The specifically selected garage is not large enough for your vehicle.");
+                }
 
                 // Check for Slot Overlap
                 var slotBookings = await _repo.FindAsync(b => 
@@ -104,7 +124,21 @@ namespace GD1.Application.Features.LotBooking.Commands
                     req.StartDate < b.EndDate && req.EndDate > b.StartDate);
                     
                 if (hasSlotOverlap)
-                    return BaseResponse<long>.Fail("The selected garage is already booked during the selected dates.");
+                    return BaseResponse<CreateBookingResponse>.Fail("The selected garage is already booked during the selected dates.");
+                    
+                // STRICTLY VALIDATE IF SLOT IS CURRENTLY OCCUPIED
+                if (slot.IsOccupied)
+                {
+                    var activeStored = await _storedVehicleRepo.FindAsync(sv => sv.SlotId == req.SlotId.Value && sv.IsActive);
+                    var currentStored = activeStored.FirstOrDefault();
+                    if (currentStored != null)
+                    {
+                        if (req.StartDate <= currentStored.ExpiryDate)
+                        {
+                            return BaseResponse<CreateBookingResponse>.Fail($"This slot is currently occupied. You can only book it for dates after {currentStored.ExpiryDate:dd MMM yyyy}.");
+                        }
+                    }
+                }
             }
 
             int days = Math.Max(1, (req.EndDate - req.StartDate).Days);
@@ -123,12 +157,52 @@ namespace GD1.Application.Features.LotBooking.Commands
                 TotalCost = totalCost,
                 Status = BookingStatus.AwaitingAgreement,
                 IsPickupRequested = false,
-                IsAgreementSigned = false
+                IsAgreementSigned = 0
             };
 
             await _repo.AddAsync(booking);
 
-            return BaseResponse<long>.Ok(booking.Id, "Temporary booking created. Please generate and accept the agreement.");
+            var user = await _userRepo.GetByIdAsync(cmd.OwnerId);
+            if (user == null) return BaseResponse<CreateBookingResponse>.Fail("User not found.");
+
+            var agreementHtml = GD1.Application.Features.LotBooking.Templates.AgreementTemplate.Generate(
+                customerName: user.FullName,
+                customerEmail: user.Email,
+                vehicleBrand: vehicle.Brand,
+                vehicleModel: vehicle.Model,
+                vehicleYear: vehicle.Year.ToString(),
+                registrationNo: vehicle.RegistrationNo,
+                vehicleType: vehicle.Category,
+                propertyName: property.Name,
+                propertyAddress: property.AddressLine,
+                propertyCity: property.City,
+                propertyState: property.State,
+                startDate: booking.StartDate.ToString("dd MMM yyyy"),
+                endDate: booking.EndDate.ToString("dd MMM yyyy"),
+                pricePerDay: property.PricePerDay,
+                agreementDate: DateTime.UtcNow.ToString("dd MMM yyyy")
+            );
+
+            // Generate the unified Digital Agreement
+            var agreement = new GD1.Domain.Entities.Agreement
+            {
+                UserId = cmd.OwnerId,
+                Type = GD1.Domain.Entities.Enums.AgreementType.LotBooking,
+                ReferenceId = booking.Id,
+                Content = agreementHtml,
+                Status = GD1.Domain.Entities.Enums.AgreementStatus.Pending
+            };
+
+            await _agreementRepo.AddAsync(agreement);
+
+            var response = new CreateBookingResponse
+            {
+                BookingId = booking.Id,
+                AgreementId = agreement.Id,
+                AgreementContent = agreement.Content
+            };
+
+            return BaseResponse<CreateBookingResponse>.Ok(response, "Temporary booking created. Please review and sign the agreement.");
         }
 
         private static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)

@@ -13,7 +13,9 @@ namespace GD1.Application.Interfaces.Repositories
         Task<BookingDto?> GetDetailAsync(long bookingId, long ownerId);
         Task<IEnumerable<BookingDto>> GetByLotOwnerIdAsync(long lotOwnerId);
         Task<BookingDto?> GetLotOwnerBookingDetailAsync(long bookingId, long lotOwnerId);
+        Task<BookingDto?> GetDetailAdminAsync(long bookingId);
         Task<IEnumerable<BookingDto>> GetByPropertyIdAsync(long propertyId);
         Task<Dictionary<long, int>> GetOccupiedCountsAsync();
+        Task<IEnumerable<BookingDto>> GetAllAsync();
     }
 }

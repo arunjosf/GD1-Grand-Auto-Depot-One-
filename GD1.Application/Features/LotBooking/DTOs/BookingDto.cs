@@ -57,6 +57,10 @@ namespace GD1.Application.Features.LotBooking.DTOs
         public decimal PricePerDay { get; set; }
 
         public DateTime CreatedAt { get; set; }
+        public int IsAgreementSigned { get; set; }
+        
+        [StringLength(500)]
+        public string? RejectionReason { get; set; }
 
         // Pickup / Manager Details
         public string? PickupStatus { get; set; }

@@ -25,6 +25,7 @@ namespace GD1.Application.Features.LotManager.Queries
         public string RegistrationNo { get; set; } = string.Empty;
         public MaintenanceTaskType Type { get; set; }
         public DateTime RequestedAt { get; set; }
+        public int RemainingDays { get; set; }
     }
 
     public class GetPendingTasksQueryHandler : IRequestHandler<GetPendingTasksQuery, BaseResponse<IEnumerable<PendingTaskDto>>>
@@ -38,7 +39,7 @@ namespace GD1.Application.Features.LotManager.Queries
 
         public async Task<BaseResponse<IEnumerable<PendingTaskDto>>> Handle(GetPendingTasksQuery request, CancellationToken cancellationToken)
         {
-            var pendingTasks = await _taskRepo.FindAsync(t => t.Manager.ManagerId == request.ManagerId && t.Status == MaintenanceTaskStatus.Pending, "Vehicle", "Manager");
+            var pendingTasks = await _taskRepo.FindAsync(t => t.Manager.ManagerId == request.ManagerId && t.Status == MaintenanceTaskStatus.Pending, "Vehicle", "Manager", "Booking");
 
             var dtos = pendingTasks.Select(t => new PendingTaskDto
             {
@@ -48,10 +49,12 @@ namespace GD1.Application.Features.LotManager.Queries
                 Model = t.Vehicle?.Model ?? "Unknown",
                 RegistrationNo = t.Vehicle?.RegistrationNo ?? "Unknown",
                 Type = t.Type,
-                RequestedAt = t.RequestedAt
+                RequestedAt = t.RequestedAt,
+                RemainingDays = t.Booking != null ? (int)(t.Booking.EndDate - DateTime.UtcNow).TotalDays : 0
             }).OrderBy(t => t.RequestedAt).ToList();
 
             return BaseResponse<IEnumerable<PendingTaskDto>>.Ok(dtos);
         }
     }
 }
+

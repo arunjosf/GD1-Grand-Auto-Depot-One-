@@ -22,6 +22,8 @@ namespace GD1.Application.Features.LotBooking.Commands
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<User> _userRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _managerRepo;
+        private readonly IGenericRepository<Agreement> _agreementRepo;
+        private readonly IGenericRepository<PickupRequest> _pickupRepo;
         private readonly IEmailService _emailService;
 
         public CancelBookingCommandHandler(
@@ -29,12 +31,16 @@ namespace GD1.Application.Features.LotBooking.Commands
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<User> userRepo,
             IGenericRepository<GD1.Domain.Entities.LotManager> managerRepo,
+            IGenericRepository<Agreement> agreementRepo,
+            IGenericRepository<PickupRequest> pickupRepo,
             IEmailService emailService)
         {
             _bookingRepo = bookingRepo;
             _propertyRepo = propertyRepo;
             _userRepo = userRepo;
             _managerRepo = managerRepo;
+            _agreementRepo = agreementRepo;
+            _pickupRepo = pickupRepo;
             _emailService = emailService;
         }
 
@@ -46,11 +52,35 @@ namespace GD1.Application.Features.LotBooking.Commands
             if (booking.OwnerId != request.OwnerId)
                 return BaseResponse<string>.Fail("You are not authorized to cancel this booking.");
 
-            if (booking.Status == BookingStatus.InLot || booking.Status == BookingStatus.Completed || booking.Status == BookingStatus.Cancelled)
+            var pickupRequest = (await _pickupRepo.FindAsync(p => p.BookingId == booking.Id)).FirstOrDefault();
+
+            if (booking.Status == BookingStatus.InLot || booking.Status == BookingStatus.Completed)
                 return BaseResponse<string>.Fail("This booking cannot be cancelled from its current status. If you wish to end storage early, use the Stop Storing feature.");
 
-            booking.Status = BookingStatus.Cancelled;
-            await _bookingRepo.UpdateAsync(booking);
+            bool isChargeable = pickupRequest != null && pickupRequest.Status >= PickupStatus.InTransit;
+
+            if (isChargeable)
+            {
+                // Manager has picked up the vehicle and started the ride. Keep the booking in DB but mark as Cancelled.
+                booking.Status = BookingStatus.Cancelled;
+                await _bookingRepo.UpdateAsync(booking);
+            }
+            else
+            {
+                // Free cancellation. Completely remove from DB.
+                if (pickupRequest != null)
+                {
+                    await _pickupRepo.DeleteAsync(pickupRequest);
+                }
+
+                var agreement = (await _agreementRepo.FindAsync(a => a.ReferenceId == booking.Id && a.Type == AgreementType.LotBooking)).FirstOrDefault();
+                if (agreement != null)
+                {
+                    await _agreementRepo.DeleteAsync(agreement);
+                }
+
+                await _bookingRepo.DeleteAsync(booking);
+            }
 
             // Notify Manager/Owner
             var property = await _propertyRepo.GetByIdAsync(booking.PropertyId);
@@ -73,7 +103,8 @@ namespace GD1.Application.Features.LotBooking.Commands
                 }
             }
 
-            return BaseResponse<string>.Ok(string.Empty, "Booking cancelled successfully.");
+            string msg = isChargeable ? "Booking cancelled successfully. A cancellation charge will be applied." : "Booking cancelled successfully. No charges applied.";
+            return BaseResponse<string>.Ok(string.Empty, msg);
         }
     }
 }

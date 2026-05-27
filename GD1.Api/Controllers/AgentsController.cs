@@ -61,19 +61,6 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("inspections/service-center/{assignmentId}/submit")]
-        public async Task<IActionResult> SubmitServiceCenterInspectionReport(long assignmentId, [FromBody] SubmitServiceCenterInspectionRequest req)
-        {
-            var result = await _mediator.Send(new SubmitServiceCenterInspectionCommand
-            {
-                AgentId = GetUserId(),
-                AssignmentId = assignmentId,
-                OverallDescription = req.OverallDescription
-            });
-            return Ok(result);
-        }
-
-
         private void SetTokenCookies(string accessToken, string refreshToken)
         {
             var opts = new CookieOptions
@@ -94,10 +81,5 @@ namespace GD1.Api.Controllers
                 ?? throw new UnauthorizedAccessException("User not found in token.");
             return long.Parse(value);
         }
-    }
-
-    public class SubmitServiceCenterInspectionRequest
-    {
-        public string OverallDescription { get; set; } = string.Empty;
     }
 }

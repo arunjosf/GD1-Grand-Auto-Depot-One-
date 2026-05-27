@@ -15,6 +15,7 @@ namespace GD1.Application.Features.LotBooking.Commands
         public AgreementStatus Response { get; set; }
         public long OwnerId { get; set; }
         public string? IpAddress { get; set; }
+        public string? RejectionReason { get; set; }
     }
 
     public class RespondAgreementCommandHandler : IRequestHandler<RespondAgreementCommand, BaseResponse<string>>
@@ -57,16 +58,23 @@ namespace GD1.Application.Features.LotBooking.Commands
                 await _agreementRepo.UpdateAsync(agreement);
 
                 booking.Status = BookingStatus.Confirmed;
-                booking.IsAgreementSigned = true;
+                booking.IsAgreementSigned = 1;
                 await _bookingRepo.UpdateAsync(booking);
 
                 return BaseResponse<string>.Ok(string.Empty, "Agreement accepted successfully. Your booking is now confirmed.");
             }
             else
             {
-                // Rejected - clean up the temporary booking
-                await _bookingRepo.DeleteAsync(booking);
-                return BaseResponse<string>.Ok(string.Empty, "Agreement rejected. The temporary booking has been cancelled.");
+                agreement.Status = AgreementStatus.Rejected;
+                await _agreementRepo.UpdateAsync(agreement);
+
+                // Update booking instead of deleting
+                booking.Status = BookingStatus.AgreementDeclined;
+                booking.IsAgreementSigned = 2;
+                booking.RejectionReason = cmd.RejectionReason;
+                await _bookingRepo.UpdateAsync(booking);
+
+                return BaseResponse<string>.Ok(string.Empty, "Agreement rejected. The rejection reason has been recorded.");
             }
         }
     }

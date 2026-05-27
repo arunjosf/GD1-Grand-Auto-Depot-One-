@@ -45,6 +45,7 @@ namespace GD1.Domain.Entities
         public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public bool IsAiVerified { get; set; }
         public string? AdminNotes { get; set; }
+        public string? RejectionReason { get; set; }
         public long? ReviewedBy { get; set; }
         public DateTime? ReviewedAt { get; set; }
 
@@ -64,3 +65,4 @@ namespace GD1.Domain.Entities
         public ICollection<PropertyImage> PropertyImages { get; set; } = [];
     }
 }
+

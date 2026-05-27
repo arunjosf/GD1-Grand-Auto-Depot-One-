@@ -45,8 +45,9 @@ namespace GD1.Application.Features.LotManager.Commands
         {
             var tasks = await _taskRepo.FindAsync(t => t.Id == request.TaskId, "Manager");
             var task = tasks.FirstOrDefault();
+            
             if (task == null || task.Manager == null || task.Manager.ManagerId != request.ManagerId)
-                return BaseResponse<string>.Fail("Task not found or unauthorized.");
+                return BaseResponse<string>.Fail("Pending on-demand image task not found or unauthorized.");
 
             if (task.Status == MaintenanceTaskStatus.Completed)
                 return BaseResponse<string>.Fail("This task is already completed.");
@@ -77,6 +78,15 @@ namespace GD1.Application.Features.LotManager.Commands
             var labels = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
             var urls = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
 
+            // Strict URL Validation (Async loop checking for vehicleId)
+            foreach (var url in urls)
+            {
+                if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{task.VehicleId}"))
+                {
+                    return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {task.VehicleId}.");
+                }
+            }
+
             for (int i = 0; i < labels.Length; i++)
             {
                 if (!string.IsNullOrEmpty(urls[i]))
@@ -98,3 +108,4 @@ namespace GD1.Application.Features.LotManager.Commands
         }
     }
 }
+

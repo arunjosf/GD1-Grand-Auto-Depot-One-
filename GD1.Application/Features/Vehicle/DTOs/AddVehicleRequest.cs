@@ -8,12 +8,7 @@ namespace GD1.Application.Features.Vehicle.DTOs
     public class AddVehicleRequest
     {
         [Required]
-        [StringLength(100)]
-        public string Brand { get; set; } = string.Empty;
-
-        [Required]
-        [StringLength(100)]
-        public string Model { get; set; } = string.Empty;
+        public long VehicleId { get; set; }
 
         [Range(1900, 2100, ErrorMessage = "Invalid vehicle year.")]
         public int Year { get; set; }
@@ -39,10 +34,6 @@ namespace GD1.Application.Features.Vehicle.DTOs
         
         [DefaultValue(false)]
         public bool IsHybrid { get; set; } = false;
-
-        [Required]
-        [StringLength(50)]
-        public string VehicleType { get; set; } = string.Empty;
 
         [MinLength(1, ErrorMessage = "At least one image is required.")]
         public List<VehicleImageRequest> Images { get; set; } = [];

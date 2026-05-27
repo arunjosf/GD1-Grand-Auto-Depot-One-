@@ -21,6 +21,8 @@ namespace GD1.Domain.Entities
 
         public BookingStatus Status { get; set; } = BookingStatus.Pending;
 
+        public string? RejectionReason { get; set; }
+
         public decimal PricePerDay { get; set; }
         public decimal TotalCost { get; set; }
         public decimal PlatformFee { get; set; }
@@ -33,14 +35,13 @@ namespace GD1.Domain.Entities
         public bool IsPickupRequested { get; set; }
         public long? AssignedManagerId { get; set; }
         public string? PickupOtp { get; set; }
-        public bool IsAgreementSigned { get; set; }
+        public int IsAgreementSigned { get; set; }
 
         public Vehicle Vehicle { get; set; } = null!;
         public VehicleStorageProperty Property { get; set; } = null!;
         public VehicleStorageSlot? Slot { get; set; }
         public User Owner { get; set; } = null!;
         public ICollection<Handoff> Handoffs { get; set; } = [];
-        public ICollection<ServiceRequest> ServiceRequests { get; set; } = [];
         public ICollection<VehicleJourneyEvent> JourneyEvents { get; set; } = [];
         public ICollection<PickupRequest> PickupRequests { get; set; } = [];
     }

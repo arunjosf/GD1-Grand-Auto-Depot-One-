@@ -36,7 +36,7 @@ namespace GD1.Infrastructure.Repositories
                     RegistrationNo = v.RegistrationNo,
                     Color = v.Color,
                     FuelType = v.FuelType,
-                    VehicleType = v.VehicleType,
+                    Category = v.Category,
                     IsHybrid = v.IsHybrid,
                     HealthScore = v.HealthScore,
                     OwnerIdProofUrl = v.OwnerIdProofUrl,

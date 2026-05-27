@@ -43,6 +43,8 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly IGenericRepository<Booking> _bookingRepo;
         private readonly IGenericRepository<PickupVerification> _verificationRepo;
         private readonly IGenericRepository<VehicleJourneyEvent> _journeyRepo;
+        private readonly IGenericRepository<StoredVehicle> _storedVehicleRepo;
+        private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
         private readonly IEmailService _email;
         private readonly IGeminiService _gemini;
 
@@ -52,6 +54,8 @@ namespace GD1.Application.Features.Pickup.Commands
             IGenericRepository<Booking> bookingRepo,
             IGenericRepository<PickupVerification> verificationRepo,
             IGenericRepository<VehicleJourneyEvent> journeyRepo,
+            IGenericRepository<StoredVehicle> storedVehicleRepo,
+            IGenericRepository<VehicleStorageSlot> slotRepo,
             IEmailService email,
             IGeminiService gemini)
         {
@@ -60,6 +64,8 @@ namespace GD1.Application.Features.Pickup.Commands
             _bookingRepo = bookingRepo;
             _verificationRepo = verificationRepo;
             _journeyRepo = journeyRepo;
+            _storedVehicleRepo = storedVehicleRepo;
+            _slotRepo = slotRepo;
             _email = email;
             _gemini = gemini;
         }
@@ -131,6 +137,29 @@ namespace GD1.Application.Features.Pickup.Commands
             booking.Status = BookingStatus.InLot;
             booking.StartDate = DateTime.UtcNow; // Record the actual start date!
             await _bookingRepo.UpdateAsync(booking);
+
+            // Fetch the Slot and Property directly if possible, or assume booking has PropertyId and SlotId
+            if (booking.SlotId > 0 && booking.PropertyId > 0)
+            {
+                var storedVehicle = new StoredVehicle
+                {
+                    PropertyId = booking.PropertyId,
+                    SlotId = booking.SlotId.Value,
+                    VehicleId = booking.VehicleId,
+                    BookingId = booking.Id,
+                    StartDate = DateTime.UtcNow,
+                    ExpiryDate = booking.EndDate,
+                    IsActive = true
+                };
+                await _storedVehicleRepo.AddAsync(storedVehicle);
+
+                var slot = await _slotRepo.GetByIdAsync(booking.SlotId.Value);
+                if (slot != null)
+                {
+                    slot.IsOccupied = true;
+                    await _slotRepo.UpdateAsync(slot);
+                }
+            }
 
             var owner = await _userRepo.GetByIdAsync(booking.OwnerId);
             if (owner != null && !string.IsNullOrEmpty(owner.Email))

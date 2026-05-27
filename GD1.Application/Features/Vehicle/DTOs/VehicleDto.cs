@@ -15,8 +15,8 @@ namespace GD1.Application.Features.Vehicle.DTOs
         public string RegistrationNo { get; set; } = string.Empty;
         public string? Color { get; set; }
         public string? FuelType { get; set; }
-        public string VehicleType { get; set; } = string.Empty;
         public bool IsHybrid { get; set; }
+        public string Category { get; set; } = string.Empty;
         public double LengthFeet { get; set; }
         public double WidthFeet { get; set; }
         public double HeightFeet { get; set; }

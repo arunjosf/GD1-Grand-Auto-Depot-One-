@@ -1,80 +1,143 @@
 using GD1.Application.Features.Vehicle.DTOs;
 using GD1.Application.Interfaces;
-using GD1.Application.Interfaces;
+using GD1.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Json;
-using System.Text;
 using System.Threading.Tasks;
 
-
-    namespace GD1.Infrastructure.Services
+namespace GD1.Infrastructure.Services
+{
+    public class VehicleService : IVehicleService
     {
-        public class VehicleService : IVehicleService
+        private readonly AppDbContext _context;
+
+        public VehicleService(AppDbContext context)
         {
-            private readonly HttpClient _httpClient;
-            private readonly List<string> _popularBrands = new() { "Toyota", "Suzuki", "Honda", "Hyundai", "Tata", "Mahindra", "Kia", "Ford", "BMW", "Mercedes" };
-
-            public VehicleService(HttpClient httpClient) => _httpClient = httpClient;
-
-            public async Task<List<VehicleLookupDto>> SearchAsync(string term, string? brand = null)
-            {
-                var results = new List<VehicleLookupDto>();
-
-                // Case: Searching for Models within a selected Brand
-                if (!string.IsNullOrEmpty(brand))
-                {
-                    var url = $"https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/{brand}?format=json";
-                    try
-                    {
-                        var response = await _httpClient.GetFromJsonAsync<NhtsaResponse>(url);
-                        return response?.Results
-                            .Where(r => string.IsNullOrEmpty(term) || r.Model_Name.Contains(term, StringComparison.OrdinalIgnoreCase))
-                            .Select(r => new VehicleLookupDto { Brand = brand, Model = r.Model_Name, LogoUrl = GetLogo(brand) })
-                            .Take(15).ToList() ?? new List<VehicleLookupDto>();
-                    }
-                    catch { return new List<VehicleLookupDto>(); }
-                }
-
-                // Case: Searching for Brands
-                return _popularBrands
-                    .Where(b => string.IsNullOrEmpty(term) || b.Contains(term, StringComparison.OrdinalIgnoreCase))
-                    .Select(b => new VehicleLookupDto { Brand = b, LogoUrl = GetLogo(b) })
-                    .ToList();
-            }
-
-            public async Task<(double Length, double Width, double Height)> GetDimensionsAsync(string brand, string model, string type)
-            {
-                // Heuristic values in feet (Length, Width, Height)
-                // Limo: ~25ft, SUV: ~17ft, Sedan: ~15ft, Hatchback: ~13ft
-                var t = type?.ToLower() ?? "unknown";
-                var m = model?.ToLower() ?? "";
-
-                if (m.Contains("limo") || m.Contains("limousine")) return (25.0, 6.5, 5.0);
-                
-                return t switch
-                {
-                    "suv" => (17.5, 6.5, 6.0),
-                    "truck" => (19.0, 7.0, 6.5),
-                    "van" => (18.0, 6.8, 7.0),
-                    "sedan" => (15.5, 6.0, 4.8),
-                    "luxury" => (17.0, 6.5, 4.8),
-                    "sport" or "sports" => (14.5, 6.2, 4.0),
-                    "hatchback" => (13.5, 5.8, 4.5),
-                    "coupe" => (15.0, 6.2, 4.3),
-                    "convertible" => (15.0, 6.0, 4.2),
-                    "mpv" or "muv" => (16.5, 6.3, 5.8),
-                    "compact" => (14.0, 5.9, 4.7),
-                    "mini" => (11.5, 5.5, 4.8),
-                    _ => (16.0, 6.2, 5.0) // Average fallback
-                };
-            }
-
-            private string GetLogo(string brand) => $"https://logo.clearbit.com/{brand.ToLower().Replace(" ", "")}.com";
+            _context = context;
         }
 
-        public class NhtsaResponse { public List<NhtsaResult> Results { get; set; } }
-        public class NhtsaResult { public string Model_Name { get; set; } }
+                        public async Task<List<VehicleLookupDto>> SearchAsync(string term, string? brand = null, string? category = null)
+        {
+            var query = _context.VehicleCatalog.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrEmpty(brand))
+            {
+                query = query.Where(v => v.Brand == brand);
+            }
+            if (!string.IsNullOrEmpty(category))
+            {
+                query = query.Where(v => v.Category == category);
+            }
+            if (!string.IsNullOrEmpty(term))
+            {
+                query = query.Where(v => v.Model.Contains(term) || v.Brand.Contains(term));
+            }
+
+            bool hasFilter = !string.IsNullOrEmpty(brand) || !string.IsNullOrEmpty(category) || !string.IsNullOrEmpty(term);
+
+            // Fetch exactly 20 cars if no inputs are provided, otherwise return all filtered results
+            var baseQuery = query
+                .Select(v => new VehicleLookupDto 
+                { 
+                    Id = v.Id.ToString(),
+                    Brand = v.Brand, 
+                    Model = v.Model, 
+                    Category = v.Category,
+                    LogoUrl = GetLogo(v.Brand)
+                });
+
+            return hasFilter
+                ? await baseQuery.ToListAsync()
+                : await baseQuery.Take(20).ToListAsync();
+        }
+
+        public async Task<(bool IsValid, string Category)> ValidateVehicleYearAsync(string brand, string model, int year)
+        {
+            var car = await _context.VehicleCatalog
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Brand == brand && v.Model == model);
+
+            if (car != null)
+            {
+                return (true, car.Category);
+            }
+            
+            return (true, "Standard"); // Fallback
+        }
+
+        public async Task<(double Length, double Width, double Height)> GetDimensionsAsync(string brand, string model, string type)
+        {
+            var car = await _context.VehicleCatalog
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Brand == brand && v.Model == model);
+
+            if (car != null)
+            {
+                return (car.LengthFeet, car.WidthFeet, car.HeightFeet);
+            }
+
+            return (16.0, 6.2, 5.0); // Fallback
+        }
+
+                        public async Task<VehicleLookupDto?> DecodeVinAsync(string vin)
+        {
+            if (string.IsNullOrWhiteSpace(vin) || vin.Length < 11) return null;
+
+            try
+            {
+                using var client = new System.Net.Http.HttpClient();
+                var response = await client.GetStringAsync($"https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/{vin}?format=json");
+                using var doc = System.Text.Json.JsonDocument.Parse(response);
+                
+                var root = doc.RootElement;
+                if (!root.TryGetProperty("Results", out var results) || results.GetArrayLength() == 0)
+                {
+                    return null;
+                }
+
+                var result = results[0];
+                var brand = result.GetProperty("Make").GetString()?.Trim().ToUpper();
+                var model = result.GetProperty("Model").GetString()?.Trim();
+                
+                if (string.IsNullOrEmpty(brand) || string.IsNullOrEmpty(model)) return null;
+
+                // Try to find the category in our catalog
+                var dbCar = await _context.VehicleCatalog
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(v => v.Brand == brand && v.Model == model);
+
+                var category = dbCar?.Category ?? "Standard";
+
+                // Reject heavy vehicles per business rules
+                if (category == "Bus" || category == "Heavy Truck" || category == "RV" || category == "Other")
+                {
+                    throw new InvalidOperationException("Heavy vehicles (Buses, RVs, Heavy Trucks) are not supported by this facility.");
+                }
+
+                return new VehicleLookupDto
+                {
+                    Id = dbCar?.Id.ToString() ?? "0",
+                    Brand = brand,
+                    Model = model,
+                    Category = category,
+                    LogoUrl = GetLogo(brand)
+                };
+            }
+            catch (InvalidOperationException)
+            {
+                throw; // Rethrow business rule exceptions
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string GetLogo(string brand) => $"https://logo.clearbit.com/{brand.ToLower().Replace(" ", "")}.com";
     }
+}
+
+
 

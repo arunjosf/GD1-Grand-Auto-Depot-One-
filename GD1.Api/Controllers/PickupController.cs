@@ -25,7 +25,7 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        [HttpGet("lot-owner/requests{propertyId}")]
+        [HttpGet("lot-owner/requests/{propertyId}")]
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner")]
         public async Task<IActionResult> GetPropertyPickups(long propertyId)
         {
