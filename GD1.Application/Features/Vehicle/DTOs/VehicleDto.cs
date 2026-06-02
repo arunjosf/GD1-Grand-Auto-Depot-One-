@@ -34,10 +34,24 @@ namespace GD1.Application.Features.Vehicle.DTOs
         
         public List<VehicleImageDto> RecentOnDemandImages { get; set; } = [];
         public List<VehicleImageDto> RecentWeeklyCheckImages { get; set; } = [];
-        public List<VehicleImageDto> PickupImages { get; set; } = [];
-        public List<VehicleImageDto> LotArrivalImages { get; set; } = [];
+        public List<VehicleImageDto> PickupImages { get; set; } = new();
+        public List<VehicleImageDto> LotArrivalImages { get; set; } = new();
+        public List<VehicleServiceDto> ServiceHistory { get; set; } = new();
         
         public List<VehicleJourneyEventDto> JourneyEvents { get; set; } = [];
+    }
+
+    public class VehicleServiceDto
+    {
+        public long Id { get; set; }
+        public string ServiceType { get; set; } = string.Empty;
+        public string? Notes { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime? ScheduledDate { get; set; }
+        public string? CompletionNotes { get; set; }
+        public string? BillUrl { get; set; }
+        public decimal ServiceCost { get; set; }
+        public string ServiceCenterName { get; set; } = string.Empty;
     }
 
     public class VehicleJourneyEventDto

@@ -45,6 +45,7 @@ namespace GD1.Infrastructure.Services
                     Brand = v.Brand, 
                     Model = v.Model, 
                     Category = v.Category,
+                    ValidYearsCsv = v.ValidYearsCsv,
                     LogoUrl = GetLogo(v.Brand)
                 });
 
@@ -122,6 +123,7 @@ namespace GD1.Infrastructure.Services
                     Brand = brand,
                     Model = model,
                     Category = category,
+                    ValidYearsCsv = dbCar?.ValidYearsCsv,
                     LogoUrl = GetLogo(brand)
                 };
             }

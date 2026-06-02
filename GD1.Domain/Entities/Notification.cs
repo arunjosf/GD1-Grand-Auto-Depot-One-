@@ -1,4 +1,4 @@
-﻿using GD1.Domain.Entities.Base;
+using GD1.Domain.Entities.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +14,8 @@ namespace GD1.Domain.Entities
         public string Body { get; set; } = string.Empty;
         public bool IsRead { get; set; } = false;
         public string? ActionUrl { get; set; }
+        public string? ActionType { get; set; }
+        public long? ReferenceId { get; set; }
 
         public User User { get; set; } = null!;
     }

@@ -41,6 +41,11 @@ namespace GD1.Application.Features.LotManager.Commands
             if (vehicle.Owner == null)
                 return BaseResponse<string>.Fail("Vehicle owner not found.");
 
+            // Save the recommendation to the database
+            vehicle.HasServiceRecommendation = true;
+            vehicle.ManagerServiceRemarks = request.Remarks;
+            await _vehicleRepo.UpdateAsync(vehicle);
+
             // Construct email message
             string subject = $"Service Recommendation for your {vehicle.Brand} {vehicle.Model}";
             string body = $@"

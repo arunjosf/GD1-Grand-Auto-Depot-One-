@@ -28,6 +28,9 @@ namespace GD1.Domain.Entities
         public string VerificationStatus { get; set; } = "Pending";
         public int HealthScore { get; set; } = 100;
 
+        public bool HasServiceRecommendation { get; set; } = false;
+        public string? ManagerServiceRemarks { get; set; }
+
         public User Owner { get; set; } = null!;
         public ICollection<Booking> Bookings { get; set; } = [];
         public ICollection<VehicleImage> Images { get; set; } = [];

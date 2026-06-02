@@ -1,5 +1,6 @@
 using GD1.Application.Common;
 using GD1.Application.Interfaces;
+using GD1.Application.Interfaces.Services;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Interfaces;
 using GD1.Domain.Entities;
@@ -34,7 +35,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<InspectionAssignment> _assignRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Agent> _agentRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.User> _userRepo;
-        private readonly IGenericRepository<GD1.Domain.Entities.Notification> _notifRepo;
+        private readonly INotificationService _notifService;
         private readonly ISmsService _sms;
         private readonly IEmailService _email;
 
@@ -43,7 +44,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             IGenericRepository<InspectionAssignment> assignRepo,
             IGenericRepository<GD1.Domain.Entities.Agent> agentRepo,
             IGenericRepository<GD1.Domain.Entities.User> userRepo,
-            IGenericRepository<GD1.Domain.Entities.Notification> notifRepo,
+            INotificationService notifService,
             ISmsService sms,
             IEmailService email)
         {
@@ -51,7 +52,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             _assignRepo = assignRepo;
             _agentRepo = agentRepo;
             _userRepo = userRepo;
-            _notifRepo = notifRepo;
+            _notifService = notifService;
             _sms = sms;
             _email = email;
         }
@@ -106,14 +107,14 @@ namespace GD1.Application.Features.GD1Admin.Commands
             // Send Email
             await _email.SendAsync(applicant.Email, "Inspection Scheduled - GD1 Auto Hub", applicantMsg);
 
-            // Save Website Notification
-            await _notifRepo.AddAsync(new Notification
-            {
-                UserId = applicant.Id,
-                Title = "Inspection Scheduled",
-                Body = $"Agent {agentUser.FullName} will visit on {cmd.ScheduledDate:dd MMM yyyy}.",
-                IsRead = false
-            });
+            // Save Website Notification via Service for Real-time push
+            await _notifService.SendAsync(
+                userId: applicant.Id,
+                title: "Inspection Scheduled",
+                body: $"Agent {agentUser.FullName} will visit on {cmd.ScheduledDate:dd MMM yyyy}.",
+                actionType: "TrackApplication",
+                referenceId: application.Id
+            );
 
             return BaseResponse<AssignedAgentDto>.Ok(new AssignedAgentDto 
             { 

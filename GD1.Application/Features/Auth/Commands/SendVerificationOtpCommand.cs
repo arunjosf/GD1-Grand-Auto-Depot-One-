@@ -1,4 +1,4 @@
-﻿using GD1.Application.Common;
+using GD1.Application.Common;
 using GD1.Application.Interfaces;
 using FluentValidation;
 using MediatR;

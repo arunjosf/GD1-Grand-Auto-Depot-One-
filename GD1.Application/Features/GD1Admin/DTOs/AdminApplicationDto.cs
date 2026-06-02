@@ -48,7 +48,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
 
         // Service Center Specific (Nullable)
         public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrand { get; set; }
+        public string? SupportedBrands { get; set; }
     }
 
     public class AdminAgentSummaryDto

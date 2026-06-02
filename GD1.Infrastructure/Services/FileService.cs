@@ -1,66 +1,69 @@
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
-using GD1.Application.Common.Settings;
 using GD1.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System;
+using System.IO;
 using System.Threading.Tasks;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 
 namespace GD1.Infrastructure.Services
 {
     public class FileService : IFileService
     {
         private readonly IConfiguration _config;
-        private Cloudinary? _cloudinary;
+        private readonly ILogger<FileService> _logger;
 
-        public FileService(IConfiguration config)
+        public FileService(
+            IConfiguration config,
+            ILogger<FileService> logger)
         {
             _config = config;
-        }
-
-        private Cloudinary GetCloudinary()
-        {
-            if (_cloudinary != null) return _cloudinary;
-
-            var cloudName = _config["Cloudinary:CloudName"];
-            var apiKey = _config["Cloudinary:ApiKey"];
-            var apiSecret = _config["Cloudinary:ApiSecret"];
-
-            if (string.IsNullOrEmpty(cloudName) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
-            {
-                throw new System.Exception("Cloudinary credentials are missing in appsettings.json. Please add CloudName, ApiKey, and ApiSecret.");
-            }
-
-            var account = new Account(cloudName, apiKey, apiSecret);
-            _cloudinary = new Cloudinary(account);
-            _cloudinary.Api.Secure = true;
-            return _cloudinary;
+            _logger = logger;
         }
 
         public async Task<string> SaveFileAsync(IFormFile file, string folder)
         {
             if (file == null || file.Length == 0) return string.Empty;
 
-            var client = GetCloudinary();
+            var cloudName = _config["Cloudinary:CloudName"];
+            var apiKey    = _config["Cloudinary:ApiKey"];
+            var apiSecret = _config["Cloudinary:ApiSecret"];
 
-            using (var stream = file.OpenReadStream())
+            if (string.IsNullOrEmpty(cloudName) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
+                throw new InvalidOperationException("Cloudinary credentials are missing in appsettings.json.");
+
+            var account = new Account(cloudName, apiKey, apiSecret);
+            var cloudinary = new Cloudinary(account);
+
+            using var stream = file.OpenReadStream();
+            var fileDesc = new FileDescription(file.FileName, stream);
+
+            var isImage = file.ContentType != null && file.ContentType.StartsWith("image/");
+            var isVideo = file.ContentType != null && file.ContentType.StartsWith("video/");
+
+            if (isImage)
             {
-                var uploadParams = new ImageUploadParams()
-                {
-                    File = new FileDescription(file.FileName, stream),
-                    Folder = $"GD1_Auto_Depot/{folder}",
-                    Transformation = new Transformation().Quality("auto").FetchFormat("auto")
-                };
-
-                var uploadResult = await client.UploadAsync(uploadParams);
-
-                if (uploadResult.Error != null)
-                {
-                    throw new System.Exception($"Cloudinary Upload Error: {uploadResult.Error.Message}");
-                }
-
-                return uploadResult.SecureUrl.ToString();
+                var uploadParams = new ImageUploadParams { File = fileDesc, Folder = folder };
+                var result = await cloudinary.UploadAsync(uploadParams);
+                if (result.Error != null) throw new Exception($"Cloudinary error: {result.Error.Message}");
+                return result.SecureUrl?.ToString() ?? string.Empty;
+            }
+            else if (isVideo)
+            {
+                var uploadParams = new VideoUploadParams { File = fileDesc, Folder = folder };
+                var result = await cloudinary.UploadAsync(uploadParams);
+                if (result.Error != null) throw new Exception($"Cloudinary error: {result.Error.Message}");
+                return result.SecureUrl?.ToString() ?? string.Empty;
+            }
+            else
+            {
+                var uploadParams = new RawUploadParams { File = fileDesc, Folder = folder };
+                var result = await cloudinary.UploadAsync(uploadParams);
+                if (result.Error != null) throw new Exception($"Cloudinary error: {result.Error.Message}");
+                return result.SecureUrl?.ToString() ?? string.Empty;
             }
         }
     }
-}
+}

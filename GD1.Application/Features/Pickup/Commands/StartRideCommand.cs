@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using GD1.Application.Interfaces;
+using GD1.Application.Interfaces.Services;
 
 namespace GD1.Application.Features.Pickup.Commands
 {
@@ -39,6 +40,7 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly IGeminiService _gemini;
         private readonly IGenericRepository<User> _userRepo;
         private readonly IEmailService _email;
+        private readonly INotificationService _notificationService;
 
         public StartRideCommandHandler(
             IGenericRepository<PickupRequest> pickupRepo,
@@ -47,7 +49,8 @@ namespace GD1.Application.Features.Pickup.Commands
             IGenericRepository<PickupVerification> verificationRepo,
             IGeminiService gemini,
             IGenericRepository<User> userRepo,
-            IEmailService email)
+            IEmailService email,
+            INotificationService notificationService)
         {
             _pickupRepo = pickupRepo;
             _journeyRepo = journeyRepo;
@@ -56,6 +59,7 @@ namespace GD1.Application.Features.Pickup.Commands
             _gemini = gemini;
             _userRepo = userRepo;
             _email = email;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(StartRideCommand request, CancellationToken cancellationToken)
@@ -119,6 +123,17 @@ namespace GD1.Application.Features.Pickup.Commands
                 string body = $"Hello {owner.FullName},\n\nYour vehicle is now securely in transit to the storage lot. You can track its location in real-time through the application.\n\nDescription: {request.Description}\n\nThank you for using Grand Auto Depot One!";
                 await _email.SendAsync(owner.Email, subject, body);
             }
+
+            try
+            {
+                await _notificationService.SendAsync(
+                    userId: booking.OwnerId,
+                    title: "Ride Started",
+                    body: "Your vehicle is now in transit to the storage lot.",
+                    actionType: "TrackBooking",
+                    referenceId: booking.Id);
+            }
+            catch { /* Ignore */ }
 
             return BaseResponse<string>.Ok("Ride started successfully. Drive safely to the storage lot.");
         }

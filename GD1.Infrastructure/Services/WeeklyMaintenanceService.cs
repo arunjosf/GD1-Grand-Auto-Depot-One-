@@ -37,8 +37,15 @@ namespace GD1.Infrastructure.Services
                     _logger.LogError(ex, "Error occurred executing WeeklyMaintenanceService.");
                 }
 
-                // Run once every 24 hours
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+                try
+                {
+                    // Run once every 24 hours
+                    await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break; // App shutting down
+                }
             }
         }
 

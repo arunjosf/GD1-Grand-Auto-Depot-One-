@@ -1,4 +1,5 @@
 using GD1.Application.Features.LotManagement.Commands;
+using GD1.Application.Features.ServiceRequest.Commands;
 using GD1.Application.Features.LotManagement.Queries;
 using GD1.Application.Features.Pickup.Queries;
 using MediatR;
@@ -88,6 +89,45 @@ namespace GD1.Api.Controllers
             return response.Success ? Ok(response) : BadRequest(response);
         }
 
+        [HttpGet("upcoming-services")]
+        public async Task<IActionResult> GetUpcomingServices([FromQuery] long propertyId, [FromQuery] long? id)
+        {
+            if (propertyId <= 0)
+                return BadRequest("propertyId is required.");
+
+            var result = await _mediator.Send(new GD1.Application.Features.LotManager.Queries.GetLotServiceBookingsQuery
+            {
+                LotManagerId = GetUserId(),
+                PropertyId = propertyId,
+                ServiceRequestId = id
+            });
+            return Ok(result);
+
+        }
+
+        [HttpPost("bookings/{id}/trigger-otp")]
+        public async Task<IActionResult> TriggerMechanicOtp(long id)
+        {
+            var result = await _mediator.Send(new TriggerMechanicOtpCommand
+            {
+                ServiceRequestId = id,
+                LotManagerId = GetUserId()
+            });
+            return Ok(result);
+        }
+
+        [HttpPost("bookings/{id}/verify-otp")]
+        public async Task<IActionResult> VerifyMechanicOtp(long id, [FromBody] MechanicVerifyOtpRequest req)
+        {
+            var result = await _mediator.Send(new VerifyMechanicOtpCommand
+            {
+                ServiceRequestId = id,
+                LotManagerId = GetUserId(),
+                Otp = req.Otp
+            });
+            return Ok(result);
+        }
+
         
 
         private long GetUserId()
@@ -105,5 +145,10 @@ namespace GD1.Api.Controllers
         public string? ManagerFullName { get; set; }
         public string? IdProofUrl { get; set; }
         public string? SelfieUrl { get; set; }
+    }
+
+    public class MechanicVerifyOtpRequest
+    {
+        public string Otp { get; set; } = string.Empty;
     }
 }

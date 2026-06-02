@@ -49,6 +49,10 @@ namespace GD1.Application.Features.FranchiseApplication.Queries
                 CreatedAt = app.CreatedAt,
                 FrontImageUrl = app.FrontImageUrl,
                 
+                ReviewedAt = app.ReviewedAt,
+                AssignedAt = app.AssignedAt,
+                InspectionCompletedAt = app.InspectionCompletedAt,
+                
                 Slots = app.Slots.Select(s => new FranchiseSlotDto
                 {
                     Id = s.Id,

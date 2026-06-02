@@ -12,6 +12,7 @@ namespace GD1.Application.Features.Vehicle.DTOs
         public string Brand { get; set; } = string.Empty;
         public string? Model { get; set; } 
         public string Category { get; set; } = string.Empty;
+        public string? ValidYearsCsv { get; set; }
         public string DisplayName => string.IsNullOrEmpty(Model) ? Brand : $" {Brand} {Model} ";
         public string LogoUrl { get; set; } = string.Empty;
     }

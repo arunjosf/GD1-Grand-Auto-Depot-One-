@@ -8,6 +8,11 @@ using System.Security.Claims;
 
 namespace GD1.Api.Controllers
 {
+    public class TokenRequest
+    {
+        public string? RefreshToken { get; set; }
+    }
+
     [Route("api/auth")]
     [ApiController]
     public class AuthController : ControllerBase
@@ -61,24 +66,23 @@ namespace GD1.Api.Controllers
 
         [HttpPost("refresh")]
         [AllowAnonymous]
-        public async Task<IActionResult> Refresh()
+        public async Task<IActionResult> Refresh([FromBody] TokenRequest? req)
         {
-            var refreshToken = Request.Cookies["RefreshToken"];
+            var refreshToken = req?.RefreshToken ?? Request.Cookies["RefreshToken"];
             var result = await _mediator.Send(
                 new RefreshTokenCommand { RefreshToken = refreshToken ?? "" });
-            if (result.Success && result.Data != null)
-                SetTokenCookies(result.Data.AccessToken, result.Data.RefreshToken);
+            // SetTokenCookies is disabled because auth.jsx manages cookies manually
             return Ok(result);
         }
 
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout()
+        public async Task<IActionResult> Logout([FromBody] TokenRequest? req)
         {
-            var refreshToken = Request.Cookies["RefreshToken"];
+            var refreshToken = req?.RefreshToken ?? Request.Cookies["RefreshToken"];
             var result = await _mediator.Send(
                 new LogoutCommand { RefreshToken = refreshToken ?? "" });
-            ClearTokenCookies();
+            // ClearTokenCookies is disabled because auth.jsx manages cookies manually
             return Ok(result);
         }
 
@@ -135,21 +139,14 @@ namespace GD1.Api.Controllers
 
         private void SetTokenCookies(string accessToken, string refreshToken)
         {
-            var opts = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(7)
-            };
-            Response.Cookies.Append("AccessToken", accessToken, opts);
-            Response.Cookies.Append("RefreshToken", refreshToken, opts);
+            // Removed: The frontend is now manually handling the cookies 
+            // and sending the Bearer token via headers, which prevents 
+            // the double-cookie issue and local dev cross-scheme dropping.
         }
 
         private void ClearTokenCookies()
         {
-            Response.Cookies.Delete("AccessToken");
-            Response.Cookies.Delete("RefreshToken");
+            // Removed: Handled by frontend
         }
     }
 }

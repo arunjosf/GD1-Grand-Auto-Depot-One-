@@ -21,7 +21,7 @@ namespace GD1.Infrastructure.Services
         public GeminiService(HttpClient http, IConfiguration config, ILogger<GeminiService> logger)
         {
             _http = http;
-            _apiKey = config["Gemini:ApiKey"] ?? string.Empty;
+            _apiKey = (config["Gemini:ApiKey"] ?? string.Empty).Trim();
             _logger = logger;
         }
 
@@ -40,12 +40,12 @@ namespace GD1.Infrastructure.Services
             try
             {
                 var lotData = string.Join("\n", lots.Select(l => 
-                    $"- ID: {l.Id}, Name: {l.Name}, Rating: {l.AverageRating}, CCTV: {l.PropertyDetails.HasCCTV}, Security: {l.PropertyDetails.HasSecurity}, Workshop: {l.PropertyDetails.HasWorkshop}, Washing: {l.PropertyDetails.HasWashingArea}"));
+                    $"- ID: {l.Id}, Name: {l.Name}, Rating: {l.AverageRating}, CCTV: {l.PropertyDetails.HasCCTV}, Security: {l.PropertyDetails.HasSecurity}, Workshop: {l.PropertyDetails.HasWorkshop}, Washing: {l.PropertyDetails.HasWashingArea}, Reviews: [{(l.RecentReviews.Any() ? string.Join(" | ", l.RecentReviews) : "No reviews yet")}]"));
 
                 var prompt = $@"
                 You are the GD1 Smart Private Garage Assistant. 
-                Your task is to recommend the single best private garage property from the list below based on the user's preference.
-                Note that these are premium private garages, not ordinary parking lots.
+                Your task is to recommend the single best private garage property from the list below based on the user's preference, available amenities, and most importantly, the user-typed reviews.
+                Note that these are premium private garages, not ordinary parking lots. Read the user reviews carefully to determine actual quality.
 
                 User Preference: ""{userPreference}""
 
@@ -55,7 +55,7 @@ namespace GD1.Infrastructure.Services
                 Instructions:
                 1. Pick the best property ID (referenced as bestLotId).
                 2. Provide a short, professional reason for the choice.
-                3. Provide a brief analysis of why it's better than others (consider security, rating, and facilities).
+                3. Provide a brief analysis of why it's better than others (consider security, rating, facilities, and specifically mention positive elements from the user reviews if any).
                 
                 Respond ONLY with a JSON object in this exact format:
                 {{
@@ -80,7 +80,88 @@ namespace GD1.Infrastructure.Services
                 {
                     var error = await response.Content.ReadAsStringAsync();
                     _logger.LogError("Gemini API Error: {Error}", error);
+                    try { System.IO.File.WriteAllText(@"C:\Users\HP\.gemini\antigravity\gemini_error.txt", error); } catch {}
                     return new AiRecommendationResponse { Reason = "AI analysis failed at the moment." };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                var aiText = result.GetProperty("candidates")[0]
+                                   .GetProperty("content")
+                                   .GetProperty("parts")[0]
+                                   .GetProperty("text")
+                                   .GetString();
+
+                if (aiText != null && aiText.Contains("```"))
+                {
+                    aiText = aiText.Replace("```json", "").Replace("```", "").Trim();
+                }
+
+                var options = new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true,
+                    NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+                };
+                try { System.IO.File.WriteAllText(@"C:\Users\HP\.gemini\antigravity\gemini_debug.txt", aiText ?? "null"); } catch {}
+                var aiResult = JsonSerializer.Deserialize<AiRecommendationResponse>(aiText ?? "{}", options);
+                return aiResult ?? new AiRecommendationResponse { Reason = "Could not parse AI response." };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Gemini AI");
+                return new AiRecommendationResponse { Reason = "An error occurred during AI analysis." };
+            }
+        }
+
+        public async Task<AiServiceCenterRecommendationResponse> GetBestServiceCenterRecommendationAsync(string serializedServiceCenters)
+        {
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                return new AiServiceCenterRecommendationResponse { Reason = "Gemini API Key is not configured." };
+            }
+
+            if (string.IsNullOrEmpty(serializedServiceCenters))
+            {
+                return new AiServiceCenterRecommendationResponse { Reason = "No service centers available for analysis." };
+            }
+
+            try
+            {
+                var prompt = $@"
+                You are the GD1 Smart Auto Service Assistant. 
+                Your task is to recommend the single best service center from the list below based on their reviews, ratings, and proximity.
+
+                Nearby Service Centers:
+                {serializedServiceCenters}
+
+                Instructions:
+                1. Pick the best service center ID (referenced as bestServiceCenterId).
+                2. Provide a short, professional reason for the choice.
+                3. Provide a brief analysis of why it's better than others.
+                
+                Respond ONLY with a JSON object in this exact format:
+                {{
+                  ""bestServiceCenterId"": 123,
+                  ""reason"": ""Short summary"",
+                  ""aiAnalysis"": ""Detailed but concise explanation""
+                }}";
+
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                        new { parts = new[] { new { text = prompt } } }
+                    }
+                };
+
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={_apiKey}";
+                
+                var response = await _http.PostAsJsonAsync(url, requestBody);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Gemini API Error: {Error}", error);
+                    return new AiServiceCenterRecommendationResponse { Reason = "AI analysis failed at the moment." };
                 }
 
                 var result = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -95,13 +176,13 @@ namespace GD1.Infrastructure.Services
                     aiText = aiText.Replace("```json", "").Replace("```", "").Trim();
                 }
 
-                var aiResult = JsonSerializer.Deserialize<AiRecommendationResponse>(aiText ?? "{}", new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return aiResult ?? new AiRecommendationResponse { Reason = "Could not parse AI response." };
+                var aiResult = JsonSerializer.Deserialize<AiServiceCenterRecommendationResponse>(aiText ?? "{}", new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return aiResult ?? new AiServiceCenterRecommendationResponse { Reason = "Could not parse AI response." };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error calling Gemini AI");
-                return new AiRecommendationResponse { Reason = "An error occurred during AI analysis." };
+                return new AiServiceCenterRecommendationResponse { Reason = "An error occurred during AI analysis." };
             }
         }
 
@@ -171,7 +252,7 @@ namespace GD1.Infrastructure.Services
                     }
                 };
 
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={_apiKey}";
                 
                 var response = await _http.PostAsJsonAsync(url, requestBody);
                 
@@ -201,6 +282,70 @@ namespace GD1.Infrastructure.Services
             {
                 _logger.LogError(ex, "Error calling Gemini Vision AI");
                 return new ImageReadabilityResponse { IsReadable = true, ConfidenceScore = 100, Reason = "An error occurred, allowing upload." };
+            }
+        }
+
+        public async Task<string> GetFaqChatResponseAsync(string userMessage)
+        {
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                return "AI assistant is currently unavailable.";
+            }
+
+            try
+            {
+                var prompt = $@"
+                You are a helpful and polite AI Assistant for 'Grand Auto Depot One' (GD1). 
+                GD1 is a platform that connects Vehicle Owners with Private Garages for long-term storage, 
+                and provides on-demand vehicle pickup, delivery, and maintenance services through our Lot Managers and Service Centers.
+
+                Here is the core knowledge of the GD1 Platform you should use to answer questions:
+                1. Roles: 
+                   - Vehicle Owners: Can book private garages, request vehicle pickup, track rides, and request maintenance.
+                   - Lot Owners: Can list their empty private garages for storage, manage bookings, and hire Lot Managers.
+                   - Lot Managers: Act as agents for the Lot Owners. They handle vehicle pickup, drop-off, OTP verification, and image condition reporting.
+                   - Service Centers: Third-party workshops that partner with GD1 to provide maintenance and repair services.
+                2. Franchise Applications: Users can apply to become a Lot Owner or a Service Center partner by submitting a Franchise Application. An admin will review and approve/reject it.
+                3. Booking Process: A vehicle owner selects a garage, books it, signs a digital agreement, and can optionally request a pickup manager.
+                4. Real-time Features: The platform has real-time tracking, live notifications, OTP security for vehicle handovers, and AI image readability verification for damage protection.
+                5. Pricing: Pricing is set per-day by the Lot Owner. Payments and digital agreements must be signed before the vehicle is stored.
+
+                The user is asking a question on the platform. Answer clearly, politely, and concisely using the knowledge above.
+                Do not provide any code or unrelated information. If asked something outside GD1's scope, politely redirect them to GD1 services.
+                
+                User Message: {userMessage}";
+
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                        new { parts = new[] { new { text = prompt } } }
+                    }
+                };
+
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={_apiKey}";
+                
+                var response = await _http.PostAsJsonAsync(url, requestBody);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Gemini API Error for Chatbot: {Status}", response.StatusCode);
+                    return "Sorry, I am having trouble connecting to the network right now.";
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                var aiText = result.GetProperty("candidates")[0]
+                                   .GetProperty("content")
+                                   .GetProperty("parts")[0]
+                                   .GetProperty("text")
+                                   .GetString();
+
+                return aiText?.Trim() ?? "I'm sorry, I couldn't formulate a response.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Gemini Chat AI");
+                return "Sorry, an unexpected error occurred while processing your request.";
             }
         }
     }

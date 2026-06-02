@@ -3,6 +3,7 @@ using GD1.Domain.Interfaces;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Application.Interfaces.Repositories;
+using GD1.Application.Interfaces.Services;
 using MediatR;
 using System;
 using System.Collections.Generic;
@@ -28,13 +29,16 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
         private readonly IGenericRepository<User> _userRepo;
+        private readonly INotificationService _notificationService;
+
         public UpdateApplicationStatusCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> repo,
             IGenericRepository<InspectionAssignment> assignRepo,
             IGenericRepository<InspectionReport> reportRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<VehicleStorageSlot> slotRepo,
-            IGenericRepository<User> userRepo)
+            IGenericRepository<User> userRepo,
+            INotificationService notificationService)
         {
             _repo = repo;
             _assignRepo = assignRepo;
@@ -42,6 +46,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             _propertyRepo = propertyRepo;
             _slotRepo = slotRepo;
             _userRepo = userRepo;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(UpdateApplicationStatusCommand cmd, CancellationToken ct)
@@ -121,6 +126,31 @@ namespace GD1.Application.Features.GD1Admin.Commands
             app.ReviewedAt = DateTime.UtcNow;
 
             await _repo.UpdateAsync(app);
+
+            // Send notification
+            try
+            {
+                if (targetStatus == FranchiseStatus.Approved)
+                {
+                    await _notificationService.SendAsync(
+                        userId: app.ApplicantId,
+                        title: "Application Approved!",
+                        body: "Congratulations! You have successfully partnered with GD1 as a Franchise owner.",
+                        actionType: "ViewDashboard",
+                        referenceId: app.Id);
+                }
+                else if (targetStatus == FranchiseStatus.Rejected)
+                {
+                    await _notificationService.SendAsync(
+                        userId: app.ApplicantId,
+                        title: "Application Rejected",
+                        body: $"Your application was rejected. Reason: {cmd.AdminNotes}",
+                        actionType: "SeeReason",
+                        referenceId: app.Id);
+                }
+            }
+            catch { /* Do not fail the request if notification fails */ }
+
             return BaseResponse<string>.Ok(string.Empty, $"Application {targetStatus}.");
         }
     }

@@ -75,6 +75,18 @@ namespace GD1.Infrastructure.Repositories
                 
                 const string imgSql = "SELECT TOP 1 ImageUrl FROM PropertyImages WHERE ApplicationId = @AppId AND IsMain = 1";
                 app.FrontImageUrl = await db.QueryFirstOrDefaultAsync<string>(imgSql, new { AppId = app.Id }) ?? "";
+
+                const string assignSql = @"
+                    SELECT TOP 1 a.CreatedAt as AssignedAt, r.CompletedAt as InspectionCompletedAt
+                    FROM InspectionAssignments a
+                    LEFT JOIN InspectionReports r ON a.Id = r.AssignmentId
+                    WHERE a.ApplicationId = @AppId ORDER BY a.CreatedAt DESC";
+                var dates = await db.QueryFirstOrDefaultAsync<dynamic>(assignSql, new { AppId = app.Id });
+                if (dates != null)
+                {
+                    app.AssignedAt = dates.AssignedAt;
+                    app.InspectionCompletedAt = dates.InspectionCompletedAt;
+                }
             }
 
             return apps;

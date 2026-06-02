@@ -68,7 +68,7 @@ namespace GD1.Api.Controllers
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(7)
+                Expires = DateTime.UtcNow.AddDays(15)
             };
             Response.Cookies.Append("AccessToken", accessToken, opts);
             Response.Cookies.Append("RefreshToken", refreshToken, opts);

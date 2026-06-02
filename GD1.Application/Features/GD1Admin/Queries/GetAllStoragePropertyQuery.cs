@@ -35,20 +35,23 @@ namespace GD1.Application.Features.GD1Admin.Queries
     {
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
+        private readonly GD1.Application.Interfaces.IGeminiService _geminiService;
 
         public GetAllStoragePropertyQueryHandler(
             IGenericRepository<VehicleStorageProperty> propertyRepo,
-            IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo)
+            IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
+            GD1.Application.Interfaces.IGeminiService geminiService)
         {
             _propertyRepo = propertyRepo;
             _vehicleRepo = vehicleRepo;
+            _geminiService = geminiService;
         }
 
         public async Task<BaseResponse<IEnumerable<StoragePropertyListDto>>> Handle(GetAllStoragePropertyQuery query, CancellationToken ct)
         {
             bool isAdmin = query.UserRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin || query.UserRole == GD1.Domain.Entities.Enums.UserRole.Manager;
 
-            if (!isAdmin)
+            if (!isAdmin && !query.Recommend)
             {
                 if (string.IsNullOrWhiteSpace(query.City))
                     return BaseResponse<IEnumerable<StoragePropertyListDto>>.Fail("City is a required field to find partnered lots.");
@@ -75,7 +78,19 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
                 (!query.HasCCTV.HasValue || p.HasCCTV == query.HasCCTV.Value) &&
                 (!query.HasSecurity.HasValue || p.HasSecurity == query.HasSecurity.Value) &&
-                (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots", "LotOwner");
+                (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots", "LotOwner", "ActivePropertyImages", "Reviews");
+
+            // Fallback: If city was specified but no properties found, drop the city filter to suggest nearest alternatives
+            if (!string.IsNullOrEmpty(query.City) && !properties.Any())
+            {
+                properties = await _propertyRepo.FindAsync(p => 
+                    p.Status == "Active" &&
+                    (string.IsNullOrEmpty(query.Name) || p.Name.Contains(query.Name)) &&
+                    (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
+                    (!query.HasCCTV.HasValue || p.HasCCTV == query.HasCCTV.Value) &&
+                    (!query.HasSecurity.HasValue || p.HasSecurity == query.HasSecurity.Value) &&
+                    (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots", "LotOwner", "ActivePropertyImages", "Reviews");
+            }
 
             var resultDtos = new List<StoragePropertyListDto>();
 
@@ -148,6 +163,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
                             HasFireSafety = prop.HasFireSafety,
                             ExtraFacilities = prop.ExtraFacilities
                         },
+                        PropertyImages = prop.ActivePropertyImages != null ? prop.ActivePropertyImages.Select(pi => pi.ImageUrl).ToList() : new List<string>(),
                         Slots = availableSlots.Select(s => new LotSlotDto
                         {
                             Id = s.Id,
@@ -157,17 +173,33 @@ namespace GD1.Application.Features.GD1Admin.Queries
                             SquareFeet = s.SquareFeet,
                             HeightFeet = s.HeightFeet,
                             IsCompatible = true
-                        }).ToList()
+                        }).ToList(),
+                        RecentReviews = prop.Reviews.Where(r => !string.IsNullOrWhiteSpace(r.Comment)).Select(r => r.Comment!).Take(5).ToList()
                     };
 
                     resultDtos.Add(dto);
                 }
             }
 
-            // If recommending, sort by distance or price etc. Here we sort by distance.
-            if (query.Recommend)
+            // Always sort by distance first
+            resultDtos = resultDtos.OrderBy(d => d.DistanceKm).ToList();
+
+            // Always use Gemini API to evaluate amenities and reviews and attach the badge
+            if (resultDtos.Any())
             {
-                resultDtos = resultDtos.OrderBy(d => d.DistanceKm).ToList();
+                var aiRec = await _geminiService.GetBestLotRecommendationAsync(resultDtos, "Provide the best property considering the amenities and the user reviews.");
+                if (aiRec != null && aiRec.BestLotId > 0)
+                {
+                    var bestLot = resultDtos.FirstOrDefault(d => d.Id == aiRec.BestLotId);
+                    if (bestLot != null)
+                    {
+                        bestLot.IsRecommendedByAi = true;
+                        bestLot.AiRecommendationReason = aiRec.AiAnalysis;
+                        
+                        // We DO NOT move the lot to the top here. 
+                        // The frontend will handle whether to display it at the top or leave it in its distance-sorted position.
+                    }
+                }
             }
 
             return BaseResponse<IEnumerable<StoragePropertyListDto>>.Ok(resultDtos);

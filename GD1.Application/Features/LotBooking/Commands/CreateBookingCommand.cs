@@ -2,6 +2,7 @@ using GD1.Application.Common;
 using GD1.Application.Features.LotBooking.DTOs;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
+using GD1.Application.Interfaces.Services;
 using GD1.Domain.Interfaces;
 using System;
 using System.Threading;
@@ -47,6 +48,7 @@ namespace GD1.Application.Features.LotBooking.Commands
 
         private readonly IGenericRepository<GD1.Domain.Entities.User> _userRepo;
         private readonly IGenericRepository<StoredVehicle> _storedVehicleRepo;
+        private readonly INotificationService _notificationService;
 
         public CreateBookingCommandHandler(
             IGenericRepository<Booking> repo,
@@ -55,7 +57,8 @@ namespace GD1.Application.Features.LotBooking.Commands
             IGenericRepository<VehicleStorageSlot> slotRepo,
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
             IGenericRepository<GD1.Domain.Entities.User> userRepo,
-            IGenericRepository<StoredVehicle> storedVehicleRepo)
+            IGenericRepository<StoredVehicle> storedVehicleRepo,
+            INotificationService notificationService)
         {
             _repo = repo;
             _agreementRepo = agreementRepo;
@@ -64,6 +67,7 @@ namespace GD1.Application.Features.LotBooking.Commands
             _vehicleRepo = vehicleRepo;
             _userRepo = userRepo;
             _storedVehicleRepo = storedVehicleRepo;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<CreateBookingResponse>> Handle(CreateBookingCommand cmd, CancellationToken cancellationToken)
@@ -201,6 +205,18 @@ namespace GD1.Application.Features.LotBooking.Commands
                 AgreementId = agreement.Id,
                 AgreementContent = agreement.Content
             };
+
+            // Notify Lot Owner
+            try
+            {
+                await _notificationService.SendAsync(
+                    userId: property.LotOwnerId,
+                    title: "New Lot Booking",
+                    body: $"A new booking has been made for {vehicle.Brand} {vehicle.Model} at {property.Name}.",
+                    actionType: "ViewBooking",
+                    referenceId: booking.Id);
+            }
+            catch { /* Ignore notification failure */ }
 
             return BaseResponse<CreateBookingResponse>.Ok(response, "Temporary booking created. Please review and sign the agreement.");
         }

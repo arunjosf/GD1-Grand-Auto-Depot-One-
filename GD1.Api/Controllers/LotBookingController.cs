@@ -24,7 +24,7 @@ namespace GD1.Api.Controllers
         }
 
         [HttpGet("partnered-lots")]
-        [Authorize(Roles = "GD1Admin,VehicleOwner")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetPartneredStorageLots(
             [FromQuery] string? city,
             [FromQuery] long? vehicleId,
@@ -37,8 +37,14 @@ namespace GD1.Api.Controllers
             [FromQuery] bool? hasFireSafety,
             [FromQuery] bool recommend = false)
         {
-            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "VehicleOwner";
+            var roleClaim = User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Guest";
             Enum.TryParse<GD1.Domain.Entities.Enums.UserRole>(roleClaim, out var userRole);
+
+            long userId = 0;
+            var userIdClaim = User?.FindFirst("userId")?.Value ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User?.FindFirst("sub")?.Value;
+            if (long.TryParse(userIdClaim, out var parsedId)) {
+                userId = parsedId;
+            }
 
             var result = await _mediator.Send(new GetAllStoragePropertyQuery 
             { 
@@ -53,7 +59,7 @@ namespace GD1.Api.Controllers
                 HasFireSafety = hasFireSafety,
                 Recommend = recommend,
                 UserRole = userRole,
-                UserId = GetUserId()
+                UserId = userId
             });
             return Ok(result);
         }

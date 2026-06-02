@@ -1,4 +1,4 @@
-﻿using GD1.Application.Interfaces;
+using GD1.Application.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;

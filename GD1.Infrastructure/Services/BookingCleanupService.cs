@@ -48,13 +48,24 @@ namespace GD1.Infrastructure.Services
                         }
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    break; // App is shutting down — exit cleanly
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error occurred executing BookingCleanupService.");
                 }
 
-                // Run every 5 minutes
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                try
+                {
+                    // Run every 5 minutes
+                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break; // App is shutting down — exit cleanly
+                }
             }
         }
     }

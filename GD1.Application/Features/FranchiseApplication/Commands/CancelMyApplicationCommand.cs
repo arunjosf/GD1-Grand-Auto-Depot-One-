@@ -25,19 +25,22 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         private readonly IGenericRepository<Agent> _agentRepo;
         private readonly IGenericRepository<User> _userRepo;
         private readonly IEmailService _emailService;
+        private readonly IGenericRepository<Notification> _notificationRepo;
 
         public CancelMyApplicationCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
             IGenericRepository<InspectionAssignment> assignRepo,
             IGenericRepository<Agent> agentRepo,
             IGenericRepository<User> userRepo,
-            IEmailService emailService)
+            IEmailService emailService,
+            IGenericRepository<Notification> notificationRepo)
         {
             _appRepo = appRepo;
             _assignRepo = assignRepo;
             _agentRepo = agentRepo;
             _userRepo = userRepo;
             _emailService = emailService;
+            _notificationRepo = notificationRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(CancelMyApplicationCommand cmd, CancellationToken ct)
@@ -85,6 +88,12 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                 assign.Status = "Cancelled";
                 assign.UpdatedAt = DateTime.UtcNow;
                 await _assignRepo.UpdateAsync(assign);
+            }
+
+            var notifications = await _notificationRepo.FindAsync(n => n.ReferenceId == app.Id && (n.ActionType == "ReviewFranchise" || n.ActionType == "TrackApplication"));
+            foreach (var notif in notifications)
+            {
+                await _notificationRepo.DeleteAsync(notif);
             }
 
             return BaseResponse<string>.Ok(string.Empty, "Application cancelled successfully.");

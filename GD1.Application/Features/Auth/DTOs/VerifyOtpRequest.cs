@@ -1,4 +1,4 @@
-﻿namespace GD1.Application.Features.Auth.DTOs
+namespace GD1.Application.Features.Auth.DTOs
 {
     public class VerifyOtpRequest
     {

@@ -3,6 +3,7 @@ using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
+using GD1.Application.Interfaces.Services;
 using GD1.Domain.Interfaces;
 using MediatR;
 using System;
@@ -58,15 +59,21 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
         private readonly IGenericRepository<FranchiseSlot> _slotRepo;
         private readonly IGenericRepository<PropertyImage> _imageRepo;
+        private readonly INotificationService _notificationService;
+        private readonly IGenericRepository<GD1.Domain.Entities.User> _userRepo;
 
         public SubmitApplicationCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
             IGenericRepository<FranchiseSlot> slotRepo,
-            IGenericRepository<PropertyImage> imageRepo)
+            IGenericRepository<PropertyImage> imageRepo,
+            INotificationService notificationService,
+            IGenericRepository<GD1.Domain.Entities.User> userRepo)
         {
             _appRepo = appRepo;
             _slotRepo = slotRepo;
             _imageRepo = imageRepo;
+            _notificationService = notificationService;
+            _userRepo = userRepo;
         }
 
         public async Task<BaseResponse<long>> Handle(SubmitApplicationCommand cmd, CancellationToken ct)
@@ -113,16 +120,18 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
 
             await _appRepo.AddAsync(application);
 
+            bool isFirst = true;
             foreach (var imgUrl in cmd.PropertyImages)
             {
                 await _imageRepo.AddAsync(new PropertyImage
                 {
                     ApplicationId = application.Id,
                     ImageUrl = imgUrl,
-                    Label = "Property Main",
+                    Label = isFirst ? "Property Main" : "Additional Image",
                     UploadedBy = "Owner",
-                    IsMain = cmd.PropertyImages.First() == imgUrl
+                    IsMain = isFirst
                 });
+                isFirst = false;
             }
 
             foreach (var s in cmd.Slots)
@@ -136,6 +145,31 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                     ImageUrl = s.ImageUrl
                 });
             }
+
+            // Send Notifications
+            try
+            {
+                // Notify Applicant
+                await _notificationService.SendAsync(
+                    userId: cmd.ApplicantId,
+                    title: "Application Submitted",
+                    body: $"Your franchise application for {cmd.BusinessName} has been received and is under review.",
+                    actionType: "TrackApplication",
+                    referenceId: application.Id);
+
+                // Notify Admins
+                var admins = await _userRepo.FindAsync(u => u.Role == UserRole.GD1Admin);
+                if (admins.Any())
+                {
+                    await _notificationService.SendToManyAsync(
+                        userIds: admins.Select(a => a.Id),
+                        title: "New Franchise Application",
+                        body: $"{cmd.OwnerName} from {cmd.City} submitted a new franchise application.",
+                        actionType: "ReviewFranchise",
+                        referenceId: application.Id);
+                }
+            }
+            catch { /* Do not fail the request if notification fails */ }
 
             return BaseResponse<long>.Ok(application.Id, "Application submitted successfully.");
         }

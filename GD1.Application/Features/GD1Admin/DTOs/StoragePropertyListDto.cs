@@ -28,6 +28,11 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         // Direct Slots for the Rectangle UI
         public List<LotSlotDto> Slots { get; set; } = [];
         public List<string> PropertyImages { get; set; } = [];
+        
+        // AI Recommendation Fields
+        public bool IsRecommendedByAi { get; set; }
+        public string? AiRecommendationReason { get; set; }
+        public List<string> RecentReviews { get; set; } = [];
     }
 
     public class LotContactDto

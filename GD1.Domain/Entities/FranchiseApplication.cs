@@ -34,7 +34,7 @@ namespace GD1.Domain.Entities
         
         // Service Center fields
         public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrand { get; set; }
+        public string? SupportedBrands { get; set; }
 
         public decimal PricePerDay { get; set; }
 

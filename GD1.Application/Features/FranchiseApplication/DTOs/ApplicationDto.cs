@@ -21,7 +21,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public GD1.Domain.Entities.Enums.FranchiseStatus? Status { get; set; }
 
         public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrand { get; set; }
+        public string? SupportedBrands { get; set; }
         public bool IsAiVerified { get; set; }
         public string? AdminNotes { get; set; }
         public decimal ApplicationFee { get; set; }
@@ -42,6 +42,10 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public List<PropertyImageDto> PropertyImages { get; set; } = [];
         public List<FranchiseSlotDto> Slots { get; set; } = [];
         public List<InspectionAssignmentDto> Assignments { get; set; } = [];
+
+        public DateTime? ReviewedAt { get; set; }
+        public DateTime? AssignedAt { get; set; }
+        public DateTime? InspectionCompletedAt { get; set; }
     }
 
     public class UserApplicationDto
@@ -64,6 +68,10 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string FeeStatus { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string FrontImageUrl { get; set; } = string.Empty;
+
+        public DateTime? ReviewedAt { get; set; }
+        public DateTime? AssignedAt { get; set; }
+        public DateTime? InspectionCompletedAt { get; set; }
 
         public List<FranchiseSlotDto> Slots { get; set; } = [];
     }

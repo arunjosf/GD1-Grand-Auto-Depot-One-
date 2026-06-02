@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 using FluentValidation;
 using GD1.Application.Common;
+using GD1.Application.Interfaces.Services;
 
 namespace GD1.Application.Features.Pickup.Commands
 {
@@ -36,17 +37,20 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly IGenericRepository<Booking> _bookingRepo;
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _lotManagerRepo;
+        private readonly INotificationService _notificationService;
 
         public AssignManagerCommandHandler(
             IGenericRepository<PickupRequest> pickupRepo,
             IGenericRepository<Booking> bookingRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
-            IGenericRepository<GD1.Domain.Entities.LotManager> lotManagerRepo)
+            IGenericRepository<GD1.Domain.Entities.LotManager> lotManagerRepo,
+            INotificationService notificationService)
         {
             _pickupRepo = pickupRepo;
             _bookingRepo = bookingRepo;
             _propertyRepo = propertyRepo;
             _lotManagerRepo = lotManagerRepo;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(
@@ -80,6 +84,29 @@ namespace GD1.Application.Features.Pickup.Commands
             pickup.Status = PickupStatus.Assigned;
 
             await _pickupRepo.UpdateAsync(pickup);
+
+            try
+            {
+                // Notify Vehicle Owner
+                await _notificationService.SendAsync(
+                    userId: booking.OwnerId,
+                    title: "Manager Assigned for Pickup",
+                    body: $"A manager has been assigned to pick up your vehicle. Estimated arrival: {request.ArrivalTime:hh:mm tt}.",
+                    actionType: "TrackBooking",
+                    referenceId: booking.Id);
+
+                // Notify Manager
+                if (actualManager.ManagerId > 0)
+                {
+                    await _notificationService.SendAsync(
+                        userId: actualManager.ManagerId,
+                        title: "New Pickup Assigned",
+                        body: $"You have been assigned to a pickup for booking #{booking.Id}.",
+                        actionType: "ViewPickup",
+                        referenceId: pickup.Id);
+                }
+            }
+            catch { /* Ignore */ }
 
             return BaseResponse<string>.Ok("Manager assigned successfully");
         }

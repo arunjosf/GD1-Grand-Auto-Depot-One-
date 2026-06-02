@@ -50,7 +50,7 @@ namespace GD1.Api.Controllers
                 HasFireSafety = req.HasFireSafety,
                 HasWorkshop = req.HasWorkshop,
                 HasWashingArea = req.HasWashingArea,
-                PropertyImages = req.OtherImageUrls ?? new List<string> { req.FrontImageUrl },
+                PropertyImages = new[] { req.FrontImageUrl }.Concat(req.OtherImageUrls ?? new List<string>()).Where(x => !string.IsNullOrEmpty(x)).ToList(),
                 Slots = req.Slots.Select(s => new FranchiseSlotRequest
                 {
                     SlotNumber = s.SlotNumber,

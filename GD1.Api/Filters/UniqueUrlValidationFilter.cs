@@ -12,14 +12,20 @@ namespace GD1.Api.Filters
     {
         public void OnActionExecuting(ActionExecutingContext context)
         {
+            // Only validate POST, PUT, PATCH requests
+            var method = context.HttpContext.Request.Method;
+            if (method == "GET" || method == "DELETE") return;
+
             var urls = new List<string>();
+            var visited = new HashSet<object>();
 
             // Scan all action arguments
             foreach (var arg in context.ActionArguments.Values)
             {
                 if (arg != null)
                 {
-                    ExtractUrls(arg, urls);
+                    if (arg is Microsoft.EntityFrameworkCore.DbContext) continue;
+                    ExtractUrls(arg, urls, visited);
                 }
             }
 
@@ -45,52 +51,61 @@ namespace GD1.Api.Filters
             // Do nothing
         }
 
-        private void ExtractUrls(object obj, List<string> urls)
+        private void ExtractUrls(object obj, List<string> urls, HashSet<object> visited)
         {
             if (obj == null) return;
+            if (obj.GetType().IsValueType) return; // Value types don't have cyclic reference issues we care about here
+            if (visited.Contains(obj)) return; // Prevent infinite recursion
+            
+            // Skip traversing file uploads and streams which can cause deep/infinite reflection issues
+            if (obj is Microsoft.AspNetCore.Http.IFormFile || obj is System.IO.Stream) return;
+
+            visited.Add(obj);
 
             var type = obj.GetType();
 
-            // If it's a string, check if it looks like a URL property based on naming or we just ignore direct string arguments
-            // We usually care about object properties.
             if (type == typeof(string)) return;
 
-            // If it's a collection, iterate through it
             if (obj is IEnumerable enumerable)
             {
                 foreach (var item in enumerable)
                 {
-                    ExtractUrls(item, urls);
+                    ExtractUrls(item, urls, visited);
                 }
                 return;
             }
 
-            // Process object properties
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                 .Where(p => p.CanRead);
+                                 .Where(p => p.CanRead && p.GetIndexParameters().Length == 0); // Ignore indexers
 
             foreach (var prop in properties)
             {
                 if (prop.PropertyType == typeof(string))
                 {
-                    var val = prop.GetValue(obj) as string;
-                    if (!string.IsNullOrWhiteSpace(val))
+                    try 
                     {
-                        // Check if property name ends with "Url" or has [Url] attribute
-                        bool isUrlProperty = prop.Name.EndsWith("Url", System.StringComparison.OrdinalIgnoreCase) ||
-                                             prop.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.UrlAttribute), true).Any();
-
-                        if (isUrlProperty)
+                        var val = prop.GetValue(obj) as string;
+                        if (!string.IsNullOrWhiteSpace(val))
                         {
-                            urls.Add(val);
+                            bool isUrlProperty = prop.Name.EndsWith("Url", System.StringComparison.OrdinalIgnoreCase) ||
+                                                 prop.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.UrlAttribute), true).Any();
+
+                            if (isUrlProperty)
+                            {
+                                urls.Add(val);
+                            }
                         }
-                    }
+                    } 
+                    catch { /* Ignore properties that throw on read */ }
                 }
                 else if (prop.PropertyType.IsClass && prop.PropertyType != typeof(string))
                 {
-                    // Prevent infinite recursion on self-referencing types if any, but typical DTOs are safe
-                    var val = prop.GetValue(obj);
-                    ExtractUrls(val, urls);
+                    try 
+                    {
+                        var val = prop.GetValue(obj);
+                        ExtractUrls(val, urls, visited);
+                    }
+                    catch { /* Ignore properties that throw on read */ }
                 }
             }
         }

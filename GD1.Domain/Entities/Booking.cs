@@ -42,6 +42,7 @@ namespace GD1.Domain.Entities
         public VehicleStorageSlot? Slot { get; set; }
         public User Owner { get; set; } = null!;
         public ICollection<Handoff> Handoffs { get; set; } = [];
+        public ICollection<ServiceRequest> ServiceRequests { get; set; } = [];
         public ICollection<VehicleJourneyEvent> JourneyEvents { get; set; } = [];
         public ICollection<PickupRequest> PickupRequests { get; set; } = [];
     }

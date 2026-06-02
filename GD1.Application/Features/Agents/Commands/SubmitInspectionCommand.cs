@@ -1,6 +1,7 @@
 using GD1.Application.Common;
 using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Interfaces.Repositories;
+using GD1.Application.Interfaces.Services;
 using GD1.Domain.Entities;
 using GD1.Domain.Interfaces;
 using MediatR;
@@ -39,17 +40,23 @@ namespace GD1.Application.Features.Agents.Commands
         private readonly IGenericRepository<InspectionReport> _reportRepo;
         private readonly IGenericRepository<InspectionSlotItem> _slotItemRepo;
         private readonly IGenericRepository<PropertyImage> _imageRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
+        private readonly INotificationService _notifService;
 
         public SubmitInspectionCommandHandler(
             IGenericRepository<InspectionAssignment> assignRepo,
             IGenericRepository<InspectionReport> reportRepo,
             IGenericRepository<InspectionSlotItem> slotItemRepo,
-            IGenericRepository<PropertyImage> imageRepo)
+            IGenericRepository<PropertyImage> imageRepo,
+            IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
+            INotificationService notifService)
         {
             _assignRepo = assignRepo;
             _reportRepo = reportRepo;
             _slotItemRepo = slotItemRepo;
             _imageRepo = imageRepo;
+            _appRepo = appRepo;
+            _notifService = notifService;
         }
 
         public async Task<BaseResponse<string>> Handle(SubmitInspectionCommand cmd, CancellationToken ct)
@@ -96,6 +103,19 @@ namespace GD1.Application.Features.Agents.Commands
 
             assignment.Status = "Completed";
             await _assignRepo.UpdateAsync(assignment);
+
+            var application = await _appRepo.GetByIdAsync(assignment.ApplicationId);
+            if (application != null)
+            {
+                // Push real-time notification to the applicant
+                await _notifService.SendAsync(
+                    userId: application.ApplicantId,
+                    title: "Inspection Complete",
+                    body: $"The inspection report for {application.BusinessName} has been submitted by the agent.",
+                    actionType: "TrackApplication",
+                    referenceId: application.Id
+                );
+            }
 
             return BaseResponse<string>.Ok(string.Empty, "Inspection report submitted.");
         }

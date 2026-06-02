@@ -1,6 +1,7 @@
 using Dapper;
 using FluentValidation;
 using GD1.Api.Middleware;
+using GD1.Api.Services;
 using GD1.Application.Features.Auth.Commands;
 using GD1.Application.Features.FranchiseApplication.Commands;
 using GD1.Application.Interfaces;
@@ -17,13 +18,26 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ✅ Add this — prevents BrowserRefresh from crashing on file picker open
+builder.WebHost.UseSetting("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES", "");
+
+// CRITICAL: In .NET 8, a background service exception stops the entire host by default.
+// This prevents ANY background service crash from taking down the backend.
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+});
+
 
 // Clear default claim mapping to use standard names
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -61,11 +75,14 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 
 builder.Services.AddHttpClient<ISmsService, SmsService>();
+builder.Services.AddHttpClient(); // Registers IHttpClientFactory globally
 builder.Services.AddHttpClient<GD1.Application.Interfaces.IGeocodingService, GD1.Infrastructure.Services.GeocodingService>();
 builder.Services.AddScoped<GD1.Application.Interfaces.Services.IPdfGeneratorService, GD1.Infrastructure.Services.PdfGeneratorService>();
 builder.Services.AddHostedService<UnverifiedUserCleanupService>();
 builder.Services.AddHostedService<BookingCleanupService>();
-builder.Services.AddHostedService<GD1.Infrastructure.Services.WeeklyMaintenanceService>();
+//builder.Services.AddHostedService<GD1.Infrastructure.Services.WeeklyMaintenanceService>();
+
+builder.Services.AddScoped<GD1.Application.Interfaces.Services.INotificationService, GD1.Api.Services.NotificationService>();
 
 builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(GD1.Application.Features.Auth.Commands.LoginCommand).Assembly);
@@ -100,17 +117,6 @@ builder.Services
             NameClaimType = "sub",
             RoleClaimType = System.Security.Claims.ClaimTypes.Role
         };
-        opt.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                if (context.Request.Cookies.ContainsKey("AccessToken"))
-                {
-                    context.Token = context.Request.Cookies["AccessToken"];
-                }
-                return Task.CompletedTask;
-            }
-        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -129,12 +135,17 @@ builder.Services.AddCors(opt =>
               .AllowCredentials()));
 
 // Increase file upload limit (100 MB)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 104857600; // 100 MB
+});
+
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 104857600; 
 });
 
-builder.Services.AddControllers(options => { options.Filters.Add<GD1.Api.Filters.UniqueUrlValidationFilter>(); })
+builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
@@ -153,6 +164,9 @@ builder.Services.AddControllers(options => { options.Filters.Add<GD1.Api.Filters
     });
 
 builder.Services.AddSignalR();
+
+// Register Hosted Services
+builder.Services.AddHostedService<MonthlyRevenueNotificationService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -207,8 +221,18 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<GD1.Api.Hubs.TrackingHub>("/hubs/tracking");
+app.MapHub<GD1.Api.Hubs.NotificationHub>("/hubs/notification");
 
-app.Run();  
+    app.Run();
+
+app.UseStaticFiles();
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Uploads")),
+    RequestPath = "/Uploads"
+});
 
 public class EditVehicleRequestSchemaFilter : Swashbuckle.AspNetCore.SwaggerGen.ISchemaFilter
 {

@@ -28,7 +28,14 @@ namespace GD1.Infrastructure.Services
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                await Task.Delay(Interval, stoppingToken);
+                try
+                {
+                    await Task.Delay(Interval, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
 
                 try
                 {

@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using GD1.Application.Interfaces.Services;
 
 namespace GD1.Application.Features.Pickup.Commands
 {
@@ -47,6 +48,7 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
         private readonly IEmailService _email;
         private readonly IGeminiService _gemini;
+        private readonly INotificationService _notificationService;
 
         public SubmitLotArrivalConditionCommandHandler(
             IGenericRepository<PickupRequest> pickupRepo,
@@ -57,7 +59,8 @@ namespace GD1.Application.Features.Pickup.Commands
             IGenericRepository<StoredVehicle> storedVehicleRepo,
             IGenericRepository<VehicleStorageSlot> slotRepo,
             IEmailService email,
-            IGeminiService gemini)
+            IGeminiService gemini,
+            INotificationService notificationService)
         {
             _pickupRepo = pickupRepo;
             _userRepo = userRepo;
@@ -68,6 +71,7 @@ namespace GD1.Application.Features.Pickup.Commands
             _slotRepo = slotRepo;
             _email = email;
             _gemini = gemini;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(SubmitLotArrivalConditionCommand request, CancellationToken cancellationToken)
@@ -179,6 +183,17 @@ namespace GD1.Application.Features.Pickup.Commands
                 ";
                 await _email.SendAsync(owner.Email, "GD1 Vehicle Safely Stored", body);
             }
+
+            try
+            {
+                await _notificationService.SendAsync(
+                    userId: booking.OwnerId,
+                    title: "Vehicle Stored Safely",
+                    body: "Your vehicle has arrived and is securely stored in its lot.",
+                    actionType: "ViewBooking",
+                    referenceId: booking.Id);
+            }
+            catch { /* Ignore */ }
 
             return BaseResponse<string>.Ok("Vehicle successfully stored at the lot. Condition report saved.");
         }

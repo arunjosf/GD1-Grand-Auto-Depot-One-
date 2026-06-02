@@ -167,7 +167,49 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("{vehicleId}/nearby-service-centers")]
+        [Authorize(Roles = "VehicleOwner")]
+        public async Task<IActionResult> GetNearbyServiceCenters(long vehicleId, [FromQuery] string? search)
+        {
+            var query = new GD1.Application.Features.ServiceCenter.Queries.GetNearbyServiceCentersQuery
+            {
+                VehicleId = vehicleId,
+                SearchText = search
+            };
+            var result = await _mediator.Send(query);
+            return Ok(result);
+        }
 
+        [HttpPost("{vehicleId}/book-service")]
+        [Authorize(Roles = "VehicleOwner")]
+        public async Task<IActionResult> BookService(long vehicleId, [FromBody] BookServiceRequest req)
+        {
+            var cmd = new GD1.Application.Features.ServiceRequest.Commands.BookServiceCommand
+            {
+                VehicleId = vehicleId,
+                OwnerId = GetUserId(),
+                ServiceCenterId = req.ServiceCenterId,
+                ServiceType = req.ServiceType,
+                Notes = req.Notes,
+                RequestedDate = req.RequestedDate
+            };
+            var result = await _mediator.Send(cmd);
+            return Ok(result);
+        }
+
+        [HttpPost("bookings/{id}/cancel")]
+        [Authorize(Roles = "VehicleOwner")]
+        public async Task<IActionResult> CancelBooking(long id, [FromBody] CancelBookingApiRequest req)
+        {
+            var cmd = new GD1.Application.Features.ServiceRequest.Commands.CancelServiceBookingCommand
+            {
+                ServiceRequestId = id,
+                CurrentUserId = GetUserId(),
+                Reason = req.Reason
+            };
+            var result = await _mediator.Send(cmd);
+            return Ok(result);
+        }
 
         private long GetUserId()
         {
@@ -177,5 +219,13 @@ namespace GD1.Api.Controllers
                 ?? throw new UnauthorizedAccessException("User not found in token.");
             return long.Parse(value);
         }
+    }
+
+    public class BookServiceRequest
+    {
+        public long ServiceCenterId { get; set; }
+        public string? ServiceType { get; set; }
+        public string? Notes { get; set; }
+        public DateTime RequestedDate { get; set; }
     }
 }

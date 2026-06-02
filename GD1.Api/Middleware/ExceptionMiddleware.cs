@@ -22,6 +22,21 @@ namespace GD1.Api.Middleware
             {
                 await _next(context);
             }
+            catch (OperationCanceledException)
+            {
+                // Client disconnected or request was cancelled — do NOT try to write a response
+                // to a dead connection. Silently ignore to prevent cascade crash.
+                _logger.LogDebug("Request cancelled by client: {Path}", context.Request.Path);
+            }
+            catch (System.IO.IOException ioEx) when (
+                ioEx.Message.Contains("client reset", StringComparison.OrdinalIgnoreCase) ||
+                ioEx.Message.Contains("connection was forcibly closed", StringComparison.OrdinalIgnoreCase) ||
+                ioEx.Message.Contains("reset the request stream", StringComparison.OrdinalIgnoreCase))
+            {
+                // Browser cancelled the request (e.g. navigated away mid-upload or mid-refresh)
+                // Silently ignore — writing a response here would throw again and crash the backend.
+                _logger.LogDebug("Client reset connection on {Path}", context.Request.Path);
+            }
             catch (FluentValidation.ValidationException ex)
             {
                 var errors = string.Join("\n", ex.Errors.Select(e => e.ErrorMessage));
@@ -45,6 +60,12 @@ namespace GD1.Api.Middleware
             }
             catch (Exception ex)
             {
+                // Guard against writing to a response that was already started
+                if (context.Response.HasStarted)
+                {
+                    _logger.LogError(ex, "Exception after response started: {Message}", ex.Message);
+                    return;
+                }
                 _logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
                 var message = ex.Message;
                 if (ex.InnerException != null)

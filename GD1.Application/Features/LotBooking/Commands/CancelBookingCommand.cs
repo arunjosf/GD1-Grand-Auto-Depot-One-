@@ -1,5 +1,6 @@
 using GD1.Application.Common;
 using GD1.Application.Interfaces;
+using GD1.Application.Interfaces.Services;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
@@ -25,6 +26,7 @@ namespace GD1.Application.Features.LotBooking.Commands
         private readonly IGenericRepository<Agreement> _agreementRepo;
         private readonly IGenericRepository<PickupRequest> _pickupRepo;
         private readonly IEmailService _emailService;
+        private readonly INotificationService _notificationService;
 
         public CancelBookingCommandHandler(
             IGenericRepository<Booking> bookingRepo,
@@ -33,7 +35,8 @@ namespace GD1.Application.Features.LotBooking.Commands
             IGenericRepository<GD1.Domain.Entities.LotManager> managerRepo,
             IGenericRepository<Agreement> agreementRepo,
             IGenericRepository<PickupRequest> pickupRepo,
-            IEmailService emailService)
+            IEmailService emailService,
+            INotificationService notificationService)
         {
             _bookingRepo = bookingRepo;
             _propertyRepo = propertyRepo;
@@ -42,6 +45,7 @@ namespace GD1.Application.Features.LotBooking.Commands
             _agreementRepo = agreementRepo;
             _pickupRepo = pickupRepo;
             _emailService = emailService;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(CancelBookingCommand request, CancellationToken cancellationToken)
@@ -101,6 +105,28 @@ namespace GD1.Application.Features.LotBooking.Commands
                     string body = $"<p>Hello,</p><p>A booking for {booking.Vehicle?.Brand} {booking.Vehicle?.Model} ({booking.Vehicle?.RegistrationNo}) at lot {property.Name} has been cancelled by the vehicle owner.</p>";
                     await _emailService.SendAsync(m.Manager.Email, subject, body);
                 }
+
+                // Push real-time notifications
+                try
+                {
+                    await _notificationService.SendAsync(
+                        userId: property.LotOwnerId,
+                        title: "Booking Cancelled",
+                        body: $"The booking for {booking.Vehicle?.Brand} {booking.Vehicle?.Model} was cancelled.",
+                        actionType: "ViewBooking",
+                        referenceId: booking.Id);
+
+                    if (managers.Any())
+                    {
+                        await _notificationService.SendToManyAsync(
+                            userIds: managers.Where(m => m.ManagerId > 0).Select(m => m.ManagerId),
+                            title: "Booking Cancelled",
+                            body: $"The booking for {booking.Vehicle?.Brand} {booking.Vehicle?.Model} was cancelled.",
+                            actionType: "ViewBooking",
+                            referenceId: booking.Id);
+                    }
+                }
+                catch { /* Ignore notification failure */ }
             }
 
             string msg = isChargeable ? "Booking cancelled successfully. A cancellation charge will be applied." : "Booking cancelled successfully. No charges applied.";

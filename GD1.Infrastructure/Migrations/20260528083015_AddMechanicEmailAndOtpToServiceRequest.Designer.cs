@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GD1.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260527150608_RemoveServiceCenterPlatform")]
-    partial class RemoveServiceCenterPlatform
+    [Migration("20260528083015_AddMechanicEmailAndOtpToServiceRequest")]
+    partial class AddMechanicEmailAndOtpToServiceRequest
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -522,7 +522,7 @@ namespace GD1.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("SupportedBrand")
+                    b.Property<string>("SupportedBrands")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -908,6 +908,50 @@ namespace GD1.Infrastructure.Migrations
                     b.ToTable("MaintenanceTasks");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CertificateUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IdProofUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("ServiceCenterId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceCenterId");
+
+                    b.ToTable("Mechanics");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.Notification", b =>
                 {
                     b.Property<long>("Id")
@@ -1216,6 +1260,308 @@ namespace GD1.Infrastructure.Migrations
                     b.ToTable("Reviews");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenter", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AddressLine")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("AdminId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("AverageRating")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CoverageRadiusKm")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OemCertificateUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerIdProofUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PostalCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupportedBrands")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
+
+                    b.ToTable("ServiceCenters");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterImage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("ApplicationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("ServiceCenterId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.HasIndex("ServiceCenterId");
+
+                    b.ToTable("ServiceCenterImages");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterPartneringApplication", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AddressLine")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("ApplicantId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OemCertificateUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerIdProofUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PostalCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupportedBrands")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ServiceCenterPartneringApplications");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceRequest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BookingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CenterEarning")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CompletionNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CompletionPhotos")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MechanicEmail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("MechanicId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MechanicOtp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("PlatformFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("RequestedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ScheduledDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("ServiceCenterId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("ServiceCost")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("ServiceType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("MechanicId");
+
+                    b.HasIndex("ServiceCenterId");
+
+                    b.ToTable("ServiceRequests");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.StoredVehicle", b =>
                 {
                     b.Property<long>("Id")
@@ -1407,6 +1753,9 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("FuelType")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("HasServiceRecommendation")
+                        .HasColumnType("bit");
+
                     b.Property<int>("HealthScore")
                         .HasColumnType("int");
 
@@ -1421,6 +1770,9 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<double>("LengthFeet")
                         .HasColumnType("float");
+
+                    b.Property<string>("ManagerServiceRemarks")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Model")
                         .IsRequired()
@@ -1995,6 +2347,17 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Vehicle");
                 });
 
+            modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.ServiceCenter", "ServiceCenter")
+                        .WithMany("Mechanics")
+                        .HasForeignKey("ServiceCenterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ServiceCenter");
+                });
+
             modelBuilder.Entity("GD1.Domain.Entities.Notification", b =>
                 {
                     b.HasOne("GD1.Domain.Entities.User", "User")
@@ -2081,6 +2444,59 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("Property");
 
                     b.Navigation("Reviewer");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenter", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.User", "ServiceCenterAdmin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ServiceCenterAdmin");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterImage", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.ServiceCenterPartneringApplication", "Application")
+                        .WithMany("Images")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("GD1.Domain.Entities.ServiceCenter", "ServiceCenter")
+                        .WithMany("Images")
+                        .HasForeignKey("ServiceCenterId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Application");
+
+                    b.Navigation("ServiceCenter");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceRequest", b =>
+                {
+                    b.HasOne("GD1.Domain.Entities.Booking", "Booking")
+                        .WithMany("ServiceRequests")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GD1.Domain.Entities.Mechanics", "Mechanic")
+                        .WithMany("ServiceRequests")
+                        .HasForeignKey("MechanicId");
+
+                    b.HasOne("GD1.Domain.Entities.ServiceCenter", "ServiceCenter")
+                        .WithMany("ServiceRequests")
+                        .HasForeignKey("ServiceCenterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Mechanic");
+
+                    b.Navigation("ServiceCenter");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.StoredVehicle", b =>
@@ -2199,6 +2615,8 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("JourneyEvents");
 
                     b.Navigation("PickupRequests");
+
+                    b.Navigation("ServiceRequests");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.FranchiseApplication", b =>
@@ -2225,6 +2643,25 @@ namespace GD1.Infrastructure.Migrations
                     b.Navigation("SiteImages");
 
                     b.Navigation("SlotVerifications");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.Mechanics", b =>
+                {
+                    b.Navigation("ServiceRequests");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenter", b =>
+                {
+                    b.Navigation("Images");
+
+                    b.Navigation("Mechanics");
+
+                    b.Navigation("ServiceRequests");
+                });
+
+            modelBuilder.Entity("GD1.Domain.Entities.ServiceCenterPartneringApplication", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.User", b =>

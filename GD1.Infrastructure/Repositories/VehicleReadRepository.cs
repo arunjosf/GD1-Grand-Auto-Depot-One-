@@ -122,6 +122,21 @@ namespace GD1.Infrastructure.Repositories
                                             ImageUrl = img.ImageUrl,
                                             UploadedBy = img.UploadedBy,
                                             EventId = img.EventId
+                                        }).ToList(),
+                    ServiceHistory = v.Bookings.SelectMany(b => b.ServiceRequests)
+                                        .Where(sr => sr.Status == "Completed")
+                                        .OrderByDescending(sr => sr.CreatedAt)
+                                        .Select(sr => new VehicleServiceDto
+                                        {
+                                            Id = sr.Id,
+                                            ServiceType = sr.ServiceType,
+                                            Notes = sr.Notes,
+                                            Status = sr.Status,
+                                            ScheduledDate = sr.ScheduledDate,
+                                            CompletionNotes = sr.CompletionNotes,
+                                            BillUrl = sr.BillUrl,
+                                            ServiceCost = sr.ServiceCost,
+                                            ServiceCenterName = sr.ServiceCenter.Name
                                         }).ToList()
                 })
                 .ToListAsync();
