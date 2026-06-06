@@ -16,13 +16,19 @@ namespace GD1.Api.Controllers
     {
         private readonly IGenericRepository<Notification> _notificationRepo;
         private readonly IGenericRepository<FranchiseApplication> _appRepo;
+        private readonly IGenericRepository<Booking> _bookingRepo;
+        private readonly IGenericRepository<Agreement> _agreementRepo;
 
         public NotificationsController(
             IGenericRepository<Notification> notificationRepo,
-            IGenericRepository<FranchiseApplication> appRepo)
+            IGenericRepository<FranchiseApplication> appRepo,
+            IGenericRepository<Booking> bookingRepo,
+            IGenericRepository<Agreement> agreementRepo)
         {
             _notificationRepo = notificationRepo;
             _appRepo = appRepo;
+            _bookingRepo = bookingRepo;
+            _agreementRepo = agreementRepo;
         }
 
         [HttpGet]
@@ -35,30 +41,77 @@ namespace GD1.Api.Controllers
 
             foreach (var n in notifications.OrderByDescending(x => x.CreatedAt))
             {
-                // Clean up orphaned notifications if the application was removed from the DB or cancelled
-                if ((n.ActionType == "ReviewFranchise" || n.ActionType == "TrackApplication") && n.ReferenceId.HasValue)
+                try 
                 {
-                    var app = await _appRepo.GetByIdAsync(n.ReferenceId.Value);
-                    if (app == null || app.IsDeleted)
+                    // Clean up orphaned franchise applications
+                    if ((n.ActionType == "ReviewFranchise" || n.ActionType == "TrackApplication") && n.ReferenceId.HasValue)
                     {
-                        await _notificationRepo.DeleteAsync(n);
-                        continue; // Skip returning this notification
+                        var app = await _appRepo.GetByIdAsync(n.ReferenceId.Value);
+                        if (app == null || app.IsDeleted)
+                        {
+                            await _notificationRepo.DeleteAsync(n);
+                            continue; // Skip returning this notification
+                        }
                     }
+
+                    // Clean up orphaned booking confirmations
+                    if (n.ActionType == "ConfirmBooking")
+                    {
+                        bool shouldDelete = false;
+
+                        if (n.ReferenceId.HasValue)
+                        {
+                            var agreement = await _agreementRepo.GetByIdAsync(n.ReferenceId.Value);
+                            if (agreement == null || agreement.Status != GD1.Domain.Entities.Enums.AgreementStatus.Pending)
+                            {
+                                shouldDelete = true;
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(n.ActionUrl) && n.ActionUrl.StartsWith("/agreement/"))
+                        {
+                            var bookingIdStr = n.ActionUrl.Split('/').LastOrDefault();
+                            if (long.TryParse(bookingIdStr, out long bId))
+                            {
+                                var booking = await _bookingRepo.GetByIdAsync(bId);
+                                if (booking == null || booking.Status != GD1.Domain.Entities.Enums.BookingStatus.VerifiedPendingPayment)
+                                {
+                                    shouldDelete = true;
+                                }
+                            }
+                        }
+
+                        if (shouldDelete)
+                        {
+                            await _notificationRepo.DeleteAsync(n);
+                            continue; // Skip returning this notification
+                        }
+                    }
+
+                    // Clean up any other notifications if needed...
+                    
+                    validNotifications.Add(new 
+                    {
+                        n.Id,
+                        n.Title,
+                        n.Body,
+                        n.ActionType,
+                        n.ReferenceId,
+                        n.ActionUrl,
+                        n.CreatedAt,
+                        n.IsRead
+                    });
+
+                    if (validNotifications.Count >= 50) break;
                 }
-
-                validNotifications.Add(new 
+                catch (Exception ex)
                 {
-                    n.Id,
-                    n.Title,
-                    n.Body,
-                    n.ActionType,
-                    n.ReferenceId,
-                    n.ActionUrl,
-                    n.CreatedAt,
-                    n.IsRead
-                });
-
-                if (validNotifications.Count >= 50) break;
+                    // Log error and continue so we don't crash the whole endpoint
+                    // Optionally add it to validNotifications so it isn't lost if cleanup fails
+                    validNotifications.Add(new 
+                    {
+                        n.Id, n.Title, n.Body, n.ActionType, n.ReferenceId, n.ActionUrl, n.CreatedAt, n.IsRead
+                    });
+                }
             }
 
             return Ok(BaseResponse<object>.Ok(validNotifications));

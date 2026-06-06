@@ -25,10 +25,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
+                       COALESCE(NULLIF(s.ImageUrl, ''), (SELECT TOP 1 pi.ImageUrl FROM PropertyImages pi WHERE pi.VehicleStoragePropertyId = p.Id ORDER BY pi.Id DESC)) AS PropertyImageUrl,
+                       (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
@@ -72,7 +75,7 @@ namespace GD1.Infrastructure.Repositories
                 LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
                 LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
                 WHERE  b.OwnerId = @OwnerId
-                AND    b.Status NOT IN (0, 5, 6)
+                AND    b.Status NOT IN (0, 5)
                 ORDER BY b.CreatedAt DESC";
 
             return await _db.QueryAsync<BookingDto>(sql, new { OwnerId = ownerId });
@@ -83,10 +86,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
+                       COALESCE(NULLIF(s.ImageUrl, ''), (SELECT TOP 1 pi.ImageUrl FROM PropertyImages pi WHERE pi.VehicleStoragePropertyId = p.Id ORDER BY pi.Id DESC)) AS PropertyImageUrl,
+                       (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
@@ -131,7 +137,7 @@ namespace GD1.Infrastructure.Repositories
                 LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
                 WHERE  b.Id = @BookingId
                 AND    b.OwnerId = @OwnerId
-                AND    b.Status NOT IN (0, 5, 6)";
+                AND    b.Status NOT IN (0, 5)";
 
             return await _db.QuerySingleOrDefaultAsync<BookingDto>(sql, new { BookingId = bookingId, OwnerId = ownerId });
         }
@@ -141,10 +147,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
+                       COALESCE(NULLIF(s.ImageUrl, ''), (SELECT TOP 1 pi.ImageUrl FROM PropertyImages pi WHERE pi.VehicleStoragePropertyId = p.Id ORDER BY pi.Id DESC)) AS PropertyImageUrl,
+                       (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
@@ -198,10 +207,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
+                       COALESCE(NULLIF(s.ImageUrl, ''), (SELECT TOP 1 pi.ImageUrl FROM PropertyImages pi WHERE pi.VehicleStoragePropertyId = p.Id ORDER BY pi.Id DESC)) AS PropertyImageUrl,
+                       (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
@@ -255,10 +267,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
+                       COALESCE(NULLIF(s.ImageUrl, ''), (SELECT TOP 1 pi.ImageUrl FROM PropertyImages pi WHERE pi.VehicleStoragePropertyId = p.Id ORDER BY pi.Id DESC)) AS PropertyImageUrl,
+                       (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
@@ -311,10 +326,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
+                       COALESCE(NULLIF(s.ImageUrl, ''), (SELECT TOP 1 pi.ImageUrl FROM PropertyImages pi WHERE pi.VehicleStoragePropertyId = p.Id ORDER BY pi.Id DESC)) AS PropertyImageUrl,
+                       (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
@@ -385,10 +403,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
+                       COALESCE(NULLIF(s.ImageUrl, ''), (SELECT TOP 1 pi.ImageUrl FROM PropertyImages pi WHERE pi.VehicleStoragePropertyId = p.Id ORDER BY pi.Id DESC)) AS PropertyImageUrl,
+                       (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,

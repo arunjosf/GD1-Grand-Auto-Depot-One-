@@ -153,12 +153,13 @@ namespace GD1.Api.Controllers
 
         [HttpPost("{id}/Cancel")]
         [Authorize(Roles = "VehicleOwner")]
-        public async Task<IActionResult> CancelBooking(long id)
+        public async Task<IActionResult> CancelBooking(long id, [FromQuery] string? reason = null)
         {
             var result = await _mediator.Send(new CancelBookingCommand 
             { 
                 BookingId = id, 
-                OwnerId = GetUserId() 
+                OwnerId = GetUserId(),
+                Reason = reason
             });
             return Ok(result);
         }
@@ -171,6 +172,21 @@ namespace GD1.Api.Controllers
             { 
                 BookingId = id, 
                 OwnerId = GetUserId() 
+            });
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/verify")]
+        [Authorize(Roles = "LotOwner")]
+        [Consumes("application/x-www-form-urlencoded", "multipart/form-data")]
+        public async Task<IActionResult> VerifyBooking(long id, [FromForm] bool isApproved, [FromForm] string? rejectionReason)
+        {
+            var result = await _mediator.Send(new VerifyBookingCommand
+            {
+                BookingId = id,
+                IsApproved = isApproved,
+                RejectionReason = rejectionReason,
+                AdminId = GetUserId()
             });
             return Ok(result);
         }

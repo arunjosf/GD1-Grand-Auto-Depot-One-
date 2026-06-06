@@ -73,19 +73,12 @@ namespace GD1.Application.Features.Vehicle.Commands
             var newYear = cmd.Year ?? vehicle.Year;
             var newCategory = vehicle.Category;
 
-            if (!string.IsNullOrEmpty(cmd.Brand) || !string.IsNullOrEmpty(cmd.Model) || cmd.Year.HasValue)
-            {
-                var validationResult = await _vehicleService.ValidateVehicleYearAsync(newBrand, newModel, newYear);
-                if (!validationResult.IsValid)
-                {
-                    return BaseResponse<string>.Fail("The updated vehicle (" + newYear + " " + newBrand + " " + newModel + ") could not be validated via external specs API.");
-                }
-                newCategory = validationResult.Category; // Force override with true API category
-            }
-            else if (!string.IsNullOrEmpty(cmd.Category))
-            {
+
+            if (cmd.Year.HasValue && cmd.Year.Value > 2026)
+                return BaseResponse<string>.Fail("Vehicle model year cannot be greater than 2026.");
+
+            if (!string.IsNullOrEmpty(cmd.Category))
                 newCategory = cmd.Category;
-            }
 
             vehicle.Brand = newBrand;
             vehicle.Model = newModel;

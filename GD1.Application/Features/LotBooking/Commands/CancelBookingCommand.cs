@@ -15,6 +15,7 @@ namespace GD1.Application.Features.LotBooking.Commands
     {
         public long BookingId { get; set; }
         public long OwnerId { get; set; }
+        public string? Reason { get; set; }
     }
 
     public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand, BaseResponse<string>>
@@ -25,6 +26,7 @@ namespace GD1.Application.Features.LotBooking.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _managerRepo;
         private readonly IGenericRepository<Agreement> _agreementRepo;
         private readonly IGenericRepository<PickupRequest> _pickupRepo;
+        private readonly IGenericRepository<Notification> _notificationRepo;
         private readonly IEmailService _emailService;
         private readonly INotificationService _notificationService;
 
@@ -35,6 +37,7 @@ namespace GD1.Application.Features.LotBooking.Commands
             IGenericRepository<GD1.Domain.Entities.LotManager> managerRepo,
             IGenericRepository<Agreement> agreementRepo,
             IGenericRepository<PickupRequest> pickupRepo,
+            IGenericRepository<Notification> notificationRepo,
             IEmailService emailService,
             INotificationService notificationService)
         {
@@ -44,6 +47,7 @@ namespace GD1.Application.Features.LotBooking.Commands
             _managerRepo = managerRepo;
             _agreementRepo = agreementRepo;
             _pickupRepo = pickupRepo;
+            _notificationRepo = notificationRepo;
             _emailService = emailService;
             _notificationService = notificationService;
         }
@@ -63,27 +67,28 @@ namespace GD1.Application.Features.LotBooking.Commands
 
             bool isChargeable = pickupRequest != null && pickupRequest.Status >= PickupStatus.InTransit;
 
+            // Remove related notifications
+            var notifs = await _notificationRepo.FindAsync(n => n.UserId == booking.OwnerId && (n.ActionUrl == $"/agreement/{booking.Id}" || n.ActionUrl == "/user/bookings"));
+            foreach (var n in notifs) { await _notificationRepo.DeleteAsync(n); }
+
             if (isChargeable)
             {
                 // Manager has picked up the vehicle and started the ride. Keep the booking in DB but mark as Cancelled.
                 booking.Status = BookingStatus.Cancelled;
+                booking.RejectionReason = request.Reason ?? "Cancelled after pickup request was initiated.";
                 await _bookingRepo.UpdateAsync(booking);
             }
             else
             {
-                // Free cancellation. Completely remove from DB.
+                // Free cancellation. Mark as Cancelled instead of deleting to keep history.
                 if (pickupRequest != null)
                 {
                     await _pickupRepo.DeleteAsync(pickupRequest);
                 }
 
-                var agreement = (await _agreementRepo.FindAsync(a => a.ReferenceId == booking.Id && a.Type == AgreementType.LotBooking)).FirstOrDefault();
-                if (agreement != null)
-                {
-                    await _agreementRepo.DeleteAsync(agreement);
-                }
-
-                await _bookingRepo.DeleteAsync(booking);
+                booking.Status = BookingStatus.Cancelled;
+                booking.RejectionReason = request.Reason ?? "Cancelled by user before any chargeable actions.";
+                await _bookingRepo.UpdateAsync(booking);
             }
 
             // Notify Manager/Owner

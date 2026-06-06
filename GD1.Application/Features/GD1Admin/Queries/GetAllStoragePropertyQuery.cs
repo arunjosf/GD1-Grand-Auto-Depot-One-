@@ -18,6 +18,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
         public long? VehicleId { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public long? LotOwnerId { get; set; }
         
         // New search parameters
         public string? Name { get; set; }
@@ -49,7 +50,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
 
         public async Task<BaseResponse<IEnumerable<StoragePropertyListDto>>> Handle(GetAllStoragePropertyQuery query, CancellationToken ct)
         {
-            bool isAdmin = query.UserRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin || query.UserRole == GD1.Domain.Entities.Enums.UserRole.Manager;
+            bool isAdmin = query.UserRole == GD1.Domain.Entities.Enums.UserRole.GD1Admin || query.UserRole == GD1.Domain.Entities.Enums.UserRole.Manager || query.UserRole == GD1.Domain.Entities.Enums.UserRole.LotOwner;
 
             if (!isAdmin && !query.Recommend)
             {
@@ -78,7 +79,8 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
                 (!query.HasCCTV.HasValue || p.HasCCTV == query.HasCCTV.Value) &&
                 (!query.HasSecurity.HasValue || p.HasSecurity == query.HasSecurity.Value) &&
-                (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots", "LotOwner", "ActivePropertyImages", "Reviews");
+                (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value) &&
+                (!query.LotOwnerId.HasValue || p.LotOwnerId == query.LotOwnerId.Value), "Slots", "LotOwner", "ActivePropertyImages", "Reviews");
 
             // Fallback: If city was specified but no properties found, drop the city filter to suggest nearest alternatives
             if (!string.IsNullOrEmpty(query.City) && !properties.Any())
@@ -89,7 +91,8 @@ namespace GD1.Application.Features.GD1Admin.Queries
                     (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
                     (!query.HasCCTV.HasValue || p.HasCCTV == query.HasCCTV.Value) &&
                     (!query.HasSecurity.HasValue || p.HasSecurity == query.HasSecurity.Value) &&
-                    (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value), "Slots", "LotOwner", "ActivePropertyImages", "Reviews");
+                    (!query.HasFireSafety.HasValue || p.HasFireSafety == query.HasFireSafety.Value) &&
+                    (!query.LotOwnerId.HasValue || p.LotOwnerId == query.LotOwnerId.Value), "Slots", "LotOwner", "ActivePropertyImages", "Reviews");
             }
 
             var resultDtos = new List<StoragePropertyListDto>();
@@ -187,17 +190,31 @@ namespace GD1.Application.Features.GD1Admin.Queries
             // Always use Gemini API to evaluate amenities and reviews and attach the badge
             if (resultDtos.Any())
             {
-                var aiRec = await _geminiService.GetBestLotRecommendationAsync(resultDtos, "Provide the best property considering the amenities and the user reviews.");
-                if (aiRec != null && aiRec.BestLotId > 0)
+                bool aiSucceeded = false;
+                try
                 {
-                    var bestLot = resultDtos.FirstOrDefault(d => d.Id == aiRec.BestLotId);
-                    if (bestLot != null)
+                    var aiRec = await _geminiService.GetBestLotRecommendationAsync(resultDtos, "Provide the best property considering the amenities and the user reviews.");
+                    if (aiRec != null && aiRec.BestLotId > 0)
                     {
-                        bestLot.IsRecommendedByAi = true;
-                        bestLot.AiRecommendationReason = aiRec.AiAnalysis;
-                        
-                        // We DO NOT move the lot to the top here. 
-                        // The frontend will handle whether to display it at the top or leave it in its distance-sorted position.
+                        var bestLot = resultDtos.FirstOrDefault(d => d.Id == aiRec.BestLotId);
+                        if (bestLot != null)
+                        {
+                            bestLot.IsRecommendedByAi = true;
+                            bestLot.AiRecommendationReason = aiRec.AiAnalysis;
+                            aiSucceeded = true;
+                        }
+                    }
+                }
+                catch { /* AI failed, use fallback below */ }
+
+                // Fallback: if AI failed or returned no valid lot, pick highest-rated lot
+                if (!aiSucceeded)
+                {
+                    var bestByRating = resultDtos.OrderByDescending(d => d.AverageRating).ThenByDescending(d => d.TotalReviews).FirstOrDefault();
+                    if (bestByRating != null)
+                    {
+                        bestByRating.IsRecommendedByAi = true;
+                        bestByRating.AiRecommendationReason = "Recommended based on top customer ratings and reviews among nearby garages.";
                     }
                 }
             }

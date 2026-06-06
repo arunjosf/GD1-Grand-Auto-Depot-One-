@@ -33,18 +33,18 @@ namespace GD1.Application.Features.LotBooking.Templates
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ font-family: 'Inter', Arial, sans-serif; color: #1a1a2e; background: #fff; font-size: 14px; line-height: 1.7; }}
   .page {{ max-width: 800px; margin: 0 auto; padding: 48px 56px; }}
-  .header {{ text-align: center; border-bottom: 3px solid #4f46e5; padding-bottom: 24px; margin-bottom: 32px; }}
-  .logo {{ font-size: 28px; font-weight: 700; color: #4f46e5; letter-spacing: -1px; }}
-  .logo span {{ color: #f59e0b; }}
+  .header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 24px; margin-bottom: 20px; }}
+  .logo {{ font-size: 28px; font-weight: 700; color: #000; letter-spacing: -1px; }}
+  .logo span {{ color: #000; }}
   .subtitle {{ font-size: 13px; color: #6b7280; margin-top: 4px; }}
   h1 {{ font-size: 20px; font-weight: 700; text-align: center; color: #1a1a2e; margin-bottom: 8px; }}
   .doc-id {{ text-align: center; font-size: 12px; color: #9ca3af; margin-bottom: 32px; }}
   .section {{ margin-bottom: 28px; }}
-  .section-title {{ font-size: 13px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.5px; border-left: 3px solid #4f46e5; padding-left: 10px; margin-bottom: 14px; }}
+  .section-title {{ font-size: 13px; font-weight: 700; color: ##000; text-transform: uppercase; letter-spacing: 0.5px; border-left: 3px solid #000; padding-left: 10px; margin-bottom: 14px; }}
   .info-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
   .info-item {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 14px; }}
   .info-label {{ font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }}
-  .info-value {{ font-size: 13px; font-weight: 600; color: #111827; }}
+  .info-value {{ font-size: 13px; font-weight: 600; color: #111827; }}  
   .terms-box {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; }}
   .terms-box ol {{ padding-left: 20px; }}
   .terms-box ol li {{ margin-bottom: 10px; color: #374151; }}
@@ -65,7 +65,7 @@ namespace GD1.Application.Features.LotBooking.Templates
 <body>
 <div class=""page"">
   <div class=""header"">
-    <div class=""logo"">GD<span>1</span> Grand Auto Depot</div>
+    <div class=""logo"">Grand Auto Depot One</div>
     <div class=""subtitle"">Vehicle Storage Services — Official Agreement</div>
   </div>
 
@@ -112,7 +112,7 @@ namespace GD1.Application.Features.LotBooking.Templates
       <ol>
         <li><strong>Storage Responsibility:</strong> GD1 Grand Auto Depot and its partner lot owners will exercise reasonable care in storing the vehicle. However, GD1 shall not be liable for any pre-existing damage, mechanical failures, or theft arising from circumstances beyond reasonable control.</li>
         <li><strong>Vehicle Condition:</strong> The vehicle must be delivered in a roadworthy condition. Any hazardous leaks, illegal modifications, or undisclosed damage must be reported at the time of check-in.</li>
-        <li><strong>Engine &amp; Mechanical Issues — Lot Owner Disclaimer:</strong> The lot owner and GD1 Grand Auto Depot are <strong>not responsible</strong> for any engine-related problems, mechanical failures, electrical faults, battery discharge, fluid leaks, or any internal mechanical deterioration that may occur during the storage period. Such issues are considered the sole responsibility of the vehicle owner. The storage facility provides physical space only and does not include any mechanical servicing or maintenance obligations.</li>
+        <li><strong>Engine &amp; Mechanical Issues — Lot Owner Disclaimer:</strong> The lot owner and GD1 Grand Auto Depot are <strong>not responsible</strong> for any engine-related problems, mechanical failures, electrical faults, fluid leaks, or any internal mechanical deterioration that may occur during the storage period. Such issues are considered the sole responsibility of the vehicle owner. The storage facility provides physical space only and does not include any mechanical servicing or maintenance obligations.</li>
         <li><strong>Access &amp; Security:</strong> Access to the storage property is restricted to authorized GD1 personnel and the registered vehicle owner. No third-party access is permitted without prior written approval via the GD1 platform.</li>
         <li><strong>Duration &amp; Extension:</strong> Storage is reserved for the agreed period above. Extensions must be requested through the GD1 platform at least 24 hours before the check-out date.</li>
         <li><strong>Payment:</strong> The estimated total cost is calculated at the time of booking. Final billing may vary if the duration is extended. All payments must be settled through the GD1 platform.</li>
@@ -125,7 +125,7 @@ namespace GD1.Application.Features.LotBooking.Templates
 
       <div class=""disclaimer-box"">
         <div class=""disc-title"">⚠ Important Mechanical Disclaimer</div>
-        <p>The lot owner and GD1 Grand Auto Depot bear <strong>no responsibility whatsoever</strong> for any engine-related issues, mechanical breakdowns, battery drain, fluid degradation, or any other internal mechanical or electrical problems that occur during or after the vehicle storage period. By accepting this agreement, the vehicle owner acknowledges that the storage service covers physical space only and that the lot owner has no obligation to inspect, maintain, service, or repair the vehicle's mechanical or electrical systems at any time.</p>
+        <p>The lot owner and GD1 Grand Auto Depot bear <strong>no responsibility whatsoever</strong> for any engine-related issues, mechanical breakdowns, fluid degradation, or any other internal mechanical or electrical problems that occur during or after the vehicle storage period. By accepting this agreement, the vehicle owner acknowledges that the storage service covers physical space only and that the lot owner has no obligation to inspect, maintain, service, or repair the vehicle's mechanical or electrical systems at any time.</p>
       </div>
     </div>
   </div>
@@ -138,8 +138,9 @@ namespace GD1.Application.Features.LotBooking.Templates
       <div style=""font-size:11px;color:#9ca3af;margin-top:2px"">{agreementDate}</div>
     </div>
     <div class=""sig-block"">
-      <div class=""sig-label"">GD1 Grand Auto Depot</div>
-      <div class=""sig-name"">Authorized Representative</div>
+      <div class=""sig-label"">Grand Auto Depot One</div>
+ <div class=""accepted-badge"">✓ Digitally Accepted</div>
+       <div style=""margin-top:10px""><div class=""sig-name"">Authorized Representative</div></div>
       <div style=""font-size:11px;color:#9ca3af;margin-top:2px"">GD1 Operations Team</div>
     </div>
   </div>

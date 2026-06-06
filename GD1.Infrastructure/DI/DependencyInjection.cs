@@ -2,6 +2,7 @@ using Dapper;
 using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Application.Interfaces.Services;
+using GD1.Application.Common.Interfaces;
 using GD1.Domain.Interfaces;
 using GD1.Infrastructure.Data;
 using GD1.Infrastructure.Repositories;
@@ -43,6 +44,7 @@ namespace GD1.Infrastructure
             services.AddScoped<IVehicleService, VehicleService>();
 
             services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
+            services.AddScoped<IPaymentService, RazorpayService>();
             return services;
         }
     }

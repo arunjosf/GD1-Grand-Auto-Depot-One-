@@ -62,6 +62,12 @@ namespace GD1.Application.Features.LotBooking.DTOs
         [StringLength(500)]
         public string? RejectionReason { get; set; }
 
+        public string? PropertyImageUrl { get; set; }
+        public string? VehicleImageUrl { get; set; }
+        public string? VehicleRcUrl { get; set; }
+        public string? OwnerIdProofUrl { get; set; }
+        public string? OwnerName { get; set; }
+
         // Pickup / Manager Details
         public string? PickupStatus { get; set; }
         public DateTime? ManagerArrivalTime { get; set; }

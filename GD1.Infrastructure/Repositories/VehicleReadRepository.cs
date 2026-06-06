@@ -41,6 +41,7 @@ namespace GD1.Infrastructure.Repositories
                     HealthScore = v.HealthScore,
                     OwnerIdProofUrl = v.OwnerIdProofUrl,
                     VehicleRcUrl = v.VehicleRcUrl,
+                    ProfileImageUrl = v.Images.FirstOrDefault().ImageUrl,
                     CreatedAt = v.CreatedAt,
                     LengthFeet = v.LengthFeet,
                     WidthFeet = v.WidthFeet,

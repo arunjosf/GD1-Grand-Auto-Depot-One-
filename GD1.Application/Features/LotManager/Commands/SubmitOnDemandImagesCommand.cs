@@ -16,7 +16,6 @@ namespace GD1.Application.Features.LotManager.Commands
         [System.Text.Json.Serialization.JsonIgnore]
         public long ManagerId { get; set; }
 
-        // 6 Images
         public string FrontImageUrl { get; set; } = string.Empty;
         public string RearImageUrl { get; set; } = string.Empty;
         public string LeftSideImageUrl { get; set; } = string.Empty;
@@ -55,13 +54,22 @@ namespace GD1.Application.Features.LotManager.Commands
             if (task.Type != MaintenanceTaskType.OnDemandImage)
                 return BaseResponse<string>.Fail("This task is not an On-Demand Image Request.");
 
-            // Update Task
+            var labels = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
+            var urls = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
+
+            foreach (var url in urls)
+            {
+                if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{task.VehicleId}"))
+                {
+                    return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {task.VehicleId}.");
+                }
+            }
+
             task.Status = MaintenanceTaskStatus.Completed;
             task.CompletedAt = DateTime.UtcNow;
 
             await _taskRepo.UpdateAsync(task);
 
-            // Log to Journey Timeline
             var journeyEvent = new VehicleJourneyEvent
             {
                 VehicleId = task.VehicleId,
@@ -74,18 +82,6 @@ namespace GD1.Application.Features.LotManager.Commands
 
             await _journeyRepo.AddAsync(journeyEvent);
 
-            // Add images to VehicleImages
-            var labels = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
-            var urls = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
-
-            // Strict URL Validation (Async loop checking for vehicleId)
-            foreach (var url in urls)
-            {
-                if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{task.VehicleId}"))
-                {
-                    return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {task.VehicleId}.");
-                }
-            }
 
             for (int i = 0; i < labels.Length; i++)
             {

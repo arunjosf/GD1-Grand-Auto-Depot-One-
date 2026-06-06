@@ -72,7 +72,7 @@ namespace GD1.Infrastructure.Services
                     }
                 };
 
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_apiKey}";
                 
                 var response = await _http.PostAsJsonAsync(url, requestBody);
                 

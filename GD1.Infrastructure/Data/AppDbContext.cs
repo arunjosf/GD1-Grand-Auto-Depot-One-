@@ -44,6 +44,7 @@ namespace GD1.Infrastructure.Data
         public DbSet<ServiceCenterImage> ServiceCenterImages { get; set; }
         public DbSet<Agreement> Agreements { get; set; }
         public DbSet<JourneyLocation> JourneyLocations { get; set; }
+        public DbSet<Payment> Payments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {

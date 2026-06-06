@@ -19,10 +19,21 @@ namespace GD1.Api.Controllers
     public class VehicleController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly GD1.Application.Interfaces.IVehicleService _vehicleService;
 
-        public VehicleController(IMediator mediator)
+        public VehicleController(IMediator mediator, GD1.Application.Interfaces.IVehicleService vehicleService)
         {
             _mediator = mediator;
+            _vehicleService = vehicleService;
+        }
+
+        [HttpGet("validate-year")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ValidateYear([FromQuery] string brand, [FromQuery] string model, [FromQuery] int year)
+        {
+            if (string.IsNullOrEmpty(brand) || string.IsNullOrEmpty(model) || year <= 0) return BadRequest();
+            var result = await _vehicleService.ValidateVehicleYearAsync(brand, model, year);
+            return Ok(new { isValid = result.IsValid, category = result.Category });
         }
 
 

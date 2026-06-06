@@ -80,16 +80,16 @@ namespace GD1.Application.Features.Pickup.Commands
             double resolvedLat = coords.Value.Lat;
             double resolvedLon = coords.Value.Lon;
 
-            // Enforce 40km radius between user's pickup location and the storage property
+            // Enforce 25km radius between user's pickup location and the storage property
             if (property?.Latitude.HasValue == true && property?.Longitude.HasValue == true)
             {
                 double distKm = CalculateDistance(
                     resolvedLat, resolvedLon,
                     property.Latitude.Value, property.Longitude.Value);
 
-                if (distKm > 40)
+                if (distKm > 25)
                     throw new InvalidOperationException(
-                        $"Pickup is not available. Your location is {distKm:F1}km from the storage property. Pickup is only supported within a 40km radius.");
+                        $"Pickup is not available. Your location is {distKm:F1}km from the storage property. Pickup is only supported within a 25km radius.");
             }
 
             booking.PickupLatitude = resolvedLat;

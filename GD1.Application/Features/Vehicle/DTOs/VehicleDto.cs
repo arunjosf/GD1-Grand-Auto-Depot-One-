@@ -22,6 +22,7 @@ namespace GD1.Application.Features.Vehicle.DTOs
         public double HeightFeet { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? VehicleRcUrl { get; set; }
+        public string? ProfileImageUrl { get; set; }
         public int HealthScore { get; set; }
         public DateTime CreatedAt { get; set; }
 

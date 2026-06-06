@@ -66,6 +66,51 @@ namespace GD1.Infrastructure.Repositories
             return await _db.QueryAsync<PickupRequestDto>(sql, new { PropertyId = propertyId, ManagerId = managerId });
         }
 
+        public async Task<IEnumerable<PickupRequestDto>> GetLotOwnerPickupsAsync(long lotOwnerId)
+        {
+            var sql = @"
+                SELECT 
+                    pr.Id as PickupRequestId,
+                    b.Id as BookingId,
+                    pr.RequestedPickupTime,
+                    pr.Status,
+                    
+                    v.Brand as VehicleBrand,
+                    v.Model as VehicleModel,
+                    v.RegistrationNo,
+                    o.FullName as CustomerName,
+                    o.Email as CustomerEmail,
+                    o.PhoneNumber as CustomerPhone,
+                    b.PickupAddress,
+                    b.PickupPincode,
+                    b.PickupLatitude,
+                    b.PickupLongitude,
+                    pv_pickup.FrontImageUrl,
+                    pv_pickup.RearImageUrl,
+                    pv_pickup.LeftSideImageUrl,
+                    pv_pickup.RightSideImageUrl,
+                    pv_pickup.SelfieUrl,
+                    pv_pickup.InteriorImageUrl,
+                    pv_pickup.OdometerImageUrl,
+                    pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
+                    pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
+                    pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
+                    pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
+                    pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
+                    pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                FROM PickupRequests pr
+                INNER JOIN Bookings b ON pr.BookingId = b.Id
+                INNER JOIN Vehicles v ON b.VehicleId = v.Id
+                INNER JOIN Users o ON b.OwnerId = o.Id
+                INNER JOIN StorageProperties sp ON b.PropertyId = sp.Id
+                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
+                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                WHERE sp.OwnerId = @LotOwnerId
+                ORDER BY pr.RequestedPickupTime DESC";
+
+            return await _db.QueryAsync<PickupRequestDto>(sql, new { LotOwnerId = lotOwnerId });
+        }
+
         public async Task<IEnumerable<PickupRequestDto>> GetMyAssignmentsAsync(long managerUserId)
         {
             var sql = @"

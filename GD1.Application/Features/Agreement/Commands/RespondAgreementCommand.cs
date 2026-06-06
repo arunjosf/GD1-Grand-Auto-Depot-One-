@@ -24,27 +24,41 @@ namespace GD1.Application.Features.AgreementFeature.Commands
         private readonly IGenericRepository<Agreement> _agreementRepo;
         private readonly IGenericRepository<Booking> _bookingRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _franchiseRepo;
+        private readonly IGenericRepository<Notification> _notificationRepo;
         public RespondAgreementCommandHandler(
             IGenericRepository<Agreement> agreementRepo,
             IGenericRepository<Booking> bookingRepo,
-            IGenericRepository<GD1.Domain.Entities.FranchiseApplication> franchiseRepo)
+            IGenericRepository<GD1.Domain.Entities.FranchiseApplication> franchiseRepo,
+            IGenericRepository<Notification> notificationRepo)
         {
             _agreementRepo = agreementRepo;
             _bookingRepo = bookingRepo;
             _franchiseRepo = franchiseRepo;
+            _notificationRepo = notificationRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(RespondAgreementCommand request, CancellationToken cancellationToken)
         {
-            var agreement = await _agreementRepo.GetByIdAsync(request.AgreementId);
+            Agreement? agreement = null;
+            if (request.AgreementId > 0)
+            {
+                agreement = await _agreementRepo.GetByIdAsync(request.AgreementId);
+
+                // Fallback for cases where BookingId was passed instead of AgreementId
+                if (agreement == null)
+                {
+                    var agreements = await _agreementRepo.FindAsync(a => a.ReferenceId == request.AgreementId && a.Type == AgreementType.LotBooking);
+                    agreement = System.Linq.Enumerable.FirstOrDefault(agreements);
+                }
+            }
+
             if (agreement == null)
                 return BaseResponse<string>.Fail("Agreement not found.");
 
             if (agreement.UserId != request.UserId)
                 return BaseResponse<string>.Fail("Unauthorized.");
 
-            if (agreement.Status != AgreementStatus.Pending)
-                return BaseResponse<string>.Fail("Agreement has already been responded to.");
+            // Check removed to allow re-responding to the agreement.
 
             agreement.Status = request.Response == AgreementResponse.Approve ? AgreementStatus.Accepted : AgreementStatus.Rejected;
             agreement.AcceptedAt = request.Response == AgreementResponse.Approve ? DateTime.UtcNow : null;
@@ -70,6 +84,10 @@ namespace GD1.Application.Features.AgreementFeature.Commands
         {
             var booking = await _bookingRepo.GetByIdAsync(agreement.ReferenceId);
             if (booking == null) return BaseResponse<string>.Fail("Booking not found.");
+
+            // Remove related notifications for the vehicle owner
+            var notifs = await _notificationRepo.FindAsync(n => n.UserId == booking.OwnerId && (n.ActionUrl == $"/agreement/{booking.Id}" || n.ActionUrl == "/user/bookings"));
+            foreach (var n in notifs) { await _notificationRepo.DeleteAsync(n); }
 
             if (isAccepted)
             {

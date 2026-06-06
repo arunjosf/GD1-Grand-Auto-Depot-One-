@@ -10,7 +10,6 @@ using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
 using GD1.Infrastructure;
 using GD1.Infrastructure.Data;
-using GD1.Infrastructure.Data;
 using GD1.Infrastructure.Repositories;
 using GD1.Infrastructure.Services;
 using MediatR;
@@ -24,7 +23,6 @@ using Microsoft.OpenApi.Models;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
-using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -223,16 +221,7 @@ app.MapControllers();
 app.MapHub<GD1.Api.Hubs.TrackingHub>("/hubs/tracking");
 app.MapHub<GD1.Api.Hubs.NotificationHub>("/hubs/notification");
 
-    app.Run();
-
-app.UseStaticFiles();
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "Uploads")),
-    RequestPath = "/Uploads"
-});
+app.Run();
 
 public class EditVehicleRequestSchemaFilter : Swashbuckle.AspNetCore.SwaggerGen.ISchemaFilter
 {

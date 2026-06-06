@@ -17,11 +17,15 @@ namespace GD1.Application.Features.AgreementFeature.Queries
         public string Description { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? AcceptedAt { get; set; }
+        public int Type { get; set; }
+        public long ReferenceId { get; set; }
     }
 
     public class GetAgreementQuery : IRequest<BaseResponse<AgreementResponseDto>>
     {
-        public long AgreementId { get; set; }
+        public long? AgreementId { get; set; }
+        public long? ReferenceId { get; set; }
+        public AgreementType? Type { get; set; }
         public long UserId { get; set; }
     }
 
@@ -36,7 +40,24 @@ namespace GD1.Application.Features.AgreementFeature.Queries
 
         public async Task<BaseResponse<AgreementResponseDto>> Handle(GetAgreementQuery request, CancellationToken cancellationToken)
         {
-            var agreement = await _repo.GetByIdAsync(request.AgreementId);
+            Agreement? agreement = null;
+            if (request.AgreementId.HasValue && request.AgreementId.Value > 0)
+            {
+                agreement = await _repo.GetByIdAsync(request.AgreementId.Value);
+                
+                // Fallback for cases where BookingId was passed instead of AgreementId
+                if (agreement == null)
+                {
+                    var agreements = await _repo.FindAsync(a => a.ReferenceId == request.AgreementId.Value && a.Type == AgreementType.LotBooking);
+                    agreement = System.Linq.Enumerable.FirstOrDefault(agreements);
+                }
+            }
+            else if (request.ReferenceId.HasValue && request.Type.HasValue)
+            {
+                var agreements = await _repo.FindAsync(a => a.ReferenceId == request.ReferenceId.Value && a.Type == request.Type.Value);
+                agreement = System.Linq.Enumerable.FirstOrDefault(agreements);
+            }
+
             if (agreement == null)
                 return BaseResponse<AgreementResponseDto>.Fail("Agreement not found.");
 
@@ -55,7 +76,9 @@ namespace GD1.Application.Features.AgreementFeature.Queries
                     _ => $"Agreement #{agreement.Id}"
                 },
                 CreatedAt = agreement.CreatedAt,
-                AcceptedAt = agreement.AcceptedAt
+                AcceptedAt = agreement.AcceptedAt,
+                Type = (int)agreement.Type,
+                ReferenceId = agreement.ReferenceId
             });
         }
     }

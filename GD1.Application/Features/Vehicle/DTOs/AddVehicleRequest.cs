@@ -8,7 +8,16 @@ namespace GD1.Application.Features.Vehicle.DTOs
     public class AddVehicleRequest
     {
         [Required]
-        public long VehicleId { get; set; }
+        [StringLength(100)]
+        public string Brand { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string Model { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        public string Category { get; set; } = string.Empty;
 
         [Range(1900, 2100, ErrorMessage = "Invalid vehicle year.")]
         public int Year { get; set; }

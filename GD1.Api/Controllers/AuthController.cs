@@ -132,6 +132,7 @@ namespace GD1.Api.Controllers
                 userId = user.Id,
                 email = user.Email,
                 fullName = user.FullName,
+                phoneNumber = user.PhoneNumber,
                 role = user.Role.ToString(),
                 roleId = (int)user.Role
             });

@@ -37,6 +37,24 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("lot-owner/all-requests")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner")]
+        public async Task<IActionResult> GetAllLotOwnerPickups()
+        {
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                 ?? User.FindFirst("userId")?.Value
+                 ?? User.FindFirst("sub")?.Value;
+                 
+            if (!long.TryParse(userIdStr, out long lotOwnerId))
+                return Unauthorized();
+
+            var result = await _mediator.Send(new GetLotOwnerPickupsQuery 
+            { 
+                LotOwnerId = lotOwnerId
+            });
+            return Ok(result);
+        }
+
         [HttpPost("lot-owner/assign-manager")]
         public async Task<IActionResult> Assign(AssignManagerCommand cmd)
         => Ok(await _mediator.Send(cmd));

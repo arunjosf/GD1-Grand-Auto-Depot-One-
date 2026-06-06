@@ -17,6 +17,10 @@ namespace GD1.Domain.Entities.Enums
         ManagerArrived = 9,
         PickupVerified = 10,
         InTransit = 11,
+        AwaitingPayment = 12,
+        PendingVerification = 13,
+        AdminRejected = 14,
+        VerifiedPendingPayment = 15,
         InLot = 2,
         Completed = 3,
         Cancelled = 4

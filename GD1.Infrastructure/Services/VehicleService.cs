@@ -18,54 +18,197 @@ namespace GD1.Infrastructure.Services
             _context = context;
         }
 
-                        public async Task<List<VehicleLookupDto>> SearchAsync(string term, string? brand = null, string? category = null)
+                        private async Task<List<VehicleLookupDto>> FetchFromNhtsaAsync(string make, string filterTerm, string? category = null)
         {
-            var query = _context.VehicleCatalog.AsNoTracking().AsQueryable();
-
-            if (!string.IsNullOrEmpty(brand))
+            var types = new List<string>();
+            
+            // Map our system categories to NHTSA Vehicle Types
+            if (string.IsNullOrEmpty(category) || category.Equals("All", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(v => v.Brand == brand);
+                types.AddRange(new[] { "passenger%20car", "multipurpose%20passenger%20vehicle", "truck" });
             }
-            if (!string.IsNullOrEmpty(category))
+            else if (category.Equals("Car", StringComparison.OrdinalIgnoreCase) || category.Equals("Sedan", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(v => v.Category == category);
+                types.Add("passenger%20car");
             }
-            if (!string.IsNullOrEmpty(term))
+            else if (category.Equals("SUV", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(v => v.Model.Contains(term) || v.Brand.Contains(term));
+                types.Add("multipurpose%20passenger%20vehicle");
+            }
+            else if (category.Equals("Truck", StringComparison.OrdinalIgnoreCase))
+            {
+                types.Add("truck");
+            }
+            else
+            {
+                types.AddRange(new[] { "passenger%20car", "multipurpose%20passenger%20vehicle", "truck" });
             }
 
-            bool hasFilter = !string.IsNullOrEmpty(brand) || !string.IsNullOrEmpty(category) || !string.IsNullOrEmpty(term);
+            var tasks = types.Select(async type => 
+            {
+                try 
+                {
+                    using var client = new System.Net.Http.HttpClient();
+                    client.DefaultRequestHeaders.Add("User-Agent", "GrandAutoDepot/1.0");
+                    var url = $"https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{Uri.EscapeDataString(make)}/vehicletype/{type}?format=json";
+                    var response = await client.GetStringAsync(url);
+                    using var doc = System.Text.Json.JsonDocument.Parse(response);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("Results", out var results))
+                    {
+                        var list = new List<VehicleLookupDto>();
+                        foreach(var item in results.EnumerateArray())
+                        {
+                            var brand = item.GetProperty("Make_Name").GetString()?.Trim().ToUpper();
+                            var model = item.GetProperty("Model_Name").GetString()?.Trim();
+                            var nhtsaCat = item.GetProperty("VehicleTypeName").GetString()?.Trim() ?? "Standard";
 
-            // Fetch exactly 20 cars if no inputs are provided, otherwise return all filtered results
-            var baseQuery = query
-                .Select(v => new VehicleLookupDto 
-                { 
-                    Id = v.Id.ToString(),
-                    Brand = v.Brand, 
-                    Model = v.Model, 
-                    Category = v.Category,
-                    ValidYearsCsv = v.ValidYearsCsv,
-                    LogoUrl = GetLogo(v.Brand)
-                });
+                            // Map NHTSA categories to clean Body Types for UI
+                            var cat = "Standard";
+                            if (nhtsaCat.Equals("Passenger Car", StringComparison.OrdinalIgnoreCase)) cat = "Car";
+                            else if (nhtsaCat.StartsWith("Multipurpose", StringComparison.OrdinalIgnoreCase)) cat = "SUV";
+                            else if (nhtsaCat.Equals("Truck", StringComparison.OrdinalIgnoreCase)) cat = "Truck";
 
-            return hasFilter
-                ? await baseQuery.ToListAsync()
-                : await baseQuery.Take(20).ToListAsync();
+                            if (!string.IsNullOrEmpty(brand) && !string.IsNullOrEmpty(model))
+                            {
+                                if (string.IsNullOrEmpty(filterTerm) || 
+                                    model.Contains(filterTerm, StringComparison.OrdinalIgnoreCase) || 
+                                    brand.Contains(filterTerm, StringComparison.OrdinalIgnoreCase) ||
+                                    (brand + " " + model).Contains(filterTerm, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    list.Add(new VehicleLookupDto
+                                    {
+                                        Id = item.GetProperty("Model_ID").GetInt32().ToString(),
+                                        Brand = brand,
+                                        Model = model,
+                                        Category = cat,
+                                        ValidYearsCsv = "",
+                                        LogoUrl = GetLogo(brand)
+                                    });
+                                }
+                            }
+                        }
+                        return list;
+                    }
+                } 
+                catch { }
+                return new List<VehicleLookupDto>();
+            });
+            
+            var resultsArray = await Task.WhenAll(tasks);
+            return resultsArray.SelectMany(x => x)
+                               .GroupBy(x => new { x.Brand, x.Model })
+                               .Select(g => g.First())
+                               .ToList();
+        }
+
+        public async Task<List<VehicleLookupDto>> SearchAsync(string term, string? brand = null, string? category = null)
+        {
+            if (string.IsNullOrWhiteSpace(term)) return new List<VehicleLookupDto>();
+            
+            // Extract explicit NHTSA categories typed within the search bar
+            var lowerTerm = term.ToLowerInvariant();
+            if (lowerTerm.Contains("mpv")) 
+            { 
+                category = "SUV"; 
+                term = System.Text.RegularExpressions.Regex.Replace(term, "mpv", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim(); 
+            }
+            else if (lowerTerm.Contains("passenger car")) 
+            { 
+                category = "Car"; 
+                term = System.Text.RegularExpressions.Regex.Replace(term, "passenger car", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim(); 
+            }
+            else if (lowerTerm.Contains("truck")) 
+            { 
+                category = "Truck"; 
+                term = System.Text.RegularExpressions.Regex.Replace(term, "truck", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim(); 
+            }
+            else if (lowerTerm.Contains("van")) 
+            { 
+                // Map van to MPV (SUV internally)
+                category = "SUV"; 
+                term = System.Text.RegularExpressions.Regex.Replace(term, "van", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim(); 
+            }
+
+            var parts = term.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) return new List<VehicleLookupDto>();
+            
+            var make1 = parts[0];
+            var results = await FetchFromNhtsaAsync(make1, term, category);
+            
+            // Try 2-word make (e.g. Land Rover, Aston Martin) if 1-word failed
+            if (results.Count == 0 && parts.Length > 1)
+            {
+                var make2 = parts[0] + " " + parts[1];
+                results = await FetchFromNhtsaAsync(make2, term, category);
+            }
+            // Sort alphabetically by Model so that SUVs aren't pushed out by the Take(30) limit
+            return results.OrderBy(x => x.Model).Take(30).ToList();
         }
 
         public async Task<(bool IsValid, string Category)> ValidateVehicleYearAsync(string brand, string model, int year)
         {
-            var car = await _context.VehicleCatalog
-                .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Brand == brand && v.Model == model);
-
-            if (car != null)
+            if (year < 1900 || year > DateTime.UtcNow.Year + 1)
             {
-                return (true, car.Category);
+                return (false, "Standard");
             }
             
-            return (true, "Standard"); // Fallback
+            try 
+            {
+                using var client = new System.Net.Http.HttpClient();
+                client.DefaultRequestHeaders.Add("User-Agent", "GrandAutoDepot/1.0");
+                var url = $"https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/{Uri.EscapeDataString(brand)}/modelyear/{year}?format=json";
+                var response = await client.GetStringAsync(url);
+                using var doc = System.Text.Json.JsonDocument.Parse(response);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("Results", out var results))
+                {
+                    foreach(var item in results.EnumerateArray())
+                    {
+                        var nhtsaModel = item.GetProperty("Model_Name").GetString()?.Trim() ?? "";
+                        bool isMatch = false;
+                        
+                        if (nhtsaModel.Equals(model, StringComparison.OrdinalIgnoreCase)) 
+                        {
+                            isMatch = true;
+                        } 
+                        else 
+                        {
+                            var modelWords = model.Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries).Select(w => w.ToLower()).ToList();
+                            var nhtsaWords = nhtsaModel.Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries).Select(w => w.ToLower()).ToList();
+                            var sharedWords = modelWords.Intersect(nhtsaWords).Where(w => w != "sedan" && w != "coupe" && w != "suv" && w != "truck").ToList();
+                            if (sharedWords.Any()) 
+                            { 
+                                isMatch = true; 
+                            }
+                        }
+
+                        if (isMatch)
+                        {
+                            string nhtsaCat = "Standard";
+                            if (item.TryGetProperty("VehicleTypeName", out var typeProp))
+                            {
+                                nhtsaCat = typeProp.GetString()?.Trim() ?? "Standard";
+                            }
+                            
+                            var cat = "Standard";
+                            if (nhtsaCat.Equals("Passenger Car", StringComparison.OrdinalIgnoreCase)) cat = "Car";
+                            else if (nhtsaCat.StartsWith("Multipurpose", StringComparison.OrdinalIgnoreCase)) cat = "SUV";
+                            else if (nhtsaCat.Equals("Truck", StringComparison.OrdinalIgnoreCase)) cat = "Truck";
+                            
+                            return (true, cat);
+                        }
+                    }
+                    return (false, "Standard");
+                }
+            } 
+            catch (Exception ex)
+            {
+                // Log the exception internally if we had a logger, but throw to ensure frontend doesn't silently bypass
+                throw new Exception("NHTSA API communication failed", ex);
+            }
+            
+            return (false, "Standard");
         }
 
         public async Task<(double Length, double Width, double Height)> GetDimensionsAsync(string brand, string model, string type)

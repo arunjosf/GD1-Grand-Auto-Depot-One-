@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using MediatR;
 using FluentValidation;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace GD1.Application.Features.LotBooking.Commands
 {
@@ -91,18 +92,44 @@ namespace GD1.Application.Features.LotBooking.Commands
             if (!hasCompatibleSlot)
                 return BaseResponse<CreateBookingResponse>.Fail("The selected property does not have any slots large enough for your vehicle.");
 
-            // Check for Vehicle Overlap
+            // ── Clean up any stale AwaitingAgreement bookings for this vehicle by this user ──
+            // These are ghost bookings where the user never signed or declined the agreement.
+            var staleAwaitingBookings = await _repo.FindAsync(b =>
+                b.VehicleId == req.VehicleId &&
+                b.OwnerId == cmd.OwnerId &&
+                b.Status == BookingStatus.AwaitingAgreement);
+
+            foreach (var stale in staleAwaitingBookings)
+            {
+                // Also cancel any associated pending agreements
+                var staleAgreements = await _agreementRepo.FindAsync(a =>
+                    a.ReferenceId == stale.Id &&
+                    a.Type == AgreementType.LotBooking &&
+                    a.Status == AgreementStatus.Pending);
+
+                foreach (var staleAgreement in staleAgreements)
+                {
+                    staleAgreement.Status = AgreementStatus.Rejected;
+                    await _agreementRepo.UpdateAsync(staleAgreement);
+                }
+
+                stale.Status = BookingStatus.AgreementDeclined;
+                await _repo.UpdateAsync(stale);
+            }
+
+            // Check for Vehicle Overlap — exclude AwaitingAgreement since those are not yet confirmed
             var vehicleBookings = await _repo.FindAsync(b => 
                 b.VehicleId == req.VehicleId && 
                 b.Status != BookingStatus.Cancelled && 
                 b.Status != BookingStatus.AgreementDeclined && 
+                b.Status != BookingStatus.AwaitingAgreement &&
                 b.Status != BookingStatus.Completed);
                 
             bool hasVehicleOverlap = vehicleBookings.Any(b => 
                 req.StartDate < b.EndDate && req.EndDate > b.StartDate);
                 
             if (hasVehicleOverlap)
-                return BaseResponse<CreateBookingResponse>.Fail("This vehicle is already booked during the selected dates.");
+                return BaseResponse<CreateBookingResponse>.Fail("This vehicle is already has a confirmed booking during the selected dates.");
 
             // Verify Slot availability
             if (req.SlotId.HasValue)
@@ -117,18 +144,19 @@ namespace GD1.Application.Features.LotBooking.Commands
                     return BaseResponse<CreateBookingResponse>.Fail("The specifically selected garage is not large enough for your vehicle.");
                 }
 
-                // Check for Slot Overlap
+                // Check for Slot Overlap — exclude AwaitingAgreement (not yet confirmed)
                 var slotBookings = await _repo.FindAsync(b => 
                     b.SlotId == req.SlotId.Value && 
                     b.Status != BookingStatus.Cancelled && 
                     b.Status != BookingStatus.AgreementDeclined && 
+                    b.Status != BookingStatus.AwaitingAgreement &&
                     b.Status != BookingStatus.Completed);
 
                 bool hasSlotOverlap = slotBookings.Any(b => 
                     req.StartDate < b.EndDate && req.EndDate > b.StartDate);
                     
                 if (hasSlotOverlap)
-                    return BaseResponse<CreateBookingResponse>.Fail("The selected garage is already booked during the selected dates.");
+                    return BaseResponse<CreateBookingResponse>.Fail("The selected garage is already confirmed-booked during the selected dates.");
                     
                 // STRICTLY VALIDATE IF SLOT IS CURRENTLY OCCUPIED
                 if (slot.IsOccupied)
@@ -159,7 +187,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                 EndDate = req.EndDate,
                 PricePerDay = property.PricePerDay,
                 TotalCost = totalCost,
-                Status = BookingStatus.AwaitingAgreement,
+                Status = BookingStatus.PendingVerification,
                 IsPickupRequested = false,
                 IsAgreementSigned = 0
             };
@@ -169,41 +197,11 @@ namespace GD1.Application.Features.LotBooking.Commands
             var user = await _userRepo.GetByIdAsync(cmd.OwnerId);
             if (user == null) return BaseResponse<CreateBookingResponse>.Fail("User not found.");
 
-            var agreementHtml = GD1.Application.Features.LotBooking.Templates.AgreementTemplate.Generate(
-                customerName: user.FullName,
-                customerEmail: user.Email,
-                vehicleBrand: vehicle.Brand,
-                vehicleModel: vehicle.Model,
-                vehicleYear: vehicle.Year.ToString(),
-                registrationNo: vehicle.RegistrationNo,
-                vehicleType: vehicle.Category,
-                propertyName: property.Name,
-                propertyAddress: property.AddressLine,
-                propertyCity: property.City,
-                propertyState: property.State,
-                startDate: booking.StartDate.ToString("dd MMM yyyy"),
-                endDate: booking.EndDate.ToString("dd MMM yyyy"),
-                pricePerDay: property.PricePerDay,
-                agreementDate: DateTime.UtcNow.ToString("dd MMM yyyy")
-            );
-
-            // Generate the unified Digital Agreement
-            var agreement = new GD1.Domain.Entities.Agreement
-            {
-                UserId = cmd.OwnerId,
-                Type = GD1.Domain.Entities.Enums.AgreementType.LotBooking,
-                ReferenceId = booking.Id,
-                Content = agreementHtml,
-                Status = GD1.Domain.Entities.Enums.AgreementStatus.Pending
-            };
-
-            await _agreementRepo.AddAsync(agreement);
-
             var response = new CreateBookingResponse
             {
                 BookingId = booking.Id,
-                AgreementId = agreement.Id,
-                AgreementContent = agreement.Content
+                AgreementId = 0,
+                AgreementContent = string.Empty
             };
 
             // Notify Lot Owner
@@ -211,14 +209,15 @@ namespace GD1.Application.Features.LotBooking.Commands
             {
                 await _notificationService.SendAsync(
                     userId: property.LotOwnerId,
-                    title: "New Lot Booking",
-                    body: $"A new booking has been made for {vehicle.Brand} {vehicle.Model} at {property.Name}.",
-                    actionType: "ViewBooking",
-                    referenceId: booking.Id);
+                    title: "Booking pending verification",
+                    body: $"A new booking requires your verification for {vehicle.Brand} {vehicle.Model} at {property.Name}.",
+                    actionType: "ViewBookings",
+                    referenceId: booking.Id,
+                    actionUrl: "/lot-owner/bookings");
             }
             catch { /* Ignore notification failure */ }
 
-            return BaseResponse<CreateBookingResponse>.Ok(response, "Temporary booking created. Please review and sign the agreement.");
+            return BaseResponse<CreateBookingResponse>.Ok(response, "Booking request submitted. Awaiting Lot Admin verification.");
         }
 
         private static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)

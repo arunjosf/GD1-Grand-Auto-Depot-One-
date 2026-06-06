@@ -18,6 +18,18 @@ namespace GD1.Api.Controllers
 
         public LotManagerController(IMediator mediator) => _mediator = mediator;
 
+        [HttpGet("properties")]
+        [Authorize(Roles = "LotOwner")]
+        public async Task<IActionResult> GetMyProperties()
+        {
+            var result = await _mediator.Send(new GD1.Application.Features.GD1Admin.Queries.GetAllStoragePropertyQuery 
+            { 
+                LotOwnerId = GetUserId(),
+                UserRole = GD1.Domain.Entities.Enums.UserRole.LotOwner,
+                UserId = GetUserId()
+            });
+            return Ok(result);
+        }
  
         [HttpPost("properties/{propertyId}/invite-manager")]
         [Authorize(Roles = "LotOwner")]

@@ -22,7 +22,6 @@ namespace GD1.Application.Features.LotManager.Commands
         public bool DailyStartupsCompleted { get; set; }
         public string ManagerRemarks { get; set; } = string.Empty;
 
-        // 6 Images
         public string FrontImageUrl { get; set; } = string.Empty;
         public string RearImageUrl { get; set; } = string.Empty;
         public string LeftSideImageUrl { get; set; } = string.Empty;
@@ -68,7 +67,21 @@ namespace GD1.Application.Features.LotManager.Commands
                 if (task.Type != MaintenanceTaskType.WeeklyConditionCheck)
                     return BaseResponse<string>.Fail("This task is not a Weekly Condition Check.");
 
-                // Update Task
+                vehicleId = task.VehicleId;
+                bookingId = task.BookingId;
+
+                var labels1 = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
+                var urls1 = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
+
+                foreach (var url in urls1)
+                {
+                    if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{vehicleId}"))
+                    {
+                        return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {vehicleId}.");
+                    }
+                }
+
+                
                 task.Status = MaintenanceTaskStatus.Completed;
                 task.CompletedAt = DateTime.UtcNow;
                 task.CarWashCompleted = request.CarWashCompleted;
@@ -77,9 +90,6 @@ namespace GD1.Application.Features.LotManager.Commands
                 task.ManagerRemarks = request.ManagerRemarks;
 
                 await _taskRepo.UpdateAsync(task);
-
-                vehicleId = task.VehicleId;
-                bookingId = task.BookingId;
             }
             else if (request.VehicleId.HasValue && request.VehicleId.Value > 0)
             {
@@ -90,6 +100,18 @@ namespace GD1.Application.Features.LotManager.Commands
                 
                 vehicleId = booking.VehicleId;
                 bookingId = booking.Id;
+
+                // Strict URL Validation
+                var labels2 = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
+                var urls2 = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
+
+                foreach (var url in urls2)
+                {
+                    if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{vehicleId}"))
+                    {
+                        return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {vehicleId}.");
+                    }
+                }
             }
             else
             {
@@ -111,18 +133,9 @@ namespace GD1.Application.Features.LotManager.Commands
 
             await _journeyRepo.AddAsync(journeyEvent);
 
-            // Add images to VehicleImages
+
             var labels = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
             var urls = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
-
-            // Strict URL Validation (Async loop checking for vehicleId)
-            foreach (var url in urls)
-            {
-                if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{vehicleId}"))
-                {
-                    return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {vehicleId}.");
-                }
-            }
 
             for (int i = 0; i < labels.Length; i++)
             {
