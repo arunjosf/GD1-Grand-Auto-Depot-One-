@@ -122,6 +122,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                 b.VehicleId == req.VehicleId && 
                 b.Status != BookingStatus.Cancelled && 
                 b.Status != BookingStatus.AgreementDeclined && 
+                b.Status != BookingStatus.AdminRejected && 
                 b.Status != BookingStatus.AwaitingAgreement &&
                 b.Status != BookingStatus.Completed);
                 
@@ -129,7 +130,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                 req.StartDate < b.EndDate && req.EndDate > b.StartDate);
                 
             if (hasVehicleOverlap)
-                return BaseResponse<CreateBookingResponse>.Fail("This vehicle is already has a confirmed booking during the selected dates.");
+                return BaseResponse<CreateBookingResponse>.Fail("This vehicle already has a confirmed booking during the selected dates.");
 
             // Verify Slot availability
             if (req.SlotId.HasValue)
@@ -149,6 +150,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                     b.SlotId == req.SlotId.Value && 
                     b.Status != BookingStatus.Cancelled && 
                     b.Status != BookingStatus.AgreementDeclined && 
+                    b.Status != BookingStatus.AdminRejected && 
                     b.Status != BookingStatus.AwaitingAgreement &&
                     b.Status != BookingStatus.Completed);
 
@@ -156,7 +158,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                     req.StartDate < b.EndDate && req.EndDate > b.StartDate);
                     
                 if (hasSlotOverlap)
-                    return BaseResponse<CreateBookingResponse>.Fail("The selected garage is already confirmed-booked during the selected dates.");
+                    return BaseResponse<CreateBookingResponse>.Fail("The selected garage is already booked during the selected dates.");
                     
                 // STRICTLY VALIDATE IF SLOT IS CURRENTLY OCCUPIED
                 if (slot.IsOccupied)
