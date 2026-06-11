@@ -4,6 +4,7 @@ using GD1.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GD1.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260608065110_AddChatMessage")]
+    partial class AddChatMessage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -196,9 +199,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("RequestedPickupTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<long?>("SlotId")
                         .HasColumnType("bigint");
 
@@ -306,16 +306,13 @@ namespace GD1.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<long?>("BookingId")
+                    b.Property<long>("BookingId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
                     b.Property<string>("MessageContent")
@@ -328,9 +325,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<long>("SenderId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("ServiceRequestId")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -341,8 +335,6 @@ namespace GD1.Infrastructure.Migrations
                     b.HasIndex("ReceiverId");
 
                     b.HasIndex("SenderId");
-
-                    b.HasIndex("ServiceRequestId");
 
                     b.ToTable("ChatMessages");
                 });
@@ -880,9 +872,6 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<long>("PropertyId")
                         .HasColumnType("bigint");
-
-                    b.Property<decimal?>("Salary")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("SelfieUrl")
                         .HasColumnType("nvarchar(max)");
@@ -2298,7 +2287,8 @@ namespace GD1.Infrastructure.Migrations
                     b.HasOne("GD1.Domain.Entities.Booking", "Booking")
                         .WithMany()
                         .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("GD1.Domain.Entities.User", "Receiver")
                         .WithMany()
@@ -2311,18 +2301,11 @@ namespace GD1.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GD1.Domain.Entities.ServiceRequest", "ServiceRequest")
-                        .WithMany()
-                        .HasForeignKey("ServiceRequestId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.Navigation("Booking");
 
                     b.Navigation("Receiver");
 
                     b.Navigation("Sender");
-
-                    b.Navigation("ServiceRequest");
                 });
 
             modelBuilder.Entity("GD1.Domain.Entities.Complaint", b =>

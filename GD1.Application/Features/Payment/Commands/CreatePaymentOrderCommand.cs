@@ -90,7 +90,11 @@ namespace GD1.Application.Features.Payment.Commands
                 booking.PickupPincode = request.PickupPincode;
                 booking.PickupLatitude = request.PickupLatitude;
                 booking.PickupLongitude = request.PickupLongitude;
-                // RequestedPickupTime could be mapped to an entity property if we added it, skipping for brevity or add it later
+                
+                if (!string.IsNullOrEmpty(request.RequestedPickupTime) && DateTime.TryParse(request.RequestedPickupTime, out DateTime parsedTime))
+                {
+                    booking.RequestedPickupTime = parsedTime;
+                }
             }
 
             booking.Status = Domain.Entities.Enums.BookingStatus.AwaitingPayment;

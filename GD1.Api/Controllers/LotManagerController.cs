@@ -1,7 +1,9 @@
-using GD1.Application.Features.LotManagement.Commands;
-using GD1.Application.Features.ServiceRequest.Commands;
 using GD1.Application.Features.LotManagement.Queries;
+using GD1.Application.Features.LotManager.Queries;
+using GD1.Application.Features.LotManager.Commands;
+using GD1.Application.Features.LotManagement.Commands;
 using GD1.Application.Features.Pickup.Queries;
+using GD1.Application.Features.ServiceRequest.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -58,13 +60,22 @@ namespace GD1.Api.Controllers
 
         [HttpGet("lot-owners/all-managers")]
         [Authorize(Roles = "LotOwner")]
-        public async Task<IActionResult> GetManagers([FromQuery] long? propertyId)
+        public async Task<IActionResult> GetManagers([FromQuery] long? propertyId, [FromQuery] DateTime? checkDate)
         {
             var result = await _mediator.Send(new GetPropertyManagersQuery
             {
                 LotOwnerId = GetUserId(),
-                PropertyId = propertyId
+                PropertyId = propertyId,
+                CheckDate = checkDate
             });
+            return Ok(result);
+        }
+
+        [HttpGet("my-owners")]
+        [Authorize(Roles = "Manager")]
+        public async Task<IActionResult> GetMyOwners()
+        {
+            var result = await _mediator.Send(new GetMyOwnersQuery { ManagerUserId = GetUserId() });
             return Ok(result);
         }
 
@@ -140,7 +151,45 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
-        
+        [HttpPost("managers/{managerRecordId}/toggle-status")]
+        [Authorize(Roles = "LotOwner")]
+        public async Task<IActionResult> ToggleManagerStatus(long managerRecordId)
+        {
+            var result = await _mediator.Send(new GD1.Application.Features.LotManagement.Commands.ToggleBlockLotManagerCommand
+            {
+                LotOwnerId = GetUserId(),
+                LotManagerRecordId = managerRecordId
+            });
+            return Ok(result);
+        }
+
+        [HttpGet("dashboard-metrics")]
+        public async Task<IActionResult> GetDashboardMetrics()
+        {
+            var result = await _mediator.Send(new GetManagerDashboardMetricsQuery { ManagerId = GetUserId() });
+            return Ok(result);
+        }
+
+        [HttpGet("pickups")]
+        public async Task<IActionResult> GetManagerPickups([FromQuery] bool isCompleted = false)
+        {
+            var result = await _mediator.Send(new GetManagerPickupsQuery { ManagerId = GetUserId(), IsCompleted = isCompleted });
+            return Ok(result);
+        }
+
+        [HttpGet("vehicles")]
+        public async Task<IActionResult> GetManagerVehicles()
+        {
+            var result = await _mediator.Send(new GetManagerVehiclesQuery { ManagerId = GetUserId() });
+            return Ok(result);
+        }
+
+        [HttpGet("vehicles/{id}")]
+        public async Task<IActionResult> GetManagerVehicleDetail(long id)
+        {
+            var result = await _mediator.Send(new GetManagerVehicleDetailQuery { ManagerId = GetUserId(), VehicleId = id });
+            return Ok(result);
+        }
 
         private long GetUserId()
         {

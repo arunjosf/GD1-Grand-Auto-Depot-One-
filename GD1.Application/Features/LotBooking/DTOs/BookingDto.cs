@@ -67,6 +67,8 @@ namespace GD1.Application.Features.LotBooking.DTOs
         public string? VehicleRcUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? OwnerName { get; set; }
+        public string? LotOwnerName { get; set; }
+        public string? LotOwnerPhone { get; set; }
 
         // Pickup / Manager Details
         public string? PickupStatus { get; set; }
@@ -75,6 +77,13 @@ namespace GD1.Application.Features.LotBooking.DTOs
         public string? ManagerPhone { get; set; }
         public string? ManagerSelfieUrl { get; set; }
         public string? ManagerIdProofUrl { get; set; }
+        public double? PickupLatitude { get; set; }
+        public double? PickupLongitude { get; set; }
+        public double? LotLatitude { get; set; }
+        public double? LotLongitude { get; set; }
+        public double? LastGpsLatitude { get; set; }
+        public double? LastGpsLongitude { get; set; }
+
 
         // --- INTERNAL FLAT FIELDS FROM DB ---
         [JsonIgnore] public string? FrontImageUrl { get; set; }
@@ -84,6 +93,7 @@ namespace GD1.Application.Features.LotBooking.DTOs
         [JsonIgnore] public string? SelfieUrl { get; set; }
         [JsonIgnore] public string? InteriorImageUrl { get; set; }
         [JsonIgnore] public string? OdometerImageUrl { get; set; }
+        [JsonIgnore] public string? ManagerRemarks { get; set; }
 
         [JsonIgnore] public string? ArrivalFrontImageUrl { get; set; }
         [JsonIgnore] public string? ArrivalRearImageUrl { get; set; }
@@ -91,11 +101,12 @@ namespace GD1.Application.Features.LotBooking.DTOs
         [JsonIgnore] public string? ArrivalRightSideImageUrl { get; set; }
         [JsonIgnore] public string? ArrivalInteriorImageUrl { get; set; }
         [JsonIgnore] public string? ArrivalOdometerImageUrl { get; set; }
+        [JsonIgnore] public string? ArrivalManagerRemarks { get; set; }
 
         // --- NESTED JSON OBJECTS ---
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public ConditionReportDto? PickupImages => 
-            string.IsNullOrEmpty(FrontImageUrl) ? null : new ConditionReportDto
+            (string.IsNullOrWhiteSpace(FrontImageUrl) && string.IsNullOrWhiteSpace(InteriorImageUrl)) ? null : new ConditionReportDto
             {
                 FrontImageUrl = string.IsNullOrWhiteSpace(FrontImageUrl) ? null : FrontImageUrl,
                 RearImageUrl = string.IsNullOrWhiteSpace(RearImageUrl) ? null : RearImageUrl,
@@ -103,7 +114,8 @@ namespace GD1.Application.Features.LotBooking.DTOs
                 RightSideImageUrl = string.IsNullOrWhiteSpace(RightSideImageUrl) ? null : RightSideImageUrl,
                 SelfieUrl = string.IsNullOrWhiteSpace(SelfieUrl) ? null : SelfieUrl,
                 InteriorImageUrl = string.IsNullOrWhiteSpace(InteriorImageUrl) ? null : InteriorImageUrl,
-                OdometerImageUrl = string.IsNullOrWhiteSpace(OdometerImageUrl) ? null : OdometerImageUrl
+                OdometerImageUrl = string.IsNullOrWhiteSpace(OdometerImageUrl) ? null : OdometerImageUrl,
+                ManagerRemarks = string.IsNullOrWhiteSpace(ManagerRemarks) ? null : ManagerRemarks
             };
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -116,7 +128,8 @@ namespace GD1.Application.Features.LotBooking.DTOs
                 RightSideImageUrl = string.IsNullOrWhiteSpace(ArrivalRightSideImageUrl) ? null : ArrivalRightSideImageUrl,
                 SelfieUrl = null,
                 InteriorImageUrl = string.IsNullOrWhiteSpace(ArrivalInteriorImageUrl) ? null : ArrivalInteriorImageUrl,
-                OdometerImageUrl = string.IsNullOrWhiteSpace(ArrivalOdometerImageUrl) ? null : ArrivalOdometerImageUrl
+                OdometerImageUrl = string.IsNullOrWhiteSpace(ArrivalOdometerImageUrl) ? null : ArrivalOdometerImageUrl,
+                ManagerRemarks = string.IsNullOrWhiteSpace(ArrivalManagerRemarks) ? null : ArrivalManagerRemarks
             };
     }
 
@@ -129,5 +142,6 @@ namespace GD1.Application.Features.LotBooking.DTOs
         public string? SelfieUrl { get; set; }
         public string? InteriorImageUrl { get; set; }
         public string? OdometerImageUrl { get; set; }
+        public string? ManagerRemarks { get; set; }
     }
 }

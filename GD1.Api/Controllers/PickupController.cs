@@ -55,6 +55,23 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("{id}")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner,VehicleOwner,Manager")]
+        public async Task<IActionResult> GetPickupById(long id)
+        {
+            var result = await _mediator.Send(new GetPickupByIdQuery { PickupRequestId = id });
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/decline")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "LotOwner")]
+        public async Task<IActionResult> DeclinePickup(long id, [FromBody] DeclinePickupCommand command)
+        {
+            command.PickupRequestId = id;
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
         [HttpPost("lot-owner/assign-manager")]
         public async Task<IActionResult> Assign(AssignManagerCommand cmd)
         => Ok(await _mediator.Send(cmd));
@@ -74,6 +91,10 @@ namespace GD1.Api.Controllers
 
         [HttpPost("manager/verify-otp")]
         public async Task<IActionResult> VerifyOtp(VerifyOtpCommand cmd)
+            => Ok(await _mediator.Send(cmd));
+
+        [HttpPost("manager/pre-ride-condition")]
+        public async Task<IActionResult> SubmitPreRideCondition([FromBody] SubmitPreRideConditionCommand cmd)
             => Ok(await _mediator.Send(cmd));
 
         [HttpPost("manager/start-pickup-ride")]

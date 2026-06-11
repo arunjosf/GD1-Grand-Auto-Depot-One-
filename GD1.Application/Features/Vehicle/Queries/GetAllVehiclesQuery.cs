@@ -24,6 +24,9 @@ namespace GD1.Application.Features.Vehicle.Queries
         public string RegistrationNo { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string PropertyName { get; set; } = string.Empty;
+        public long? BookingId { get; set; }
+        public string? Category { get; set; }
+        public string? ProfileImageUrl { get; set; }
     }
 
     public class GetAllVehiclesQueryHandler : IRequestHandler<GetAllVehiclesQuery, BaseResponse<IEnumerable<VehicleWithDetailsDto>>>
@@ -54,7 +57,10 @@ namespace GD1.Application.Features.Vehicle.Queries
                     Model = b.Vehicle?.Model ?? "Unknown",
                     RegistrationNo = b.Vehicle?.RegistrationNo ?? "Unknown",
                     OwnerName = b.Vehicle?.Owner?.FullName ?? "Unknown",
-                    PropertyName = b.Property?.Name ?? "Unknown"
+                    PropertyName = b.Property?.Name ?? "Unknown",
+                    BookingId = b.Id,
+                    Category = b.Vehicle?.Category,
+                    ProfileImageUrl = b.Vehicle?.Images?.FirstOrDefault()?.ImageUrl
                 }).ToList();
 
                 if (!string.IsNullOrEmpty(query.SearchTerm))

@@ -104,13 +104,13 @@ namespace GD1.Application.Features.Pickup.Commands
             {
                 BookingId = request.BookingId,
                 RequestedPickupTime = request.RequestedPickupTime, // null = ASAP
-                Status = PickupStatus.Approved, // Auto-approved since it passed 40km validation
-                IsApprovedByLotOwner = true
+                Status = PickupStatus.Requested, // Needs lot owner approval
+                IsApprovedByLotOwner = false
             };
 
             await _pickupRepo.AddAsync(pickup);
 
-            return GD1.Application.Common.BaseResponse<long>.Ok(pickup.Id, "Pickup requested successfully.");
+            return GD1.Application.Common.BaseResponse<long>.Ok(pickup.Id, "Pickup requested successfully. Awaiting Lot Owner approval.");
         }
 
         private static double CalculateDistance(double lat1, double lon1, double lat2, double lon2)

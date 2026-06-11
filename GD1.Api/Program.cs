@@ -220,6 +220,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<GD1.Api.Hubs.TrackingHub>("/hubs/tracking");
 app.MapHub<GD1.Api.Hubs.NotificationHub>("/hubs/notification");
+app.MapHub<GD1.Api.Hubs.ChatHub>("/hubs/chat");
 
 app.Run();
 

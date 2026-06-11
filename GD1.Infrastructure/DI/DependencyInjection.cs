@@ -30,6 +30,7 @@ namespace GD1.Infrastructure
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
             services.AddScoped<IUserReadRepository, UserReadRepository>();
+            services.AddScoped<IManagerReadRepository, ManagerReadRepository>();
 
             services.AddHttpClient<IVehicleService, VehicleService>();
             // External Vehicle API (Local JSON)

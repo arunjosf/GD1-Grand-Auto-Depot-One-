@@ -47,6 +47,7 @@ namespace GD1.Infrastructure.Repositories
                     WidthFeet = v.WidthFeet,
                     HeightFeet = v.HeightFeet,
                     IsStored = v.Bookings.Any(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot),
+                    ActiveBookingId = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => (long?)b.Id).FirstOrDefault(),
                     LotName = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => b.Property.Name).FirstOrDefault(),
                     Location = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => b.Property.City).FirstOrDefault(),
                     StartDate = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => (DateTime?)b.StartDate).FirstOrDefault(),

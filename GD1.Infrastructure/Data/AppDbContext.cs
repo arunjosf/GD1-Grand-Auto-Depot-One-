@@ -21,6 +21,7 @@ namespace GD1.Infrastructure.Data
         public DbSet<PickupRequest> PickupRequests { get; set; }
         public DbSet<VehicleJourneyEvent> VehicleJourneyEvents { get; set; }
         public DbSet<Handoff> Handoffs { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<DamageReport> DamageReports { get; set; }
         public DbSet<ServiceCenter> ServiceCenters { get; set; }
         public DbSet<Mechanics> Mechanics { get; set; }
@@ -210,6 +211,12 @@ namespace GD1.Infrastructure.Data
                 .WithMany(b => b.PickupRequests)
                 .HasForeignKey(p => p.BookingId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            mb.Entity<PickupRequest>()
+                .HasOne(p => p.Manager)
+                .WithMany()
+                .HasForeignKey(p => p.ManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             mb.Entity<Handoff>()
                 .HasOne(h => h.Booking)
@@ -363,6 +370,22 @@ namespace GD1.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(m => m.ManagerId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            mb.Entity<ChatMessage>()
+                .HasOne(c => c.Booking).WithMany()
+                .HasForeignKey(c => c.BookingId).OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<ChatMessage>()
+                .HasOne(c => c.ServiceRequest).WithMany()
+                .HasForeignKey(c => c.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+
+            mb.Entity<ChatMessage>()
+                .HasOne(c => c.Sender).WithMany()
+                .HasForeignKey(c => c.SenderId).OnDelete(DeleteBehavior.Restrict);
+
+            mb.Entity<ChatMessage>()
+                .HasOne(c => c.Receiver).WithMany()
+                .HasForeignKey(c => c.ReceiverId).OnDelete(DeleteBehavior.Restrict);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

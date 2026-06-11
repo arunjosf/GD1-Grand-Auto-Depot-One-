@@ -20,7 +20,8 @@ namespace GD1.Application.Features.Pickup.Commands
         string LeftSideImageUrl,
         string RightSideImageUrl,
         string InteriorImageUrl,
-        string OdometerImageUrl
+        string OdometerImageUrl,
+        string? ManagerRemarks
     ) : IRequest<BaseResponse<string>>;
 
     public class SubmitLotArrivalConditionCommandValidator : AbstractValidator<SubmitLotArrivalConditionCommand>
@@ -46,6 +47,7 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly IGenericRepository<VehicleJourneyEvent> _journeyRepo;
         private readonly IGenericRepository<StoredVehicle> _storedVehicleRepo;
         private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IEmailService _email;
         private readonly IGeminiService _gemini;
         private readonly INotificationService _notificationService;
@@ -58,6 +60,7 @@ namespace GD1.Application.Features.Pickup.Commands
             IGenericRepository<VehicleJourneyEvent> journeyRepo,
             IGenericRepository<StoredVehicle> storedVehicleRepo,
             IGenericRepository<VehicleStorageSlot> slotRepo,
+            IGenericRepository<VehicleStorageProperty> propertyRepo,
             IEmailService email,
             IGeminiService gemini,
             INotificationService notificationService)
@@ -69,6 +72,7 @@ namespace GD1.Application.Features.Pickup.Commands
             _journeyRepo = journeyRepo;
             _storedVehicleRepo = storedVehicleRepo;
             _slotRepo = slotRepo;
+            _propertyRepo = propertyRepo;
             _email = email;
             _gemini = gemini;
             _notificationService = notificationService;
@@ -101,20 +105,39 @@ namespace GD1.Application.Features.Pickup.Commands
             if (!interiorTask.Result.IsReadable || interiorTask.Result.ConfidenceScore < 80) throw new Exception($"Interior Image: {interiorTask.Result.Reason}");
             if (!odometerTask.Result.IsReadable || odometerTask.Result.ConfidenceScore < 80) throw new Exception($"Odometer Image: {odometerTask.Result.Reason}");
 
-            var verification = new PickupVerification
+            var verifications = await _verificationRepo.FindAsync(v => v.BookingId == pickup.BookingId && v.Type == ReportType.LotArrival);
+            var verification = verifications.FirstOrDefault();
+
+            if (verification == null)
             {
-                BookingId = pickup.BookingId,
-                ManagerId = pickup.ManagerId ?? 0,
-                Type = ReportType.LotArrival,
-                FrontImageUrl = request.FrontImageUrl,
-                RearImageUrl = request.RearImageUrl,
-                LeftSideImageUrl = request.LeftSideImageUrl,
-                RightSideImageUrl = request.RightSideImageUrl,
-                InteriorImageUrl = request.InteriorImageUrl,
-                OdometerImageUrl = request.OdometerImageUrl,
-                VerifiedAt = DateTime.UtcNow
-            };
-            await _verificationRepo.AddAsync(verification);
+                verification = new PickupVerification
+                {
+                    BookingId = pickup.BookingId,
+                    ManagerId = pickup.ManagerId ?? 0,
+                    Type = ReportType.LotArrival,
+                    FrontImageUrl = request.FrontImageUrl,
+                    RearImageUrl = request.RearImageUrl,
+                    LeftSideImageUrl = request.LeftSideImageUrl,
+                    RightSideImageUrl = request.RightSideImageUrl,
+                    InteriorImageUrl = request.InteriorImageUrl,
+                    OdometerImageUrl = request.OdometerImageUrl,
+                    ManagerRemarks = request.ManagerRemarks,
+                    VerifiedAt = DateTime.UtcNow
+                };
+                await _verificationRepo.AddAsync(verification);
+            }
+            else
+            {
+                verification.FrontImageUrl = request.FrontImageUrl;
+                verification.RearImageUrl = request.RearImageUrl;
+                verification.LeftSideImageUrl = request.LeftSideImageUrl;
+                verification.RightSideImageUrl = request.RightSideImageUrl;
+                verification.InteriorImageUrl = request.InteriorImageUrl;
+                verification.OdometerImageUrl = request.OdometerImageUrl;
+                verification.ManagerRemarks = request.ManagerRemarks;
+                verification.VerifiedAt = DateTime.UtcNow;
+                await _verificationRepo.UpdateAsync(verification);
+            }
 
             var journeyEvent = new VehicleJourneyEvent
             {
@@ -122,16 +145,7 @@ namespace GD1.Application.Features.Pickup.Commands
                 BookingId = booking.Id,
                 EventType = "VehicleStored",
                 Description = "Vehicle has arrived at the storage lot and is now safely stored.",
-                TriggeredBy = pickup.ManagerId,
-                Images = new List<VehicleImage>
-                {
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.FrontImageUrl, Label = "Front" },
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.RearImageUrl, Label = "Rear" },
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.LeftSideImageUrl, Label = "LeftSide" },
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.RightSideImageUrl, Label = "RightSide" },
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.InteriorImageUrl, Label = "Interior" },
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.OdometerImageUrl, Label = "Odometer" }
-                }
+                TriggeredBy = pickup.ManagerId
             };
             await _journeyRepo.AddAsync(journeyEvent);
 
@@ -194,6 +208,24 @@ namespace GD1.Application.Features.Pickup.Commands
                     referenceId: booking.Id);
             }
             catch { /* Ignore */ }
+
+            if (booking.PropertyId > 0)
+            {
+                var property = await _propertyRepo.GetByIdAsync(booking.PropertyId);
+                if (property != null)
+                {
+                    try
+                    {
+                        await _notificationService.SendAsync(
+                            userId: property.LotOwnerId,
+                            title: "Vehicle Arrived at Garage",
+                            body: $"A vehicle has arrived and is securely stored in {property.Name}.",
+                            actionType: "ViewPickup",
+                            referenceId: pickup.Id);
+                    }
+                    catch { /* Ignore */ }
+                }
+            }
 
             return BaseResponse<string>.Ok("Vehicle successfully stored at the lot. Condition report saved.");
         }

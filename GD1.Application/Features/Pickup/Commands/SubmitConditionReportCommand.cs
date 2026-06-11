@@ -8,6 +8,7 @@ using FluentValidation;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using GD1.Application.Interfaces.Services;
 
 namespace GD1.Application.Features.Pickup.Commands
 {
@@ -43,6 +44,7 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly ISmsService _sms;
         private readonly IEmailService _email;
         private readonly IGeminiService _gemini;
+        private readonly INotificationService _notificationService;
 
         public SubmitConditionReportCommandHandler(
             IGenericRepository<PickupRequest> pickupRepo,
@@ -53,7 +55,8 @@ namespace GD1.Application.Features.Pickup.Commands
             IOtpService otp,
             ISmsService sms,
             IEmailService email,
-            IGeminiService gemini)
+            IGeminiService gemini,
+            INotificationService notificationService)
         {
             _pickupRepo = pickupRepo;
             _userRepo = userRepo;
@@ -64,6 +67,7 @@ namespace GD1.Application.Features.Pickup.Commands
             _sms = sms;
             _email = email;
             _gemini = gemini;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(SubmitConditionReportCommand request, CancellationToken cancellationToken)
@@ -103,19 +107,36 @@ namespace GD1.Application.Features.Pickup.Commands
 
                 await _pickupRepo.UpdateAsync(pickup);
 
-                var verification = new PickupVerification
+                var verifications = await _verificationRepo.FindAsync(
+                    v => v.BookingId == pickup.BookingId && v.Type == ReportType.Pickup);
+                var verification = verifications.FirstOrDefault();
+
+                if (verification == null)
                 {
-                    BookingId = pickup.BookingId,
-                    ManagerId = pickup.ManagerId ?? 0,
-                    Type = ReportType.Pickup,
-                    FrontImageUrl = request.FrontImageUrl,
-                    RearImageUrl = request.RearImageUrl,
-                    LeftSideImageUrl = request.LeftSideImageUrl,
-                    RightSideImageUrl = request.RightSideImageUrl,
-                    SelfieUrl = request.SelfieUrl,
-                    VerifiedAt = DateTime.UtcNow
-                };
-                await _verificationRepo.AddAsync(verification);
+                    verification = new PickupVerification
+                    {
+                        BookingId = pickup.BookingId,
+                        ManagerId = pickup.ManagerId ?? 0,
+                        Type = ReportType.Pickup,
+                        FrontImageUrl = request.FrontImageUrl,
+                        RearImageUrl = request.RearImageUrl,
+                        LeftSideImageUrl = request.LeftSideImageUrl,
+                        RightSideImageUrl = request.RightSideImageUrl,
+                        SelfieUrl = request.SelfieUrl,
+                        VerifiedAt = DateTime.UtcNow
+                    };
+                    await _verificationRepo.AddAsync(verification);
+                }
+                else
+                {
+                    verification.FrontImageUrl = request.FrontImageUrl;
+                    verification.RearImageUrl = request.RearImageUrl;
+                    verification.LeftSideImageUrl = request.LeftSideImageUrl;
+                    verification.RightSideImageUrl = request.RightSideImageUrl;
+                    verification.SelfieUrl = request.SelfieUrl;
+                    verification.VerifiedAt = DateTime.UtcNow;
+                    await _verificationRepo.UpdateAsync(verification);
+                }
 
                 var journeyEvent = new VehicleJourneyEvent
                 {
@@ -123,15 +144,7 @@ namespace GD1.Application.Features.Pickup.Commands
                     BookingId = booking.Id,
                     EventType = "VehiclePickedUp",
                     Description = "Initial Condition Report",
-                    TriggeredBy = pickup.ManagerId,
-                    Images = new List<VehicleImage>
-                    {
-                        new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.FrontImageUrl, Label = "Front" },
-                        new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.RearImageUrl, Label = "Rear" },
-                        new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.LeftSideImageUrl, Label = "LeftSide" },
-                        new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.RightSideImageUrl, Label = "RightSide" },
-                        new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.SelfieUrl, Label = "ManagerSelfie" }
-                    }
+                    TriggeredBy = pickup.ManagerId
                 };
                 await _journeyRepo.AddAsync(journeyEvent);
 
@@ -155,6 +168,17 @@ namespace GD1.Application.Features.Pickup.Commands
                 
                 if (!string.IsNullOrEmpty(owner.PhoneNumber))
                     await _sms.SendAsync(owner.PhoneNumber, $"Your GD1 pickup OTP is {otp}");
+
+                try
+                {
+                    await _notificationService.SendAsync(
+                        userId: booking.OwnerId,
+                        title: "Manager Arrived - OTP Required",
+                        body: $"Manager has arrived and submitted condition photos. Provide the OTP {otp} to start the pickup.",
+                        actionType: "TrackPickup",
+                        referenceId: pickup.Id);
+                }
+                catch { /* Ignore notification failure */ }
 
                 return BaseResponse<string>.Ok("Pickup condition report saved. OTP sent successfully to the vehicle owner.");
             }

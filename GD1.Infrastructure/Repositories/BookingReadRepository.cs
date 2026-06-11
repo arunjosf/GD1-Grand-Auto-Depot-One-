@@ -34,18 +34,23 @@ namespace GD1.Infrastructure.Repositories
                        (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
+                       b.PickupLatitude, b.PickupLongitude,
+                       p.Latitude AS LotLatitude, p.Longitude AS LotLongitude,
+                       (SELECT TOP 1 jl.Latitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLatitude,
+                       (SELECT TOP 1 jl.Longitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLongitude,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
                        CASE pr.Status
                            WHEN 0 THEN 'Requested'
                            WHEN 1 THEN 'Assigned'
                            WHEN 2 THEN 'ManagerScheduled'
                            WHEN 3 THEN 'Approved'
-                           WHEN 4 THEN 'OtpSent'
-                           WHEN 5 THEN 'OwnerOtpSubmitted'
-                           WHEN 6 THEN 'Verified'
-                           WHEN 7 THEN 'VehiclePicked'
-                           WHEN 8 THEN 'InTransit'
-                           WHEN 9 THEN 'Stored'
+                           WHEN 4 THEN 'Declined'
+                           WHEN 5 THEN 'OtpSent'
+                           WHEN 6 THEN 'OwnerOtpSubmitted'
+                           WHEN 7 THEN 'Verified'
+                           WHEN 8 THEN 'VehiclePicked'
+                           WHEN 9 THEN 'InTransit'
+                           WHEN 10 THEN 'Stored'
                        END AS PickupStatus,
                        pr.ManagerArrivalTime,
                        mu.FullName AS ManagerName,
@@ -58,13 +63,13 @@ namespace GD1.Infrastructure.Repositories
                        pv_pickup.RightSideImageUrl,
                        pv_pickup.SelfieUrl,
                        pv_pickup.InteriorImageUrl,
-                       pv_pickup.OdometerImageUrl,
+                       pv_pickup.OdometerImageUrl, pv_pickup.ManagerRemarks,
                        pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
                        pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
@@ -72,8 +77,8 @@ namespace GD1.Infrastructure.Repositories
                 LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
-                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
-                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
                 WHERE  b.OwnerId = @OwnerId
                 AND    b.Status NOT IN (0, 5)
                 ORDER BY b.CreatedAt DESC";
@@ -95,18 +100,23 @@ namespace GD1.Infrastructure.Repositories
                        (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
+                       b.PickupLatitude, b.PickupLongitude,
+                       p.Latitude AS LotLatitude, p.Longitude AS LotLongitude,
+                       (SELECT TOP 1 jl.Latitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLatitude,
+                       (SELECT TOP 1 jl.Longitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLongitude,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
                        CASE pr.Status
                            WHEN 0 THEN 'Requested'
                            WHEN 1 THEN 'Assigned'
                            WHEN 2 THEN 'ManagerScheduled'
                            WHEN 3 THEN 'Approved'
-                           WHEN 4 THEN 'OtpSent'
-                           WHEN 5 THEN 'OwnerOtpSubmitted'
-                           WHEN 6 THEN 'Verified'
-                           WHEN 7 THEN 'VehiclePicked'
-                           WHEN 8 THEN 'InTransit'
-                           WHEN 9 THEN 'Stored'
+                           WHEN 4 THEN 'Declined'
+                           WHEN 5 THEN 'OtpSent'
+                           WHEN 6 THEN 'OwnerOtpSubmitted'
+                           WHEN 7 THEN 'Verified'
+                           WHEN 8 THEN 'VehiclePicked'
+                           WHEN 9 THEN 'InTransit'
+                           WHEN 10 THEN 'Stored'
                        END AS PickupStatus,
                        pr.ManagerArrivalTime,
                        mu.FullName AS ManagerName,
@@ -119,13 +129,13 @@ namespace GD1.Infrastructure.Repositories
                        pv_pickup.RightSideImageUrl,
                        pv_pickup.SelfieUrl,
                        pv_pickup.InteriorImageUrl,
-                       pv_pickup.OdometerImageUrl,
+                       pv_pickup.OdometerImageUrl, pv_pickup.ManagerRemarks,
                        pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
                        pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
@@ -133,8 +143,8 @@ namespace GD1.Infrastructure.Repositories
                 LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
-                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
-                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
                 WHERE  b.Id = @BookingId
                 AND    b.OwnerId = @OwnerId
                 AND    b.Status NOT IN (0, 5)";
@@ -156,18 +166,23 @@ namespace GD1.Infrastructure.Repositories
                        (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
+                       b.PickupLatitude, b.PickupLongitude,
+                       p.Latitude AS LotLatitude, p.Longitude AS LotLongitude,
+                       (SELECT TOP 1 jl.Latitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLatitude,
+                       (SELECT TOP 1 jl.Longitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLongitude,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
                        CASE pr.Status
                            WHEN 0 THEN 'Requested'
                            WHEN 1 THEN 'Assigned'
                            WHEN 2 THEN 'ManagerScheduled'
                            WHEN 3 THEN 'Approved'
-                           WHEN 4 THEN 'OtpSent'
-                           WHEN 5 THEN 'OwnerOtpSubmitted'
-                           WHEN 6 THEN 'Verified'
-                           WHEN 7 THEN 'VehiclePicked'
-                           WHEN 8 THEN 'InTransit'
-                           WHEN 9 THEN 'Stored'
+                           WHEN 4 THEN 'Declined'
+                           WHEN 5 THEN 'OtpSent'
+                           WHEN 6 THEN 'OwnerOtpSubmitted'
+                           WHEN 7 THEN 'Verified'
+                           WHEN 8 THEN 'VehiclePicked'
+                           WHEN 9 THEN 'InTransit'
+                           WHEN 10 THEN 'Stored'
                        END AS PickupStatus,
                        pr.ManagerArrivalTime,
                        mu.FullName AS ManagerName,
@@ -180,13 +195,13 @@ namespace GD1.Infrastructure.Repositories
                        pv_pickup.RightSideImageUrl,
                        pv_pickup.SelfieUrl,
                        pv_pickup.InteriorImageUrl,
-                       pv_pickup.OdometerImageUrl,
+                       pv_pickup.OdometerImageUrl, pv_pickup.ManagerRemarks,
                        pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
                        pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
@@ -194,8 +209,8 @@ namespace GD1.Infrastructure.Repositories
                 LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
-                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
-                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
                 WHERE  p.LotOwnerId = @LotOwnerId
                 ORDER BY b.CreatedAt DESC";
 
@@ -216,18 +231,23 @@ namespace GD1.Infrastructure.Repositories
                        (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
+                       b.PickupLatitude, b.PickupLongitude,
+                       p.Latitude AS LotLatitude, p.Longitude AS LotLongitude,
+                       (SELECT TOP 1 jl.Latitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLatitude,
+                       (SELECT TOP 1 jl.Longitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLongitude,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
                        CASE pr.Status
                            WHEN 0 THEN 'Requested'
                            WHEN 1 THEN 'Assigned'
                            WHEN 2 THEN 'ManagerScheduled'
                            WHEN 3 THEN 'Approved'
-                           WHEN 4 THEN 'OtpSent'
-                           WHEN 5 THEN 'OwnerOtpSubmitted'
-                           WHEN 6 THEN 'Verified'
-                           WHEN 7 THEN 'VehiclePicked'
-                           WHEN 8 THEN 'InTransit'
-                           WHEN 9 THEN 'Stored'
+                           WHEN 4 THEN 'Declined'
+                           WHEN 5 THEN 'OtpSent'
+                           WHEN 6 THEN 'OwnerOtpSubmitted'
+                           WHEN 7 THEN 'Verified'
+                           WHEN 8 THEN 'VehiclePicked'
+                           WHEN 9 THEN 'InTransit'
+                           WHEN 10 THEN 'Stored'
                        END AS PickupStatus,
                        pr.ManagerArrivalTime,
                        mu.FullName AS ManagerName,
@@ -240,13 +260,13 @@ namespace GD1.Infrastructure.Repositories
                        pv_pickup.RightSideImageUrl,
                        pv_pickup.SelfieUrl,
                        pv_pickup.InteriorImageUrl,
-                       pv_pickup.OdometerImageUrl,
+                       pv_pickup.OdometerImageUrl, pv_pickup.ManagerRemarks,
                        pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
                        pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
@@ -254,8 +274,8 @@ namespace GD1.Infrastructure.Repositories
                 LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
-                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
-                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
                 WHERE  b.Id = @BookingId
                 AND    p.LotOwnerId = @LotOwnerId";
 
@@ -269,6 +289,8 @@ namespace GD1.Infrastructure.Repositories
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
+                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerName,
+                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerPhone,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
@@ -276,18 +298,23 @@ namespace GD1.Infrastructure.Repositories
                        (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
+                       b.PickupLatitude, b.PickupLongitude,
+                       p.Latitude AS LotLatitude, p.Longitude AS LotLongitude,
+                       (SELECT TOP 1 jl.Latitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLatitude,
+                       (SELECT TOP 1 jl.Longitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLongitude,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
                        CASE pr.Status
                            WHEN 0 THEN 'Requested'
                            WHEN 1 THEN 'Assigned'
                            WHEN 2 THEN 'ManagerScheduled'
                            WHEN 3 THEN 'Approved'
-                           WHEN 4 THEN 'OtpSent'
-                           WHEN 5 THEN 'OwnerOtpSubmitted'
-                           WHEN 6 THEN 'Verified'
-                           WHEN 7 THEN 'VehiclePicked'
-                           WHEN 8 THEN 'InTransit'
-                           WHEN 9 THEN 'Stored'
+                           WHEN 4 THEN 'Declined'
+                           WHEN 5 THEN 'OtpSent'
+                           WHEN 6 THEN 'OwnerOtpSubmitted'
+                           WHEN 7 THEN 'Verified'
+                           WHEN 8 THEN 'VehiclePicked'
+                           WHEN 9 THEN 'InTransit'
+                           WHEN 10 THEN 'Stored'
                        END AS PickupStatus,
                        pr.ManagerArrivalTime,
                        mu.FullName AS ManagerName,
@@ -300,13 +327,13 @@ namespace GD1.Infrastructure.Repositories
                        pv_pickup.RightSideImageUrl,
                        pv_pickup.SelfieUrl,
                        pv_pickup.InteriorImageUrl,
-                       pv_pickup.OdometerImageUrl,
+                       pv_pickup.OdometerImageUrl, pv_pickup.ManagerRemarks,
                        pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
                        pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
@@ -314,8 +341,8 @@ namespace GD1.Infrastructure.Repositories
                 LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
-                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
-                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
                 WHERE  b.Id = @BookingId";
 
             return await _db.QuerySingleOrDefaultAsync<BookingDto>(sql, new { BookingId = bookingId });
@@ -328,6 +355,8 @@ namespace GD1.Infrastructure.Repositories
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
+                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerName,
+                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerPhone,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
@@ -335,18 +364,23 @@ namespace GD1.Infrastructure.Repositories
                        (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
+                       b.PickupLatitude, b.PickupLongitude,
+                       p.Latitude AS LotLatitude, p.Longitude AS LotLongitude,
+                       (SELECT TOP 1 jl.Latitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLatitude,
+                       (SELECT TOP 1 jl.Longitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLongitude,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
                        CASE pr.Status
                            WHEN 0 THEN 'Requested'
                            WHEN 1 THEN 'Assigned'
                            WHEN 2 THEN 'ManagerScheduled'
                            WHEN 3 THEN 'Approved'
-                           WHEN 4 THEN 'OtpSent'
-                           WHEN 5 THEN 'OwnerOtpSubmitted'
-                           WHEN 6 THEN 'Verified'
-                           WHEN 7 THEN 'VehiclePicked'
-                           WHEN 8 THEN 'InTransit'
-                           WHEN 9 THEN 'Stored'
+                           WHEN 4 THEN 'Declined'
+                           WHEN 5 THEN 'OtpSent'
+                           WHEN 6 THEN 'OwnerOtpSubmitted'
+                           WHEN 7 THEN 'Verified'
+                           WHEN 8 THEN 'VehiclePicked'
+                           WHEN 9 THEN 'InTransit'
+                           WHEN 10 THEN 'Stored'
                        END AS PickupStatus,
                        pr.ManagerArrivalTime,
                        mu.FullName AS ManagerName,
@@ -359,13 +393,13 @@ namespace GD1.Infrastructure.Repositories
                        pv_pickup.RightSideImageUrl,
                        pv_pickup.SelfieUrl,
                        pv_pickup.InteriorImageUrl,
-                       pv_pickup.OdometerImageUrl,
+                       pv_pickup.OdometerImageUrl, pv_pickup.ManagerRemarks,
                        pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
                        pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
@@ -373,8 +407,8 @@ namespace GD1.Infrastructure.Repositories
                 LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
-                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
-                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
                 WHERE  b.PropertyId = @PropertyId 
                 AND    b.Status = @Status
                 ORDER BY b.StartDate ASC";
@@ -405,6 +439,8 @@ namespace GD1.Infrastructure.Repositories
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
+                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerName,
+                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerPhone,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
@@ -412,18 +448,23 @@ namespace GD1.Infrastructure.Repositories
                        (SELECT TOP 1 vi.ImageUrl FROM VehicleImages vi WHERE vi.VehicleId = b.VehicleId ORDER BY vi.Id DESC) AS VehicleImageUrl,
                        b.StartDate, b.EndDate, b.Status,
                        b.PricePerDay, b.TotalCost,
+                       b.PickupLatitude, b.PickupLongitude,
+                       p.Latitude AS LotLatitude, p.Longitude AS LotLongitude,
+                       (SELECT TOP 1 jl.Latitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLatitude,
+                       (SELECT TOP 1 jl.Longitude FROM JourneyLocations jl WHERE jl.BookingId = b.Id ORDER BY jl.Timestamp DESC) AS LastGpsLongitude,
                        b.CreatedAt, b.IsAgreementSigned, b.RejectionReason,
                        CASE pr.Status
                            WHEN 0 THEN 'Requested'
                            WHEN 1 THEN 'Assigned'
                            WHEN 2 THEN 'ManagerScheduled'
                            WHEN 3 THEN 'Approved'
-                           WHEN 4 THEN 'OtpSent'
-                           WHEN 5 THEN 'OwnerOtpSubmitted'
-                           WHEN 6 THEN 'Verified'
-                           WHEN 7 THEN 'VehiclePicked'
-                           WHEN 8 THEN 'InTransit'
-                           WHEN 9 THEN 'Stored'
+                           WHEN 4 THEN 'Declined'
+                           WHEN 5 THEN 'OtpSent'
+                           WHEN 6 THEN 'OwnerOtpSubmitted'
+                           WHEN 7 THEN 'Verified'
+                           WHEN 8 THEN 'VehiclePicked'
+                           WHEN 9 THEN 'InTransit'
+                           WHEN 10 THEN 'Stored'
                        END AS PickupStatus,
                        pr.ManagerArrivalTime,
                        mu.FullName AS ManagerName,
@@ -436,13 +477,13 @@ namespace GD1.Infrastructure.Repositories
                        pv_pickup.RightSideImageUrl,
                        pv_pickup.SelfieUrl,
                        pv_pickup.InteriorImageUrl,
-                       pv_pickup.OdometerImageUrl,
+                       pv_pickup.OdometerImageUrl, pv_pickup.ManagerRemarks,
                        pv_arrival.FrontImageUrl AS ArrivalFrontImageUrl,
                        pv_arrival.RearImageUrl AS ArrivalRearImageUrl,
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
@@ -450,8 +491,8 @@ namespace GD1.Infrastructure.Repositories
                 LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
-                LEFT JOIN PickupVerifications pv_pickup ON pv_pickup.BookingId = b.Id AND pv_pickup.Type = 0
-                LEFT JOIN PickupVerifications pv_arrival ON pv_arrival.BookingId = b.Id AND pv_arrival.Type = 1
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
+                OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
                 ORDER BY b.CreatedAt DESC";
 
             return await _db.QueryAsync<BookingDto>(sql);

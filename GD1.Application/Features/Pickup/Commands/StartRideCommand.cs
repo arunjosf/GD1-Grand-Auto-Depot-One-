@@ -15,8 +15,6 @@ namespace GD1.Application.Features.Pickup.Commands
 {
     public record StartRideCommand(
         long PickupRequestId,
-        string InteriorImageUrl,
-        string OdometerImageUrl,
         string Description = ""
     ) : IRequest<BaseResponse<string>>;
 
@@ -25,9 +23,6 @@ namespace GD1.Application.Features.Pickup.Commands
         public StartRideCommandValidator()
         {
             RuleFor(x => x.PickupRequestId).GreaterThan(0);
-            RuleFor(x => x.InteriorImageUrl).NotEmpty();
-            RuleFor(x => x.OdometerImageUrl).NotEmpty();
-            RuleFor(x => x.Description).NotEmpty().WithMessage("Condition description is required.");
         }
     }
 
@@ -36,30 +31,27 @@ namespace GD1.Application.Features.Pickup.Commands
         private readonly IGenericRepository<PickupRequest> _pickupRepo;
         private readonly IGenericRepository<VehicleJourneyEvent> _journeyRepo;
         private readonly IGenericRepository<Booking> _bookingRepo;
-        private readonly IGenericRepository<PickupVerification> _verificationRepo;
-        private readonly IGeminiService _gemini;
         private readonly IGenericRepository<User> _userRepo;
         private readonly IEmailService _email;
         private readonly INotificationService _notificationService;
+        private readonly IGenericRepository<PickupVerification> _verificationRepo;
 
         public StartRideCommandHandler(
             IGenericRepository<PickupRequest> pickupRepo,
             IGenericRepository<VehicleJourneyEvent> journeyRepo,
             IGenericRepository<Booking> bookingRepo,
-            IGenericRepository<PickupVerification> verificationRepo,
-            IGeminiService gemini,
             IGenericRepository<User> userRepo,
             IEmailService email,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IGenericRepository<PickupVerification> verificationRepo)
         {
             _pickupRepo = pickupRepo;
             _journeyRepo = journeyRepo;
             _bookingRepo = bookingRepo;
-            _verificationRepo = verificationRepo;
-            _gemini = gemini;
             _userRepo = userRepo;
             _email = email;
             _notificationService = notificationService;
+            _verificationRepo = verificationRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(StartRideCommand request, CancellationToken cancellationToken)
@@ -74,17 +66,15 @@ namespace GD1.Application.Features.Pickup.Commands
             var booking = await _bookingRepo.GetByIdAsync(pickup.BookingId);
             if (booking == null) throw new Exception("Booking not found");
 
-            // Verify Images with Gemini
-            var interiorTask = _gemini.VerifyImageReadabilityAsync(request.InteriorImageUrl, "Car Interior");
-            var odometerTask = _gemini.VerifyImageReadabilityAsync(request.OdometerImageUrl, "Odometer Reading");
-
-            await Task.WhenAll(interiorTask, odometerTask);
-
-            if (!interiorTask.Result.IsReadable || interiorTask.Result.ConfidenceScore < 80)
-                throw new Exception($"Interior Image Error: {interiorTask.Result.Reason}. Please capture a clearer photo.");
+            // Enforce pre-ride condition photos exist
+            var verifications = await _verificationRepo.FindAsync(
+                v => v.BookingId == pickup.BookingId && v.Type == ReportType.Pickup);
+            var verification = verifications.OrderByDescending(v => v.Id).FirstOrDefault();
             
-            if (!odometerTask.Result.IsReadable || odometerTask.Result.ConfidenceScore < 80)
-                throw new Exception($"Odometer Image Error: {odometerTask.Result.Reason}. Please capture a clearer photo.");
+            if (verification == null || string.IsNullOrWhiteSpace(verification.InteriorImageUrl) || string.IsNullOrWhiteSpace(verification.OdometerImageUrl))
+            {
+                throw new Exception("You must submit the pre-ride condition report (interior and odometer photos) before starting the ride.");
+            }
 
             // Add journey event
             var journeyEvent = new VehicleJourneyEvent
@@ -92,25 +82,12 @@ namespace GD1.Application.Features.Pickup.Commands
                 VehicleId = booking.VehicleId,
                 BookingId = pickup.BookingId,
                 EventType = "RideStarted",
-                Description = $"Ride started: {request.Description}",
+                Description = string.IsNullOrWhiteSpace(request.Description) ? "Transit started to garage." : $"Ride started: {request.Description}",
                 TriggeredBy = pickup.ManagerId,
-                Images = new List<VehicleImage>
-                {
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.InteriorImageUrl, Label = "Interior" },
-                    new VehicleImage { VehicleId = booking.VehicleId, ImageUrl = request.OdometerImageUrl, Label = "Odometer" }
-                }
+                Images = new List<VehicleImage>() // Removed redundancy with VehicleImages table
             };
 
             await _journeyRepo.AddAsync(journeyEvent);
-
-            var verifications = await _verificationRepo.FindAsync(v => v.BookingId == pickup.BookingId && v.Type == ReportType.Pickup);
-            var pickupVerification = System.Linq.Enumerable.FirstOrDefault(verifications);
-            if (pickupVerification != null)
-            {
-                pickupVerification.InteriorImageUrl = request.InteriorImageUrl;
-                pickupVerification.OdometerImageUrl = request.OdometerImageUrl;
-                await _verificationRepo.UpdateAsync(pickupVerification);
-            }
 
             pickup.Status = PickupStatus.InTransit;
             await _pickupRepo.UpdateAsync(pickup);
@@ -120,7 +97,7 @@ namespace GD1.Application.Features.Pickup.Commands
             if (owner != null)
             {
                 string subject = "Your Ride Has Started";
-                string body = $"Hello {owner.FullName},\n\nYour vehicle is now securely in transit to the storage lot. You can track its location in real-time through the application.\n\nDescription: {request.Description}\n\nThank you for using Grand Auto Depot One!";
+                string body = $"Hello {owner.FullName},\n\nYour vehicle is now securely in transit to the storage lot. You can track its location in real-time through the application.\n\nThank you for using Grand Auto Depot One!";
                 await _email.SendAsync(owner.Email, subject, body);
             }
 

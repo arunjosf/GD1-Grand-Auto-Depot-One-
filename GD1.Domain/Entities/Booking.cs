@@ -33,6 +33,7 @@ namespace GD1.Domain.Entities
         public double? PickupLatitude { get; set; }
         public double? PickupLongitude { get; set; }
         public bool IsPickupRequested { get; set; }
+        public DateTime? RequestedPickupTime { get; set; }
         public long? AssignedManagerId { get; set; }
         public string? PickupOtp { get; set; }
         public int IsAgreementSigned { get; set; }

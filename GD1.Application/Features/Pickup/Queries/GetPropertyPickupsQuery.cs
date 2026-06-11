@@ -19,13 +19,16 @@ namespace GD1.Application.Features.Pickup.Queries
     {
         public long PickupRequestId { get; set; }
         public long BookingId { get; set; }
+        public DateTime BookingStartDate { get; set; }
         public DateTime RequestedPickupTime { get; set; }
-        public string Status { get; set; } = string.Empty;
+        public GD1.Domain.Entities.Enums.PickupStatus Status { get; set; }
 
         // Vehicle Info
         public string VehicleBrand { get; set; } = string.Empty;
         public string VehicleModel { get; set; } = string.Empty;
         public string RegistrationNo { get; set; } = string.Empty;
+        public string? VehicleImage { get; set; }
+        public string? VerificationStatus { get; set; }
 
         // Customer Info
         public string CustomerName { get; set; } = string.Empty;

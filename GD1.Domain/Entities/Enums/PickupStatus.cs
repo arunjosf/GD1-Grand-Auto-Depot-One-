@@ -12,6 +12,7 @@ namespace GD1.Domain.Entities.Enums
         Assigned,
         ManagerScheduled,
         Approved,
+        Declined,
         OtpSent,
         OwnerOtpSubmitted,
         Verified,

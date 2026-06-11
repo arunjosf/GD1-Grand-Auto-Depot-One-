@@ -27,6 +27,7 @@ namespace GD1.Application.Features.Vehicle.DTOs
         public DateTime CreatedAt { get; set; }
 
         public bool IsStored { get; set; }
+        public long? ActiveBookingId { get; set; }
         public string? LotName { get; set; }
         public DateTime? StartDate { get; set; }
         public string? Location { get; set; }

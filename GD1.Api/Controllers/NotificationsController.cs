@@ -86,6 +86,16 @@ namespace GD1.Api.Controllers
                             continue; // Skip returning this notification
                         }
                     }
+                    // Clean up responded booking verifications for Lot Owners
+                    if (n.ActionType == "ViewBookings" && n.ReferenceId.HasValue)
+                    {
+                        var booking = await _bookingRepo.GetByIdAsync(n.ReferenceId.Value);
+                        if (booking == null || booking.Status != GD1.Domain.Entities.Enums.BookingStatus.PendingVerification)
+                        {
+                            await _notificationRepo.DeleteAsync(n);
+                            continue; // Skip returning this notification
+                        }
+                    }
 
                     // Clean up any other notifications if needed...
                     
