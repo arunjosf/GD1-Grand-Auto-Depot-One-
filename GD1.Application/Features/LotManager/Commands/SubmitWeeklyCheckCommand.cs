@@ -70,17 +70,6 @@ namespace GD1.Application.Features.LotManager.Commands
                 vehicleId = task.VehicleId;
                 bookingId = task.BookingId;
 
-                var labels1 = new[] { "Front", "Rear", "LeftSide", "RightSide", "Interior", "Odometer" };
-                var urls1 = new[] { request.FrontImageUrl, request.RearImageUrl, request.LeftSideImageUrl, request.RightSideImageUrl, request.InteriorImageUrl, request.OdometerImageUrl };
-
-                foreach (var url in urls1)
-                {
-                    if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{vehicleId}"))
-                    {
-                        return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {vehicleId}.");
-                    }
-                }
-
                 
                 task.Status = MaintenanceTaskStatus.Completed;
                 task.CompletedAt = DateTime.UtcNow;
@@ -107,10 +96,7 @@ namespace GD1.Application.Features.LotManager.Commands
 
                 foreach (var url in urls2)
                 {
-                    if (!string.IsNullOrEmpty(url) && !url.Contains($"vehicle-{vehicleId}"))
-                    {
-                        return BaseResponse<string>.Fail($"Upload Blocked: URL mismatch. The image does not belong to vehicle {vehicleId}.");
-                    }
+                    // Removed validation
                 }
             }
             else

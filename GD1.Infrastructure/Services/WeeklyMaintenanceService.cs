@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using GD1.Application.Interfaces.Services;
 using System;
 using System.Linq;
 using System.Threading;
@@ -53,9 +54,11 @@ namespace GD1.Infrastructure.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
             // Find all vehicles currently stored in a lot
             var storedBookings = await dbContext.Bookings
+                .Include(b => b.Vehicle)
                 .Include(b => b.Property)
                 .ThenInclude(p => p.Managers)
                 .Where(b => b.Status == BookingStatus.InLot)
@@ -66,15 +69,35 @@ namespace GD1.Infrastructure.Services
                 var manager = booking.Property?.Managers?.FirstOrDefault();
                 if (manager == null) continue;
 
-                // Check the last time a WeeklyConditionCheck was completed for this vehicle
+                // Check the last time a weekly task was requested by the system
                 var lastWeeklyTask = await dbContext.MaintenanceTasks
                     .Where(t => t.VehicleId == booking.VehicleId && t.Type == MaintenanceTaskType.WeeklyConditionCheck)
                     .OrderByDescending(t => t.RequestedAt)
                     .FirstOrDefaultAsync(stoppingToken);
 
+                // Check the last time an actual update was submitted (either via task or adhoc)
+                var lastActualUpdate = await dbContext.VehicleJourneyEvents
+                    .Where(e => e.VehicleId == booking.VehicleId && (e.EventType == "WeeklyUpdate" || e.EventType == "AdHocMaintenanceUpdate"))
+                    .OrderByDescending(e => e.CreatedAt)
+                    .FirstOrDefaultAsync(stoppingToken);
+
                 bool needsUpdate = false;
 
-                if (lastWeeklyTask == null)
+                // The reference date is the most recent of either the last task requested or the last actual update submitted.
+                // If neither exists, use the vehicle arrival date.
+                DateTime? referenceDate = null;
+                
+                if (lastActualUpdate != null)
+                {
+                    referenceDate = lastActualUpdate.CreatedAt;
+                }
+                
+                if (lastWeeklyTask != null && (referenceDate == null || lastWeeklyTask.RequestedAt > referenceDate))
+                {
+                    referenceDate = lastWeeklyTask.RequestedAt;
+                }
+
+                if (referenceDate == null)
                 {
                     // Check if it's been 7 days since the vehicle arrived
                     var arrivalEvent = await dbContext.VehicleJourneyEvents
@@ -82,14 +105,14 @@ namespace GD1.Infrastructure.Services
                         .OrderByDescending(e => e.CreatedAt)
                         .FirstOrDefaultAsync(stoppingToken);
 
-                    if (arrivalEvent != null && (DateTime.UtcNow - arrivalEvent.CreatedAt).TotalDays >= 7)
+                    if (arrivalEvent != null)
                     {
-                        needsUpdate = true;
+                        referenceDate = arrivalEvent.CreatedAt;
                     }
                 }
-                else if ((DateTime.UtcNow - lastWeeklyTask.RequestedAt).TotalDays >= 7)
+
+                if (referenceDate.HasValue && (DateTime.UtcNow - referenceDate.Value).TotalDays >= 7)
                 {
-                    // It's been 7 days since the last weekly task was requested
                     needsUpdate = true;
                 }
 
@@ -113,6 +136,14 @@ namespace GD1.Infrastructure.Services
 
                         dbContext.MaintenanceTasks.Add(task);
                         _logger.LogInformation("Created WeeklyConditionCheck for Vehicle {VehicleId}", booking.VehicleId);
+                        
+                        // Notify manager
+                        await notificationService.SendAsync(
+                            manager.Id, 
+                            "Weekly Update Due", 
+                            $"The 7-day scheduled update is now due for {booking.Vehicle?.RegistrationNo}. Please perform the condition check.", 
+                            "WeeklyTask"
+                        );
                     }
                 }
             }

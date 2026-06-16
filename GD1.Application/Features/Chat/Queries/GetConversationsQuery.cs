@@ -36,6 +36,7 @@ namespace GD1.Application.Features.Chat.Queries
         private readonly IGenericRepository<User> _userRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _lotManagerRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.PickupRequest> _pickupRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenter> _centerRepo;
 
         public GetConversationsQueryHandler(
             IGenericRepository<Booking> bookingRepo,
@@ -45,7 +46,8 @@ namespace GD1.Application.Features.Chat.Queries
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
             IGenericRepository<User> userRepo,
             IGenericRepository<GD1.Domain.Entities.LotManager> lotManagerRepo,
-            IGenericRepository<GD1.Domain.Entities.PickupRequest> pickupRepo)
+            IGenericRepository<GD1.Domain.Entities.PickupRequest> pickupRepo,
+            IGenericRepository<GD1.Domain.Entities.ServiceCenter> centerRepo)
         {
             _bookingRepo = bookingRepo;
             _serviceRepo = serviceRepo;
@@ -55,6 +57,7 @@ namespace GD1.Application.Features.Chat.Queries
             _userRepo = userRepo;
             _lotManagerRepo = lotManagerRepo;
             _pickupRepo = pickupRepo;
+            _centerRepo = centerRepo;
         }
 
         public async Task<List<ConversationDto>> Handle(GetConversationsQuery request, CancellationToken cancellationToken)
@@ -69,6 +72,7 @@ namespace GD1.Application.Features.Chat.Queries
             var allUsers = await _userRepo.GetAllAsync();
             var allLotManagers = await _lotManagerRepo.GetAllAsync();
             var allPickups = await _pickupRepo.GetAllAsync();
+            var allCenters = await _centerRepo.GetAllAsync();
 
             var currentUser = allUsers.FirstOrDefault(u => u.Id == request.UserId);
             bool isManager = currentUser != null && currentUser.Role == GD1.Domain.Entities.Enums.UserRole.Manager;
@@ -217,7 +221,8 @@ namespace GD1.Application.Features.Chat.Queries
                 var isLotOwner = allProperties.Any(p => p.Id == booking?.PropertyId && p.LotOwnerId == request.UserId);
                 var vehicle = allVehicles.FirstOrDefault(v => v.Id == booking?.VehicleId);
                 
-                string title = (isLotOwner || isManager) ? $"Service for {vehicle?.Brand} {vehicle?.RegistrationNo}" : $"Service Center";
+                var sc = allCenters.FirstOrDefault(c => c.Id == service.ServiceCenterId);
+                string title = (isLotOwner || isManager) ? $"Service for {vehicle?.Brand} {vehicle?.RegistrationNo}" : sc?.Name ?? "Service Center";
 
                 conversations.Add(new ConversationDto
                 {
@@ -228,8 +233,8 @@ namespace GD1.Application.Features.Chat.Queries
                     LatestMessageAt = lastMsg?.CreatedAt,
                     UnreadCount = unreadCount,
                     IsChatActive = isActive,
-                    OtherUserId = 0,
-                    OtherUserName = "Service Center"
+                    OtherUserId = sc?.AdminId ?? 0,
+                    OtherUserName = sc?.Name ?? "Service Center"
                 });
             }
 

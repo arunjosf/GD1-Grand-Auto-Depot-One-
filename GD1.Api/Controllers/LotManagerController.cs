@@ -125,7 +125,19 @@ namespace GD1.Api.Controllers
                 ServiceRequestId = id
             });
             return Ok(result);
+        }
 
+        [HttpGet("my-services")]
+        public async Task<IActionResult> GetMyServices()
+        {
+            var roleString = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var role = roleString == "LotOwner" ? GD1.Domain.Entities.Enums.UserRole.LotOwner : GD1.Domain.Entities.Enums.UserRole.Manager;
+            var result = await _mediator.Send(new GD1.Application.Features.Bookings.Queries.GetMyLotServicesQuery
+            {
+                UserId = GetUserId(),
+                Role = role
+            });
+            return Ok(result);
         }
 
         [HttpPost("bookings/{id}/trigger-otp")]

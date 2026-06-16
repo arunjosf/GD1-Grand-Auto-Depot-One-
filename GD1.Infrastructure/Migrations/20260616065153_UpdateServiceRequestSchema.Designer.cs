@@ -4,6 +4,7 @@ using GD1.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GD1.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616065153_UpdateServiceRequestSchema")]
+    partial class UpdateServiceRequestSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1606,9 +1609,6 @@ namespace GD1.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("BillUrl")
                         .HasColumnType("nvarchar(max)");
 
@@ -1636,9 +1636,6 @@ namespace GD1.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsPaid")
-                        .HasColumnType("bit");
-
                     b.Property<string>("MechanicEmail")
                         .HasColumnType("nvarchar(max)");
 
@@ -1653,15 +1650,6 @@ namespace GD1.Infrastructure.Migrations
 
                     b.Property<decimal>("PlatformFee")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("RazorpayOrderId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RazorpayPaymentId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RazorpaySignature")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("RequestedBy")
                         .HasColumnType("bigint");

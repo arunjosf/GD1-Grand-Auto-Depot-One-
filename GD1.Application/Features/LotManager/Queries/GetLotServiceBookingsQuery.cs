@@ -25,6 +25,7 @@ namespace GD1.Application.Features.LotManager.Queries
         public string VehicleBrand { get; set; } = string.Empty;
         public string VehicleModel { get; set; } = string.Empty;
         public string VehicleRegistrationNo { get; set; } = string.Empty;
+        public string? VehicleImage { get; set; }
         public string OwnerName { get; set; } = string.Empty;
         public string OwnerPhone { get; set; } = string.Empty;
         public string ServiceType { get; set; } = string.Empty;
@@ -49,6 +50,7 @@ namespace GD1.Application.Features.LotManager.Queries
     {
         public long Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public long OwnerId { get; set; }
         public string OwnerName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public string? Email { get; set; }
@@ -89,10 +91,12 @@ namespace GD1.Application.Features.LotManager.Queries
 
             // Fetch service requests for bookings at this specific property
             var serviceRequests = await _requestRepo.FindAsync(
-                r => r.Booking != null
-                  && r.Booking.PropertyId == request.PropertyId
-                  && (r.Status == "Approved" || r.Status == "Pending" || r.Status == "MechanicArrived"),
+                r => r.Booking != null 
+                    && !r.IsDeleted
+                    && r.Booking.PropertyId == request.PropertyId
+                    && (r.Status == "Approved" || r.Status == "Pending" || r.Status == "MechanicArrived"),
                 "Booking.Vehicle.Owner",
+                "Booking.Vehicle.Images",
                 "Booking.Property",
                 "ServiceCenter"
             );
@@ -109,6 +113,7 @@ namespace GD1.Application.Features.LotManager.Queries
                 VehicleBrand = r.Booking?.Vehicle?.Brand ?? "Unknown",
                 VehicleModel = r.Booking?.Vehicle?.Model ?? "Unknown",
                 VehicleRegistrationNo = r.Booking?.Vehicle?.RegistrationNo ?? "Unknown",
+                VehicleImage = r.Booking?.Vehicle?.Images?.FirstOrDefault()?.ImageUrl,
                 OwnerName = r.Booking?.Vehicle?.Owner?.FullName ?? "Unknown",
                 OwnerPhone = r.Booking?.Vehicle?.Owner?.PhoneNumber ?? "Unknown",
                 ServiceType = r.ServiceType,
@@ -125,6 +130,7 @@ namespace GD1.Application.Features.LotManager.Queries
                 ServiceCenter = r.ServiceCenter == null ? null : new ServiceCenterSummaryDto
                 {
                     Id = r.ServiceCenter.Id,
+                    OwnerId = r.ServiceCenter.AdminId,
                     Name = r.ServiceCenter.Name,
                     OwnerName = r.ServiceCenter.OwnerName,
                     PhoneNumber = r.ServiceCenter.PhoneNumber,

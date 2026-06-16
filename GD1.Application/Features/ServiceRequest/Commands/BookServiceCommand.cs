@@ -1,4 +1,5 @@
 using GD1.Application.Common;
+using GD1.Application.Interfaces.Services;
 using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
@@ -24,13 +25,19 @@ namespace GD1.Application.Features.ServiceRequest.Commands
     {
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.ServiceRequest> _requestRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenter> _scRepo;
+        private readonly INotificationService _notificationService;
 
         public BookServiceCommandHandler(
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
-            IGenericRepository<GD1.Domain.Entities.ServiceRequest> requestRepo)
+            IGenericRepository<GD1.Domain.Entities.ServiceRequest> requestRepo,
+            IGenericRepository<GD1.Domain.Entities.ServiceCenter> scRepo,
+            INotificationService notificationService)
         {
             _vehicleRepo = vehicleRepo;
             _requestRepo = requestRepo;
+            _scRepo = scRepo;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(BookServiceCommand request, CancellationToken ct)
@@ -49,6 +56,7 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             var serviceRequest = new GD1.Domain.Entities.ServiceRequest
             {
                 BookingId = activeBooking.Id,
+                VehicleId = request.VehicleId,
                 ServiceCenterId = request.ServiceCenterId,
                 RequestedBy = request.OwnerId,
                 ServiceType = request.ServiceType ?? string.Empty,
@@ -65,6 +73,19 @@ namespace GD1.Application.Features.ServiceRequest.Commands
                 vehicle.HasServiceRecommendation = false;
                 vehicle.ManagerServiceRemarks = null;
                 await _vehicleRepo.UpdateAsync(vehicle);
+            }
+
+            var serviceCenter = await _scRepo.GetByIdAsync(request.ServiceCenterId);
+            if (serviceCenter != null && serviceCenter.AdminId > 0)
+            {
+                await _notificationService.SendAsync(
+                    serviceCenter.AdminId,
+                    "New Service Request",
+                    $"A new service request has been booked for {vehicle.Brand} {vehicle.Model}.",
+                    "ServiceRequest",
+                    serviceRequest.Id,
+                    "/service-center/bookings"
+                );
             }
 
             return BaseResponse<string>.Ok("Service request booked successfully.");

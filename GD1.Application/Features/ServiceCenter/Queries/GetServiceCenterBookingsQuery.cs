@@ -28,6 +28,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
         public string? Notes { get; set; }
         public DateTime? RequestedDate { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string? ServiceCenterImage { get; set; }
         public decimal ServiceCost { get; set; }
         
         public long? PropertyId { get; set; }
@@ -37,6 +38,8 @@ namespace GD1.Application.Features.ServiceCenter.Queries
         public string? PropertyCity { get; set; }
         public double? PropertyLatitude { get; set; }
         public double? PropertyLongitude { get; set; }
+        public double? ServiceCenterLatitude { get; set; }
+        public double? ServiceCenterLongitude { get; set; }
     }
 
     public class GetServiceCenterBookingsQueryHandler : IRequestHandler<GetServiceCenterBookingsQuery, BaseResponse<IEnumerable<ServiceBookingDto>>>
@@ -65,7 +68,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
 
             var serviceRequests = await _requestRepo.FindAsync(
                 r => r.ServiceCenterId == center.Id, 
-                "Booking.Vehicle.Owner", "Booking.Property.LotOwner"); // Need Booking, Vehicle, Owner, and Property details
+                "Booking.Vehicle.Owner", "Booking.Vehicle.Images", "Booking.Property.LotOwner"); // Need Booking, Vehicle, Owner, and Property details
 
             var dtos = serviceRequests.Select(r => new ServiceBookingDto
             {
@@ -81,6 +84,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
                 Notes = r.Notes,
                 RequestedDate = r.ScheduledDate,
                 Status = r.Status,
+                ServiceCenterImage = r.Booking?.Vehicle?.Images?.FirstOrDefault()?.ImageUrl,
                 ServiceCost = r.ServiceCost,
                 PropertyId = r.Booking?.PropertyId,
                 PropertyName = r.Booking?.Property?.Name,
@@ -88,7 +92,9 @@ namespace GD1.Application.Features.ServiceCenter.Queries
                 PropertyAddress = r.Booking?.Property?.AddressLine,
                 PropertyCity = r.Booking?.Property?.City,
                 PropertyLatitude = r.Booking?.Property?.Latitude,
-                PropertyLongitude = r.Booking?.Property?.Longitude
+                PropertyLongitude = r.Booking?.Property?.Longitude,
+                ServiceCenterLatitude = center.Latitude,
+                ServiceCenterLongitude = center.Longitude
             }).OrderByDescending(x => x.Id).ToList();
 
             return BaseResponse<IEnumerable<ServiceBookingDto>>.Ok(dtos);

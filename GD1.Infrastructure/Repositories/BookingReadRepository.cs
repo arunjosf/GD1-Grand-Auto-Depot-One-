@@ -25,7 +25,10 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
@@ -69,16 +72,47 @@ namespace GD1.Infrastructure.Repositories
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks,
+                       od.OnDemandFrontImageUrl,
+                       od.OnDemandRearImageUrl,
+                       od.OnDemandLeftSideImageUrl,
+                       od.OnDemandRightSideImageUrl,
+                       od.OnDemandInteriorImageUrl,
+                       od.OnDemandOdometerImageUrl
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
                 LEFT  JOIN VehicleStorageSlots      s ON b.SlotId = s.Id
-                LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
+                OUTER APPLY (SELECT TOP 1 * FROM PickupRequests pr2 WHERE pr2.BookingId = b.Id ORDER BY pr2.Id DESC) pr
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS OnDemandFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS OnDemandRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS OnDemandLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS OnDemandRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS OnDemandInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS OnDemandOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType = 'OnDemandUpdate'
+                    ORDER BY je.CreatedAt DESC
+                ) od
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        je.Description AS WeeklyUpdateDescription,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS WeeklyUpdateFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS WeeklyUpdateRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS WeeklyUpdateLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS WeeklyUpdateRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS WeeklyUpdateInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS WeeklyUpdateOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate')
+                    ORDER BY je.CreatedAt DESC
+                ) wu
                 WHERE  b.OwnerId = @OwnerId
                 AND    b.Status NOT IN (0, 5)
                 ORDER BY b.CreatedAt DESC";
@@ -91,8 +125,15 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 0 AND mt.Status = 0) THEN 1 ELSE 0 END AS BIT) AS HasPendingOnDemandRequest,
+                       (SELECT TOP 1 mt.RequestedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 0 AND mt.Status = 0 ORDER BY mt.RequestedAt DESC) AS PendingOnDemandRequestDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
+                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerName,
+                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerPhone,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
@@ -135,16 +176,43 @@ namespace GD1.Infrastructure.Repositories
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks,
+                       od.OnDemandFrontImageUrl, od.OnDemandRearImageUrl, od.OnDemandLeftSideImageUrl, od.OnDemandRightSideImageUrl, od.OnDemandInteriorImageUrl, od.OnDemandOdometerImageUrl,
+                       wu.WeeklyUpdateDescription, wu.WeeklyUpdateFrontImageUrl, wu.WeeklyUpdateRearImageUrl, wu.WeeklyUpdateLeftSideImageUrl, wu.WeeklyUpdateRightSideImageUrl, wu.WeeklyUpdateInteriorImageUrl, wu.WeeklyUpdateOdometerImageUrl
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
                 LEFT  JOIN VehicleStorageSlots      s ON b.SlotId = s.Id
-                LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
+                OUTER APPLY (SELECT TOP 1 * FROM PickupRequests pr2 WHERE pr2.BookingId = b.Id ORDER BY pr2.Id DESC) pr
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS OnDemandFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS OnDemandRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS OnDemandLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS OnDemandRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS OnDemandInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS OnDemandOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType = 'OnDemandUpdate'
+                    ORDER BY je.CreatedAt DESC
+                ) od
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        je.Description AS WeeklyUpdateDescription,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS WeeklyUpdateFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS WeeklyUpdateRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS WeeklyUpdateLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS WeeklyUpdateRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS WeeklyUpdateInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS WeeklyUpdateOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate')
+                    ORDER BY je.CreatedAt DESC
+                ) wu
                 WHERE  b.Id = @BookingId
                 AND    b.OwnerId = @OwnerId
                 AND    b.Status NOT IN (0, 5)";
@@ -157,7 +225,10 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
@@ -201,16 +272,43 @@ namespace GD1.Infrastructure.Repositories
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks,
+                       od.OnDemandFrontImageUrl, od.OnDemandRearImageUrl, od.OnDemandLeftSideImageUrl, od.OnDemandRightSideImageUrl, od.OnDemandInteriorImageUrl, od.OnDemandOdometerImageUrl,
+                       wu.WeeklyUpdateDescription, wu.WeeklyUpdateFrontImageUrl, wu.WeeklyUpdateRearImageUrl, wu.WeeklyUpdateLeftSideImageUrl, wu.WeeklyUpdateRightSideImageUrl, wu.WeeklyUpdateInteriorImageUrl, wu.WeeklyUpdateOdometerImageUrl
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
                 LEFT  JOIN VehicleStorageSlots      s ON b.SlotId = s.Id
-                LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
+                OUTER APPLY (SELECT TOP 1 * FROM PickupRequests pr2 WHERE pr2.BookingId = b.Id ORDER BY pr2.Id DESC) pr
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS OnDemandFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS OnDemandRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS OnDemandLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS OnDemandRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS OnDemandInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS OnDemandOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType = 'OnDemandUpdate'
+                    ORDER BY je.CreatedAt DESC
+                ) od
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        je.Description AS WeeklyUpdateDescription,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS WeeklyUpdateFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS WeeklyUpdateRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS WeeklyUpdateLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS WeeklyUpdateRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS WeeklyUpdateInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS WeeklyUpdateOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate')
+                    ORDER BY je.CreatedAt DESC
+                ) wu
                 WHERE  p.LotOwnerId = @LotOwnerId
                 ORDER BY b.CreatedAt DESC";
 
@@ -222,7 +320,10 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
@@ -266,16 +367,43 @@ namespace GD1.Infrastructure.Repositories
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks,
+                       od.OnDemandFrontImageUrl, od.OnDemandRearImageUrl, od.OnDemandLeftSideImageUrl, od.OnDemandRightSideImageUrl, od.OnDemandInteriorImageUrl, od.OnDemandOdometerImageUrl,
+                       wu.WeeklyUpdateDescription, wu.WeeklyUpdateFrontImageUrl, wu.WeeklyUpdateRearImageUrl, wu.WeeklyUpdateLeftSideImageUrl, wu.WeeklyUpdateRightSideImageUrl, wu.WeeklyUpdateInteriorImageUrl, wu.WeeklyUpdateOdometerImageUrl
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
                 LEFT  JOIN VehicleStorageSlots      s ON b.SlotId = s.Id
-                LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
+                OUTER APPLY (SELECT TOP 1 * FROM PickupRequests pr2 WHERE pr2.BookingId = b.Id ORDER BY pr2.Id DESC) pr
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 1 ORDER BY pv.Id DESC) pv_arrival
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS OnDemandFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS OnDemandRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS OnDemandLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS OnDemandRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS OnDemandInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS OnDemandOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType = 'OnDemandUpdate'
+                    ORDER BY je.CreatedAt DESC
+                ) od
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        je.Description AS WeeklyUpdateDescription,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Front') AS WeeklyUpdateFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Rear') AS WeeklyUpdateRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'LeftSide') AS WeeklyUpdateLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'RightSide') AS WeeklyUpdateRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Interior') AS WeeklyUpdateInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi WHERE vi.EventId = je.Id AND vi.Label = 'Odometer') AS WeeklyUpdateOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = b.VehicleId AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate')
+                    ORDER BY je.CreatedAt DESC
+                ) wu
                 WHERE  b.Id = @BookingId
                 AND    p.LotOwnerId = @LotOwnerId";
 
@@ -287,10 +415,13 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
-                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerName,
-                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerPhone,
+                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerName,
+                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerPhone,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
@@ -333,12 +464,14 @@ namespace GD1.Infrastructure.Repositories
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks,
+                       od.OnDemandFrontImageUrl, od.OnDemandRearImageUrl, od.OnDemandLeftSideImageUrl, od.OnDemandRightSideImageUrl, od.OnDemandInteriorImageUrl, od.OnDemandOdometerImageUrl,
+                       wu.WeeklyUpdateDescription, wu.WeeklyUpdateFrontImageUrl, wu.WeeklyUpdateRearImageUrl, wu.WeeklyUpdateLeftSideImageUrl, wu.WeeklyUpdateRightSideImageUrl, wu.WeeklyUpdateInteriorImageUrl, wu.WeeklyUpdateOdometerImageUrl
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
                 LEFT  JOIN VehicleStorageSlots      s ON b.SlotId = s.Id
-                LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
+                OUTER APPLY (SELECT TOP 1 * FROM PickupRequests pr2 WHERE pr2.BookingId = b.Id ORDER BY pr2.Id DESC) pr
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
@@ -353,10 +486,12 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
-                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerName,
-                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerPhone,
+                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerName,
+                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerPhone,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
@@ -399,12 +534,14 @@ namespace GD1.Infrastructure.Repositories
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks,
+                       od.OnDemandFrontImageUrl, od.OnDemandRearImageUrl, od.OnDemandLeftSideImageUrl, od.OnDemandRightSideImageUrl, od.OnDemandInteriorImageUrl, od.OnDemandOdometerImageUrl,
+                       wu.WeeklyUpdateDescription, wu.WeeklyUpdateFrontImageUrl, wu.WeeklyUpdateRearImageUrl, wu.WeeklyUpdateLeftSideImageUrl, wu.WeeklyUpdateRightSideImageUrl, wu.WeeklyUpdateInteriorImageUrl, wu.WeeklyUpdateOdometerImageUrl
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
                 LEFT  JOIN VehicleStorageSlots      s ON b.SlotId = s.Id
-                LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
+                OUTER APPLY (SELECT TOP 1 * FROM PickupRequests pr2 WHERE pr2.BookingId = b.Id ORDER BY pr2.Id DESC) pr
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup
@@ -437,10 +574,12 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
-                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerName,
-                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.OwnerId) AS LotOwnerPhone,
+                       (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerName,
+                       (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerPhone,
                        b.PropertyId, p.Name AS PropertyName,
                        p.AddressLine AS PropertyAddress,
                        s.SlotNumber,
@@ -483,12 +622,14 @@ namespace GD1.Infrastructure.Repositories
                        pv_arrival.LeftSideImageUrl AS ArrivalLeftSideImageUrl,
                        pv_arrival.RightSideImageUrl AS ArrivalRightSideImageUrl,
                        pv_arrival.InteriorImageUrl AS ArrivalInteriorImageUrl,
-                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks
+                       pv_arrival.OdometerImageUrl AS ArrivalOdometerImageUrl, pv_arrival.ManagerRemarks AS ArrivalManagerRemarks,
+                       od.OnDemandFrontImageUrl, od.OnDemandRearImageUrl, od.OnDemandLeftSideImageUrl, od.OnDemandRightSideImageUrl, od.OnDemandInteriorImageUrl, od.OnDemandOdometerImageUrl,
+                       wu.WeeklyUpdateDescription, wu.WeeklyUpdateFrontImageUrl, wu.WeeklyUpdateRearImageUrl, wu.WeeklyUpdateLeftSideImageUrl, wu.WeeklyUpdateRightSideImageUrl, wu.WeeklyUpdateInteriorImageUrl, wu.WeeklyUpdateOdometerImageUrl
                 FROM   Bookings b
                 INNER JOIN Vehicles                 v ON b.VehicleId = v.Id
                 INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
                 LEFT  JOIN VehicleStorageSlots      s ON b.SlotId = s.Id
-                LEFT  JOIN PickupRequests           pr ON b.Id = pr.BookingId
+                OUTER APPLY (SELECT TOP 1 * FROM PickupRequests pr2 WHERE pr2.BookingId = b.Id ORDER BY pr2.Id DESC) pr
                 LEFT  JOIN LotManagers              lm ON pr.ManagerId = lm.Id
                 LEFT  JOIN Users                    mu ON lm.ManagerId = mu.Id
                 OUTER APPLY (SELECT TOP 1 * FROM PickupVerifications pv WHERE pv.BookingId = b.Id AND pv.Type = 0 ORDER BY pv.Id DESC) pv_pickup

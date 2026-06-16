@@ -15,6 +15,7 @@ namespace GD1.Application.Features.ServiceRequest.Commands
         public long ServiceCenterAdminId { get; set; }
         public string CompletionNotes { get; set; } = string.Empty;
         public IFormFile BillFile { get; set; } = null!;
+        public decimal Amount { get; set; }
     }
 
     public class CompleteServiceRequestCommandHandler : IRequestHandler<CompleteServiceRequestCommand, BaseResponse<string>>
@@ -24,25 +25,31 @@ namespace GD1.Application.Features.ServiceRequest.Commands
         private readonly IGenericRepository<VehicleJourneyEvent> _journeyRepo;
         private readonly IFileService _fileService;
         private readonly IEmailService _emailService;
+        private readonly IGenericRepository<MaintenanceTask> _taskRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.Notification> _notificationRepo;
 
         public CompleteServiceRequestCommandHandler(
             IGenericRepository<GD1.Domain.Entities.ServiceRequest> requestRepo,
             IGenericRepository<GD1.Domain.Entities.ServiceCenter> centerRepo,
             IGenericRepository<VehicleJourneyEvent> journeyRepo,
             IFileService fileService,
-            IEmailService emailService)
+            IEmailService emailService,
+            IGenericRepository<MaintenanceTask> taskRepo,
+            IGenericRepository<GD1.Domain.Entities.Notification> notificationRepo)
         {
             _requestRepo = requestRepo;
             _centerRepo = centerRepo;
             _journeyRepo = journeyRepo;
             _fileService = fileService;
             _emailService = emailService;
+            _taskRepo = taskRepo;
+            _notificationRepo = notificationRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(CompleteServiceRequestCommand request, CancellationToken ct)
         {
             var serviceRequests = await _requestRepo.FindAsync(r => r.Id == request.ServiceRequestId, 
-                "Booking.Vehicle.Owner");
+                "Booking.Vehicle.Owner", "Booking.Property.LotOwner");
             var serviceRequest = serviceRequests.FirstOrDefault();
 
             if (serviceRequest == null)
@@ -52,8 +59,9 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             if (center == null || center.AdminId != request.ServiceCenterAdminId)
                 return BaseResponse<string>.Fail("You are not authorized to complete this request.");
 
-            if (serviceRequest.Status != "Approved" && serviceRequest.Status != "MechanicArrived")
-                return BaseResponse<string>.Fail($"Cannot complete request in '{serviceRequest.Status}' status. Must be Approved or MechanicArrived.");
+            var allowedStatuses = new[] { "Approved", "MechanicArrived", "Mechanic Arrived Garage", "Assigned Mechanic", "Assigned", "OTP Verified" };
+            if (!allowedStatuses.Contains(serviceRequest.Status))
+                return BaseResponse<string>.Fail($"Cannot complete request in '{serviceRequest.Status}' status.");
 
             if (request.BillFile == null || request.BillFile.Length == 0)
                 return BaseResponse<string>.Fail("A bill file is required to complete the service.");
@@ -61,10 +69,15 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             // Upload the bill file
             var billUrl = await _fileService.SaveFileAsync(request.BillFile, "Bills");
 
-            serviceRequest.Status = "Completed";
+            serviceRequest.Status = "Service Completed";
             serviceRequest.IsCompleted = true;
             serviceRequest.CompletionNotes = request.CompletionNotes;
             serviceRequest.BillUrl = billUrl;
+            serviceRequest.Amount = request.Amount;
+            serviceRequest.ServiceCost = request.Amount;
+            serviceRequest.PlatformFee = request.Amount * 0.10m;
+            serviceRequest.CenterEarning = request.Amount;
+            serviceRequest.IsPaid = false;
 
             await _requestRepo.UpdateAsync(serviceRequest);
 
@@ -83,11 +96,49 @@ namespace GD1.Application.Features.ServiceRequest.Commands
                 // Add the Bill as a "document" image link so the owner can access it
                 journeyEvent.Images.Add(new VehicleImage
                 {
+                    VehicleId = serviceRequest.Booking.VehicleId,
                     Label = "Service Bill",
-                    ImageUrl = billUrl
+                    ImageUrl = billUrl,
+                    UploadedBy = "SCAdmin"
                 });
 
                 await _journeyRepo.AddAsync(journeyEvent);
+            }
+
+            // Generate MaintenanceTask for Manager
+            if (serviceRequest.Booking != null && serviceRequest.Booking.AssignedManagerId != null)
+            {
+                await _taskRepo.AddAsync(new MaintenanceTask
+                {
+                    VehicleId = serviceRequest.Booking.VehicleId,
+                    BookingId = serviceRequest.Booking.Id,
+                    ManagerId = serviceRequest.Booking.AssignedManagerId.Value,
+                    Type = GD1.Domain.Entities.Enums.MaintenanceTaskType.WeeklyConditionCheck,
+                    Status = GD1.Domain.Entities.Enums.MaintenanceTaskStatus.Pending,
+                    RequestedAt = System.DateTime.UtcNow
+                });
+                
+                await _notificationRepo.AddAsync(new GD1.Domain.Entities.Notification
+                {
+                    UserId = serviceRequest.Booking.AssignedManagerId.Value,
+                    Title = "Service Completed - Condition Check Required",
+                    Body = $"Service for {serviceRequest.Booking?.Vehicle?.RegistrationNo} is completed. Please submit a condition report.",
+                    ActionUrl = $"/lot-manager/tasks",
+                    CreatedAt = System.DateTime.UtcNow
+                });
+            }
+
+            // Notify Lot Owner
+            if (serviceRequest.Booking?.Property?.LotOwner != null)
+            {
+                await _notificationRepo.AddAsync(new GD1.Domain.Entities.Notification
+                {
+                    UserId = serviceRequest.Booking.Property.LotOwner.Id,
+                    Title = "Vehicle Serviced at your Lot",
+                    Body = $"Vehicle {serviceRequest.Booking?.Vehicle?.RegistrationNo} has completed its service.",
+                    ActionUrl = $"/lot-owner/tracking",
+                    CreatedAt = System.DateTime.UtcNow
+                });
             }
 
             // Send Email to Vehicle Owner

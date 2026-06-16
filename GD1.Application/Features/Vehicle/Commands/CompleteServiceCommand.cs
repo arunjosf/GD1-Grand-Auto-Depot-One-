@@ -22,11 +22,17 @@ namespace GD1.Application.Features.Vehicle.Commands
     public class CompleteServiceCommandHandler : IRequestHandler<CompleteServiceCommand, BaseResponse<string>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.ServiceRequest> _serviceRepo;
-        // In a real scenario, we might also use a dedicated VehicleImage to attach the completed photos
+        private readonly IGenericRepository<GD1.Domain.Entities.VehicleImage> _imageRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.VehicleJourneyEvent> _journeyRepo;
 
-        public CompleteServiceCommandHandler(IGenericRepository<GD1.Domain.Entities.ServiceRequest> serviceRepo)
+        public CompleteServiceCommandHandler(
+            IGenericRepository<GD1.Domain.Entities.ServiceRequest> serviceRepo,
+            IGenericRepository<GD1.Domain.Entities.VehicleImage> imageRepo,
+            IGenericRepository<GD1.Domain.Entities.VehicleJourneyEvent> journeyRepo)
         {
             _serviceRepo = serviceRepo;
+            _imageRepo = imageRepo;
+            _journeyRepo = journeyRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(CompleteServiceCommand cmd, CancellationToken cancellationToken)
@@ -41,11 +47,25 @@ namespace GD1.Application.Features.Vehicle.Commands
             service.Status = "Completed";
             service.IsCompleted = true;
             service.CompletionNotes = cmd.CompletionNotes;
-            service.CompletionPhotos = cmd.CompletionPhotos;
+            // service.CompletionPhotos = cmd.CompletionPhotos;
 
             await _serviceRepo.UpdateAsync(service);
 
-            // Optional: You could parse cmd.CompletionPhotos and add them to the VehicleImage table.
+            if (!string.IsNullOrEmpty(cmd.CompletionPhotos))
+            {
+                var photos = cmd.CompletionPhotos.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var p in photos)
+                {
+                    await _imageRepo.AddAsync(new GD1.Domain.Entities.VehicleImage { VehicleId = service.VehicleId, ImageUrl = p.Trim() });
+                }
+                
+                                await _journeyRepo.AddAsync(new GD1.Domain.Entities.VehicleJourneyEvent {
+                    VehicleId = service.VehicleId,
+                    BookingId = service.BookingId,
+                    Description = service.CompletionNotes ?? "Service has been completed.",
+                    EventType = "Service"
+                });
+            }
             
             return BaseResponse<string>.Ok(string.Empty, "Service marked as completed and images uploaded.");
         }

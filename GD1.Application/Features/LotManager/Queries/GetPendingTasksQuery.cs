@@ -26,6 +26,7 @@ namespace GD1.Application.Features.LotManager.Queries
         public MaintenanceTaskType Type { get; set; }
         public DateTime RequestedAt { get; set; }
         public int RemainingDays { get; set; }
+        public string ImageUrl { get; set; } = string.Empty;
     }
 
     public class GetPendingTasksQueryHandler : IRequestHandler<GetPendingTasksQuery, BaseResponse<IEnumerable<PendingTaskDto>>>
@@ -39,7 +40,7 @@ namespace GD1.Application.Features.LotManager.Queries
 
         public async Task<BaseResponse<IEnumerable<PendingTaskDto>>> Handle(GetPendingTasksQuery request, CancellationToken cancellationToken)
         {
-            var pendingTasks = await _taskRepo.FindAsync(t => t.Manager.ManagerId == request.ManagerId && t.Status == MaintenanceTaskStatus.Pending, "Vehicle", "Manager", "Booking");
+            var pendingTasks = await _taskRepo.FindAsync(t => t.Manager.ManagerId == request.ManagerId && t.Status == MaintenanceTaskStatus.Pending, "Vehicle", "Manager", "Booking", "Vehicle.Images");
 
             var dtos = pendingTasks.Select(t => new PendingTaskDto
             {
@@ -50,7 +51,8 @@ namespace GD1.Application.Features.LotManager.Queries
                 RegistrationNo = t.Vehicle?.RegistrationNo ?? "Unknown",
                 Type = t.Type,
                 RequestedAt = t.RequestedAt,
-                RemainingDays = t.Booking != null ? (int)(t.Booking.EndDate - DateTime.UtcNow).TotalDays : 0
+                RemainingDays = t.Booking != null ? (int)(t.Booking.EndDate - DateTime.UtcNow).TotalDays : 0,
+                ImageUrl = t.Vehicle?.Images?.OrderByDescending(x => x.Id).FirstOrDefault()?.ImageUrl ?? string.Empty
             }).OrderBy(t => t.RequestedAt).ToList();
 
             return BaseResponse<IEnumerable<PendingTaskDto>>.Ok(dtos);

@@ -10,6 +10,7 @@ namespace GD1.Domain.Entities
     public class ServiceRequest : BaseEntity
     {
         public long BookingId { get; set; }
+        public long VehicleId { get; set; }
         public long ServiceCenterId { get; set; }
         public long? MechanicId { get; set; }
         public long RequestedBy { get; set; }
@@ -21,7 +22,7 @@ namespace GD1.Domain.Entities
         public string? CancellationReason { get; set; }
         public bool? IsCompleted { get; set; }
         public string? CompletionNotes { get; set; }
-        public string? CompletionPhotos { get; set; }
+        public string? Instructions { get; set; }
         public string? BillUrl { get; set; }
         public decimal ServiceCost { get; set; }
         public decimal PlatformFee { get; set; }
@@ -29,6 +30,12 @@ namespace GD1.Domain.Entities
 
         public string? MechanicEmail { get; set; }
         public string? MechanicOtp { get; set; }
+
+        public decimal Amount { get; set; }
+        public bool IsPaid { get; set; }
+        public string? RazorpayOrderId { get; set; }
+        public string? RazorpayPaymentId { get; set; }
+        public string? RazorpaySignature { get; set; }
 
         public Booking Booking { get; set; } = null!;
         public ServiceCenter ServiceCenter { get; set; } = null!;

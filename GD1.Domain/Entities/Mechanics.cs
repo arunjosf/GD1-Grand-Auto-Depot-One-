@@ -11,6 +11,8 @@ namespace GD1.Domain.Entities
     {
         public long ServiceCenterId { get; set; }
         public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? ImageUrl { get; set; }
         public string PhoneNumber { get; set; } = string.Empty;
         public string? IdProofUrl { get; set; }
         public string? CertificateUrl { get; set; }

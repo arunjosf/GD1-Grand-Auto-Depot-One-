@@ -44,8 +44,8 @@ namespace GD1.Infrastructure.Repositories
             var upcomingServicesSql = @"
                 SELECT COUNT(sr.Id)
                 FROM LotManagers lm
-                INNER JOIN ServiceRequests sr ON lm.PropertyId = sr.PropertyId
-                WHERE lm.ManagerId = @ManagerId AND lm.IsActive = 1 AND sr.Status IN (0, 1, 2) -- Requested, Scheduled, ManagerAssigned
+                INNER JOIN Bookings b2 ON lm.PropertyId = b2.PropertyId INNER JOIN ServiceRequests sr ON b2.Id = sr.BookingId
+                WHERE lm.ManagerId = @ManagerId AND lm.IsActive = 1 AND sr.Status NOT IN ('Service Completed', 'Payment', 'Cancelled')
             ";
             metrics.UpcomingServicesCount = await _db.ExecuteScalarAsync<int>(upcomingServicesSql, new { ManagerId = managerId });
 
@@ -60,8 +60,13 @@ namespace GD1.Infrastructure.Repositories
             var tasks = await _db.QueryAsync(pendingTasksSql, new { ManagerId = managerId });
             foreach (var t in tasks)
             {
-                if (t.Type == 0) metrics.PendingWeeklyCount = t.Count;
-                if (t.Type == 1) metrics.PendingOnDemandCount = t.Count;
+                var type = t.Type;
+                if (type != null)
+                {
+                    string typeStr = type.ToString();
+                    if (typeStr == "0" || typeStr == "OnDemandImage") metrics.PendingOnDemandCount = (int)t.Count;
+                    else if (typeStr == "1" || typeStr == "WeeklyConditionCheck") metrics.PendingWeeklyCount = (int)t.Count;
+                }
             }
 
             // 5. Performance Graph (Last 7 days)
@@ -76,8 +81,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT 
                     FORMAT(d.Date, 'MMM dd') as Date,
                     (SELECT COUNT(*) FROM PickupRequests pr INNER JOIN LotManagers lm ON pr.ManagerId = lm.Id WHERE lm.ManagerId = @ManagerId AND pr.Status IN (6, 7, 8, 9, 10) AND CAST(pr.UpdatedAt AS DATE) = d.Date) as PickupsDone,
-                    (SELECT COUNT(*) FROM MaintenanceTasks mt INNER JOIN LotManagers lm ON mt.ManagerId = lm.Id WHERE lm.ManagerId = @ManagerId AND mt.Type = 1 AND mt.Status = 1 AND CAST(mt.UpdatedAt AS DATE) = d.Date) as OnDemandImagesDone,
-                    (SELECT COUNT(*) FROM MaintenanceTasks mt INNER JOIN LotManagers lm ON mt.ManagerId = lm.Id WHERE lm.ManagerId = @ManagerId AND mt.Type = 0 AND mt.Status = 1 AND CAST(mt.UpdatedAt AS DATE) = d.Date) as WeeklySubmissionsDone
+                    (SELECT COUNT(*) FROM MaintenanceTasks mt INNER JOIN LotManagers lm ON mt.ManagerId = lm.Id WHERE lm.ManagerId = @ManagerId AND mt.Type = 0 AND mt.Status = 1 AND CAST(mt.UpdatedAt AS DATE) = d.Date) as OnDemandImagesDone,
+                    (SELECT COUNT(*) FROM MaintenanceTasks mt INNER JOIN LotManagers lm ON mt.ManagerId = lm.Id WHERE lm.ManagerId = @ManagerId AND mt.Type = 1 AND mt.Status = 1 AND CAST(mt.UpdatedAt AS DATE) = d.Date) as WeeklySubmissionsDone
                 FROM DateCTE d
                 ORDER BY d.Date ASC
             ";
@@ -124,12 +129,14 @@ namespace GD1.Infrastructure.Repositories
                     v.RegistrationNo,
                     o.FullName as OwnerName,
                     b.StartDate as StoredSince,
-                    vi.ImageUrl
+                    vi.ImageUrl,
+                    CAST(ISNULL(pnd.HasPendingOnDemandRequest, 0) AS BIT) as HasPendingOnDemandRequest
                 FROM LotManagers lm
                 INNER JOIN Bookings b ON lm.PropertyId = b.PropertyId
                 INNER JOIN Vehicles v ON b.VehicleId = v.Id
                 INNER JOIN Users o ON b.OwnerId = o.Id
                 OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND EventId IS NULL) vi
+                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.VehicleId = v.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
                 WHERE lm.ManagerId = @ManagerId AND lm.IsActive = 1 AND b.Status IN (2, 3) -- InLot, Completed
                 ORDER BY b.StartDate DESC
             ";
@@ -146,18 +153,70 @@ namespace GD1.Infrastructure.Repositories
                     v.Model,
                     v.RegistrationNo,
                     v.Category,
-                    v.VerificationStatus,
+                    v.VerificationStatus, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                    o.Id as OwnerId,
                     o.FullName as OwnerName,
                     o.PhoneNumber as OwnerPhone,
                     o.Email as OwnerEmail,
+                    lo.Id as LotOwnerId,
+                    lo.FullName as LotOwnerName,
+                    lo.PhoneNumber as LotOwnerPhone,
                     b.StartDate as StoredSince,
                     b.PricePerDay,
-                    vi.ImageUrl
+                    vi.ImageUrl,
+                    od.LastOnDemandImageDate,
+                    srr.LastServiceReportDate,
+                    CAST(ISNULL(pnd.HasPendingOnDemandRequest, 0) AS BIT) as HasPendingOnDemandRequest,
+                    odi.OnDemandFrontImageUrl,
+                    odi.OnDemandRearImageUrl,
+                    odi.OnDemandLeftSideImageUrl,
+                    odi.OnDemandRightSideImageUrl,
+                    odi.OnDemandInteriorImageUrl,
+                    odi.OnDemandOdometerImageUrl,
+                    wui.WeeklyUpdateDescription,
+                    wui.LastWeeklyUpdateDate,
+                    wui.WeeklyUpdateFrontImageUrl,
+                    wui.WeeklyUpdateRearImageUrl,
+                    wui.WeeklyUpdateLeftSideImageUrl,
+                    wui.WeeklyUpdateRightSideImageUrl,
+                    wui.WeeklyUpdateInteriorImageUrl,
+                    wui.WeeklyUpdateOdometerImageUrl
                 FROM LotManagers lm
-                INNER JOIN Bookings b ON lm.PropertyId = b.PropertyId
+                INNER JOIN VehicleStorageProperties p ON lm.PropertyId = p.Id
+                INNER JOIN Users lo ON p.LotOwnerId = lo.Id
+                INNER JOIN Bookings b ON b.PropertyId = lm.PropertyId AND b.VehicleId = @VehicleId AND b.Status IN (2, 3)
                 INNER JOIN Vehicles v ON b.VehicleId = v.Id
                 INNER JOIN Users o ON b.OwnerId = o.Id
                 OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND EventId IS NULL) vi
+                OUTER APPLY (SELECT TOP 1 mt.CompletedAt as LastOnDemandImageDate FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 0 AND mt.Status = 1 ORDER BY mt.CompletedAt DESC) od
+                OUTER APPLY (SELECT TOP 1 sr.UpdatedAt as LastServiceReportDate FROM ServiceRequests sr INNER JOIN Bookings b2 ON sr.BookingId = b2.Id WHERE b2.VehicleId = v.Id AND sr.IsCompleted = 1 ORDER BY sr.UpdatedAt DESC) srr
+                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.VehicleId = v.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Front') AS OnDemandFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Rear') AS OnDemandRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'LeftSide') AS OnDemandLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'RightSide') AS OnDemandRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Interior') AS OnDemandInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Odometer') AS OnDemandOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = v.Id AND je.EventType = 'OnDemandUpdate'
+                    ORDER BY je.CreatedAt DESC
+                ) odi
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        je.CreatedAt AS LastWeeklyUpdateDate,
+                        je.Description AS WeeklyUpdateDescription,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Front') AS WeeklyUpdateFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Rear') AS WeeklyUpdateRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'LeftSide') AS WeeklyUpdateLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'RightSide') AS WeeklyUpdateRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Interior') AS WeeklyUpdateInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Odometer') AS WeeklyUpdateOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = v.Id AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate')
+                    ORDER BY je.CreatedAt DESC
+                ) wui
                 WHERE lm.ManagerId = @ManagerId AND lm.IsActive = 1 AND v.Id = @VehicleId
             ";
             return await _db.QueryFirstOrDefaultAsync<ManagerVehicleDetailDto>(sql, new { ManagerId = managerId, VehicleId = vehicleId });

@@ -70,6 +70,15 @@ namespace GD1.Application.Features.LotBooking.DTOs
         public string? LotOwnerName { get; set; }
         public string? LotOwnerPhone { get; set; }
 
+        public bool HasActiveServiceRequest { get; set; }
+        public long? ActiveServiceRequestId { get; set; }
+        public bool HasServiceRecommendation { get; set; }
+        public string? ManagerServiceRemarks { get; set; }
+        public DateTime? LastServiceReportDate { get; set; }
+
+        public bool HasPendingOnDemandRequest { get; set; }
+        public DateTime? PendingOnDemandRequestDate { get; set; }
+
         // Pickup / Manager Details
         public string? PickupStatus { get; set; }
         public DateTime? ManagerArrivalTime { get; set; }
@@ -103,6 +112,21 @@ namespace GD1.Application.Features.LotBooking.DTOs
         [JsonIgnore] public string? ArrivalOdometerImageUrl { get; set; }
         [JsonIgnore] public string? ArrivalManagerRemarks { get; set; }
 
+        [JsonIgnore] public string? OnDemandFrontImageUrl { get; set; }
+        [JsonIgnore] public string? OnDemandRearImageUrl { get; set; }
+        [JsonIgnore] public string? OnDemandLeftSideImageUrl { get; set; }
+        [JsonIgnore] public string? OnDemandRightSideImageUrl { get; set; }
+        [JsonIgnore] public string? OnDemandInteriorImageUrl { get; set; }
+        [JsonIgnore] public string? OnDemandOdometerImageUrl { get; set; }
+
+        [JsonIgnore] public string? WeeklyUpdateDescription { get; set; }
+        [JsonIgnore] public string? WeeklyUpdateFrontImageUrl { get; set; }
+        [JsonIgnore] public string? WeeklyUpdateRearImageUrl { get; set; }
+        [JsonIgnore] public string? WeeklyUpdateLeftSideImageUrl { get; set; }
+        [JsonIgnore] public string? WeeklyUpdateRightSideImageUrl { get; set; }
+        [JsonIgnore] public string? WeeklyUpdateInteriorImageUrl { get; set; }
+        [JsonIgnore] public string? WeeklyUpdateOdometerImageUrl { get; set; }
+
         // --- NESTED JSON OBJECTS ---
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public ConditionReportDto? PickupImages => 
@@ -131,6 +155,56 @@ namespace GD1.Application.Features.LotBooking.DTOs
                 OdometerImageUrl = string.IsNullOrWhiteSpace(ArrivalOdometerImageUrl) ? null : ArrivalOdometerImageUrl,
                 ManagerRemarks = string.IsNullOrWhiteSpace(ArrivalManagerRemarks) ? null : ArrivalManagerRemarks
             };
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ConditionReportDto? RecentOnDemandImages => 
+            string.IsNullOrEmpty(OnDemandFrontImageUrl) ? null : new ConditionReportDto
+            {
+                FrontImageUrl = string.IsNullOrWhiteSpace(OnDemandFrontImageUrl) ? null : OnDemandFrontImageUrl,
+                RearImageUrl = string.IsNullOrWhiteSpace(OnDemandRearImageUrl) ? null : OnDemandRearImageUrl,
+                LeftSideImageUrl = string.IsNullOrWhiteSpace(OnDemandLeftSideImageUrl) ? null : OnDemandLeftSideImageUrl,
+                RightSideImageUrl = string.IsNullOrWhiteSpace(OnDemandRightSideImageUrl) ? null : OnDemandRightSideImageUrl,
+                InteriorImageUrl = string.IsNullOrWhiteSpace(OnDemandInteriorImageUrl) ? null : OnDemandInteriorImageUrl,
+                OdometerImageUrl = string.IsNullOrWhiteSpace(OnDemandOdometerImageUrl) ? null : OnDemandOdometerImageUrl
+            };
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public WeeklyUpdateDto? WeeklyUpdate => 
+            string.IsNullOrEmpty(WeeklyUpdateDescription) ? null : new WeeklyUpdateDto
+            {
+                Description = WeeklyUpdateDescription,
+                FrontImageUrl = string.IsNullOrWhiteSpace(WeeklyUpdateFrontImageUrl) ? null : WeeklyUpdateFrontImageUrl,
+                RearImageUrl = string.IsNullOrWhiteSpace(WeeklyUpdateRearImageUrl) ? null : WeeklyUpdateRearImageUrl,
+                LeftSideImageUrl = string.IsNullOrWhiteSpace(WeeklyUpdateLeftSideImageUrl) ? null : WeeklyUpdateLeftSideImageUrl,
+                RightSideImageUrl = string.IsNullOrWhiteSpace(WeeklyUpdateRightSideImageUrl) ? null : WeeklyUpdateRightSideImageUrl,
+                InteriorImageUrl = string.IsNullOrWhiteSpace(WeeklyUpdateInteriorImageUrl) ? null : WeeklyUpdateInteriorImageUrl,
+                OdometerImageUrl = string.IsNullOrWhiteSpace(WeeklyUpdateOdometerImageUrl) ? null : WeeklyUpdateOdometerImageUrl
+            };
+    }
+
+    public class WeeklyUpdateDto
+    {
+        public string? Description { get; set; }
+        
+        public bool CarWashCompleted => Description?.Contains("Car Wash: Yes") ?? false;
+        public bool TyrePressureChecked => Description?.Contains("Tyre Pressure Checked: Yes") ?? false;
+        public bool DailyStartupsCompleted => Description?.Contains("Daily Startups: Yes") ?? false;
+        
+        public string? ManagerRemarks 
+        {
+            get 
+            {
+                if (string.IsNullOrEmpty(Description)) return null;
+                var parts = Description.Split("Remarks: ");
+                return parts.Length > 1 ? parts[1].Trim() : null;
+            }
+        }
+
+        public string? FrontImageUrl { get; set; }
+        public string? RearImageUrl { get; set; }
+        public string? LeftSideImageUrl { get; set; }
+        public string? RightSideImageUrl { get; set; }
+        public string? InteriorImageUrl { get; set; }
+        public string? OdometerImageUrl { get; set; }
     }
 
     public class ConditionReportDto

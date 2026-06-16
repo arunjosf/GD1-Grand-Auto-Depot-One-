@@ -28,17 +28,31 @@ namespace GD1.Application.Features.ServiceRequest.Queries
         public string VehicleBrand { get; set; } = string.Empty;
         public string VehicleModel { get; set; } = string.Empty;
         public string VehicleRegistrationNo { get; set; } = string.Empty;
+        public long VehicleOwnerId { get; set; }
+        public string VehicleOwnerName { get; set; } = string.Empty;
+        public string VehicleOwnerPhone { get; set; } = string.Empty;
 
         // Storage lot
         public long? PropertyId { get; set; }
         public string? PropertyName { get; set; }
         public string? PropertyCity { get; set; }
+        public string? PropertyAddress { get; set; }
+        public double? PropertyLatitude { get; set; }
+        public double? PropertyLongitude { get; set; }
+        public long? LotOwnerId { get; set; }
+        public string? LotOwnerName { get; set; }
+        public string? LotOwnerPhone { get; set; }
 
         // Service center
         public long ServiceCenterId { get; set; }
         public string ServiceCenterName { get; set; } = string.Empty;
         public string ServiceCenterPhone { get; set; } = string.Empty;
         public string ServiceCenterCity { get; set; } = string.Empty;
+        public string ServiceCenterAddress { get; set; } = string.Empty;
+        public string? ServiceCenterImage { get; set; }
+        public double? ServiceCenterLatitude { get; set; }
+        public double? ServiceCenterLongitude { get; set; }
+        public long ServiceCenterAdminId { get; set; }
 
         // Request details
         public string ServiceType { get; set; } = string.Empty;
@@ -47,8 +61,14 @@ namespace GD1.Application.Features.ServiceRequest.Queries
         public string Status { get; set; } = string.Empty;
         public string? CancellationReason { get; set; }
         public decimal ServiceCost { get; set; }
+        public decimal Amount { get; set; }
+        public decimal PlatformFee { get; set; }
+        public bool IsPaid { get; set; }
+        public bool IsCompleted { get; set; }
         public string? BillUrl { get; set; }
         public string? CompletionNotes { get; set; }
+        public string? MechanicName { get; set; }
+        public string? MechanicImage { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 
@@ -72,7 +92,7 @@ namespace GD1.Application.Features.ServiceRequest.Queries
             // Load service requests where the booking belongs to this owner
             var allRequests = await _requestRepo.FindAsync(
                 r => r.RequestedBy == request.OwnerId,
-                "Booking.Vehicle", "Booking.Property", "ServiceCenter");
+                "Booking.Vehicle.Owner", "Booking.Property.LotOwner", "ServiceCenter.Images");
 
             var query = allRequests.AsEnumerable();
 
@@ -87,19 +107,37 @@ namespace GD1.Application.Features.ServiceRequest.Queries
                 VehicleBrand          = r.Booking?.Vehicle?.Brand ?? string.Empty,
                 VehicleModel          = r.Booking?.Vehicle?.Model ?? string.Empty,
                 VehicleRegistrationNo = r.Booking?.Vehicle?.RegistrationNo ?? string.Empty,
+                VehicleOwnerId        = r.Booking?.Vehicle?.OwnerId ?? 0,
+                VehicleOwnerName      = r.Booking?.Vehicle?.Owner?.FullName ?? string.Empty,
+                VehicleOwnerPhone     = r.Booking?.Vehicle?.Owner?.PhoneNumber ?? string.Empty,
                 PropertyId            = r.Booking?.PropertyId,
                 PropertyName          = r.Booking?.Property?.Name,
                 PropertyCity          = r.Booking?.Property?.City,
+                PropertyAddress       = r.Booking?.Property?.AddressLine,
+                PropertyLatitude      = r.Booking?.Property?.Latitude,
+                PropertyLongitude     = r.Booking?.Property?.Longitude,
+                LotOwnerId            = r.Booking?.Property?.LotOwnerId,
+                LotOwnerName          = r.Booking?.Property?.LotOwner?.FullName,
+                LotOwnerPhone         = r.Booking?.Property?.LotOwner?.PhoneNumber,
                 ServiceCenterId       = r.ServiceCenterId,
                 ServiceCenterName     = r.ServiceCenter?.Name ?? string.Empty,
                 ServiceCenterPhone    = r.ServiceCenter?.PhoneNumber ?? string.Empty,
                 ServiceCenterCity     = r.ServiceCenter?.City ?? string.Empty,
+                ServiceCenterAddress  = r.ServiceCenter?.AddressLine ?? string.Empty,
+                ServiceCenterImage    = r.ServiceCenter?.Images?.OrderByDescending(i => i.Id).FirstOrDefault()?.ImageUrl,
+                ServiceCenterLatitude = r.ServiceCenter?.Latitude,
+                ServiceCenterLongitude= r.ServiceCenter?.Longitude,
+                ServiceCenterAdminId  = r.ServiceCenter?.AdminId ?? 0,
                 ServiceType           = r.ServiceType,
                 Notes                 = r.Notes,
                 ScheduledDate         = r.ScheduledDate,
                 Status                = r.Status,
                 CancellationReason    = r.CancellationReason,
                 ServiceCost           = r.ServiceCost,
+                Amount                = r.Amount,
+                PlatformFee           = r.PlatformFee,
+                IsPaid                = r.IsPaid,
+                IsCompleted           = r.IsCompleted ?? false,
                 BillUrl               = r.BillUrl,
                 CompletionNotes       = r.CompletionNotes,
                 CreatedAt             = r.CreatedAt

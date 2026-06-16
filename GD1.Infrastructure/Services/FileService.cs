@@ -51,7 +51,7 @@ namespace GD1.Infrastructure.Services
             using var stream = file.OpenReadStream();
             var fileDesc = new FileDescription(file.FileName, stream);
 
-            var isImage = file.ContentType != null && file.ContentType.StartsWith("image/");
+            var isImage = file.ContentType != null && (file.ContentType.StartsWith("image/") || file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase));
             var isVideo = file.ContentType != null && file.ContentType.StartsWith("video/");
 
             if (isImage)

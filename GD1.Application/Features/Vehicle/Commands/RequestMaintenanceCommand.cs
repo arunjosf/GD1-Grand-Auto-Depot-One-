@@ -21,15 +21,18 @@ namespace GD1.Application.Features.Vehicle.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
         private readonly IGenericRepository<Booking> _bookingRepo;
         private readonly IGenericRepository<MaintenanceTask> _taskRepo;
+        private readonly GD1.Application.Interfaces.Services.INotificationService _notificationService;
 
         public RequestMaintenanceCommandHandler(
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
             IGenericRepository<Booking> bookingRepo,
-            IGenericRepository<MaintenanceTask> taskRepo)
+            IGenericRepository<MaintenanceTask> taskRepo,
+            GD1.Application.Interfaces.Services.INotificationService notificationService)
         {
             _vehicleRepo = vehicleRepo;
             _bookingRepo = bookingRepo;
             _taskRepo = taskRepo;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<string>> Handle(RequestMaintenanceCommand request, CancellationToken cancellationToken)
@@ -75,6 +78,17 @@ namespace GD1.Application.Features.Vehicle.Commands
             };
 
             await _taskRepo.AddAsync(task);
+
+            // Send notification to the lot manager
+            await _notificationService.SendAsync(
+                userId: manager.ManagerId,
+                title: "On-Demand Image Requested",
+                body: $"An on-demand image request has been submitted for {vehicle.Brand} {vehicle.Model} ({vehicle.RegistrationNo}).",
+                actionType: "NEW_TASK",
+                referenceId: task.Id,
+                actionUrl: "/lot-manager/tasks"
+            );
+
             return BaseResponse<string>.Ok("Image update requested successfully.");
         }
     }

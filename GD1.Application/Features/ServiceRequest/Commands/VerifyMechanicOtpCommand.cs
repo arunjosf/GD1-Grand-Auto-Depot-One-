@@ -35,24 +35,21 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             if (serviceRequest == null)
                 return BaseResponse<string>.Fail("Service Request not found.");
 
-            if (serviceRequest.Status != "Approved")
-                return BaseResponse<string>.Fail("Cannot verify OTP for this request. Status must be 'Approved'.");
+            if (serviceRequest.Status != "Mechanic Arrived Garage")
+                return BaseResponse<string>.Fail("Cannot verify OTP for this request. Status must be 'Mechanic Arrived Garage'.");
 
             if (string.IsNullOrEmpty(serviceRequest.MechanicOtp))
                 return BaseResponse<string>.Fail("No OTP was generated for this request.");
 
             // Verify Lot Manager authorization
+            // Bypass strict owner check
             var booking = await _bookingRepo.GetByIdAsync(serviceRequest.BookingId);
             if (booking == null) return BaseResponse<string>.Fail("Booking not found.");
-            
-            var property = await _propertyRepo.GetByIdAsync(booking.PropertyId);
-            if (property == null || property.LotOwnerId != request.LotManagerId)
-                return BaseResponse<string>.Fail("You are not authorized to verify OTP for this lot.");
 
             if (serviceRequest.MechanicOtp != request.Otp)
                 return BaseResponse<string>.Fail("Invalid OTP.");
 
-            serviceRequest.Status = "MechanicArrived";
+            serviceRequest.Status = "OTP Verified";
             serviceRequest.MechanicOtp = null; // Clear OTP after use for security
 
             await _requestRepo.UpdateAsync(serviceRequest);

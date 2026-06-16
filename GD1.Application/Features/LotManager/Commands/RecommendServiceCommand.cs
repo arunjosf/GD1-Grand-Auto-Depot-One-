@@ -20,13 +20,16 @@ namespace GD1.Application.Features.LotManager.Commands
     public class RecommendServiceCommandHandler : IRequestHandler<RecommendServiceCommand, BaseResponse<string>>
     {
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.Booking> _bookingRepo;
         private readonly IEmailService _emailService;
 
         public RecommendServiceCommandHandler(
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
+            IGenericRepository<GD1.Domain.Entities.Booking> bookingRepo,
             IEmailService emailService)
         {
             _vehicleRepo = vehicleRepo;
+            _bookingRepo = bookingRepo;
             _emailService = emailService;
         }
 
@@ -46,7 +49,7 @@ namespace GD1.Application.Features.LotManager.Commands
             vehicle.ManagerServiceRemarks = request.Remarks;
             await _vehicleRepo.UpdateAsync(vehicle);
 
-            // Construct email message
+            // Construct email message for Vehicle Owner
             string subject = $"Service Recommendation for your {vehicle.Brand} {vehicle.Model}";
             string body = $@"
                 <p>Hello {vehicle.Owner.FullName},</p>
@@ -57,9 +60,23 @@ namespace GD1.Application.Features.LotManager.Commands
 
             await _emailService.SendAsync(vehicle.Owner.Email, subject, body);
 
-            // In-app notification could be added here if a NotificationRepo is injected
+            // Fetch the active booking to notify Lot Owner
+            var bookings = await _bookingRepo.FindAsync(b => b.VehicleId == request.VehicleId && b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot, "Property.LotOwner");
+            var activeBooking = System.Linq.Enumerable.FirstOrDefault(bookings);
 
-            return BaseResponse<string>.Ok("Service recommendation sent successfully to the vehicle owner.");
+            if (activeBooking != null && activeBooking.Property?.LotOwner != null)
+            {
+                string lotOwnerSubject = $"Service Recommended for {vehicle.RegistrationNo}";
+                string lotOwnerBody = $@"
+                    <p>Hello {activeBooking.Property.LotOwner.FullName},</p>
+                    <p>The Lot Manager has recommended a service check for the vehicle {vehicle.Brand} {vehicle.Model} ({vehicle.RegistrationNo}) currently stored in your property ({activeBooking.Property.Name}).</p>
+                    <p><strong>Manager Remarks:</strong> {request.Remarks}</p>
+                    <p>The vehicle owner has been notified to take further action.</p>
+                ";
+                await _emailService.SendAsync(activeBooking.Property.LotOwner.Email, lotOwnerSubject, lotOwnerBody);
+            }
+
+            return BaseResponse<string>.Ok("Service recommendation sent successfully to the vehicle owner and lot owner.");
         }
     }
 }
