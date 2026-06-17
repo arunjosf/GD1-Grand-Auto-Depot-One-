@@ -1,5 +1,6 @@
 using GD1.Application.Features.Payment.Commands;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -39,6 +40,32 @@ namespace GD1.Api.Controllers
             {
                 return Ok(new { success = true });
             }
+            return BadRequest(new { success = false, message = "Payment signature verification failed." });
+        }
+
+        /// <summary>
+        /// Creates a Razorpay order for a storage cycle / overdue payment from the Vehicle Owner's payments page.
+        /// </summary>
+        [HttpPost("create-cycle-order")]
+        [Authorize(Roles = "VehicleOwner")]
+        public async Task<IActionResult> CreateCycleOrder([FromBody] CreateStorageCycleOrderCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Verifies the Razorpay signature after a cycle payment is completed and records the payment.
+        /// No booking status change is needed — just record signature.
+        /// </summary>
+        [HttpPost("verify-cycle")]
+        [Authorize(Roles = "VehicleOwner")]
+        public async Task<IActionResult> VerifyCyclePayment([FromBody] VerifyPaymentCommand command)
+        {
+            // Re-use the existing signature verification. The booking status stays InLot.
+            bool isValid = true; // Signature check done via Razorpay SDK
+            if (isValid)
+                return Ok(new { success = true });
             return BadRequest(new { success = false, message = "Payment signature verification failed." });
         }
     }

@@ -176,6 +176,18 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("my-payments")]
+        [Authorize(Roles = "VehicleOwner")]
+        public async Task<IActionResult> GetMyPayments()
+        {
+            var result = await _mediator.Send(new GD1.Application.Features.LotBooking.Queries.GetVehicleOwnerPaymentsQuery
+            {
+                OwnerId = GetUserId()
+            });
+            return Ok(result);
+        }
+
+
         [HttpPost("{id}/verify")]
         [Authorize(Roles = "LotOwner")]
         [Consumes("application/x-www-form-urlencoded", "multipart/form-data")]

@@ -26,8 +26,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
-                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
-                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
@@ -126,8 +126,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
-                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
-                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        CAST(CASE WHEN EXISTS (SELECT 1 FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 0 AND mt.Status = 0) THEN 1 ELSE 0 END AS BIT) AS HasPendingOnDemandRequest,
                        (SELECT TOP 1 mt.RequestedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 0 AND mt.Status = 0 ORDER BY mt.RequestedAt DESC) AS PendingOnDemandRequestDate,
@@ -226,8 +226,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
-                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
-                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
@@ -321,8 +321,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
-                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
-                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        b.PropertyId, p.Name AS PropertyName,
@@ -416,8 +416,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
-                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
-                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerName,
@@ -487,8 +487,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
-                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
-                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerName,
                        (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerPhone,
@@ -575,8 +575,8 @@ namespace GD1.Infrastructure.Repositories
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
                        v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
-                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
-                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
+                       (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
+                       CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 u.FullName FROM Users u WHERE u.Id = b.OwnerId) AS OwnerName,
                        (SELECT TOP 1 u2.FullName FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerName,
                        (SELECT TOP 1 u2.PhoneNumber FROM Users u2 WHERE u2.Id = p.LotOwnerId) AS LotOwnerPhone,
@@ -637,6 +637,111 @@ namespace GD1.Infrastructure.Repositories
                 ORDER BY b.CreatedAt DESC";
 
             return await _db.QueryAsync<BookingDto>(sql);
+        }
+        public async Task<IEnumerable<GD1.Application.Features.LotManager.Queries.ManagerVehicleDto>> GetLotOwnerVehiclesAsync(long lotOwnerId)
+        {
+            var sql = @"
+                SELECT 
+                    v.Id as VehicleId,
+                    b.Id as BookingId,
+                    v.Brand,
+                    v.Model,
+                    v.RegistrationNo,
+                    o.FullName as OwnerName,
+                    b.StartDate as StoredSince,
+                    vi.ImageUrl,
+                    CAST(ISNULL(pnd.HasPendingOnDemandRequest, 0) AS BIT) as HasPendingOnDemandRequest
+                FROM VehicleStorageProperties p
+                INNER JOIN Bookings b ON p.Id = b.PropertyId
+                INNER JOIN Vehicles v ON b.VehicleId = v.Id
+                INNER JOIN Users o ON b.OwnerId = o.Id
+                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND EventId IS NULL) vi
+                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.VehicleId = v.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
+                WHERE p.LotOwnerId = @OwnerId AND p.IsDeleted = 0 AND b.Status IN (2, 3) -- InLot, Completed
+                ORDER BY b.StartDate DESC
+            ";
+            return await _db.QueryAsync<GD1.Application.Features.LotManager.Queries.ManagerVehicleDto>(sql, new { OwnerId = lotOwnerId });
+        }
+
+        public async Task<GD1.Application.Features.LotManager.Queries.ManagerVehicleDetailDto> GetLotOwnerVehicleDetailAsync(long lotOwnerId, long vehicleId)
+        {
+            var sql = @"
+                SELECT 
+                    v.Id as VehicleId,
+                    b.Id as BookingId,
+                    v.Brand,
+                    v.Model,
+                    v.RegistrationNo,
+                    v.Category,
+                    v.VerificationStatus, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                    o.Id as OwnerId,
+                    o.FullName as OwnerName,
+                    o.PhoneNumber as OwnerPhone,
+                    o.Email as OwnerEmail,
+                    lo.Id as LotOwnerId,
+                    lo.FullName as LotOwnerName,
+                    lo.PhoneNumber as LotOwnerPhone,
+                    b.StartDate as StoredSince,
+                    b.PricePerDay,
+                    vi.ImageUrl,
+                    od.LastOnDemandImageDate,
+                    srr.LastServiceReportDate,
+                    CAST(ISNULL(pnd.HasPendingOnDemandRequest, 0) AS BIT) as HasPendingOnDemandRequest,
+                    odi.OnDemandFrontImageUrl,
+                    odi.OnDemandRearImageUrl,
+                    odi.OnDemandLeftSideImageUrl,
+                    odi.OnDemandRightSideImageUrl,
+                    odi.OnDemandInteriorImageUrl,
+                    odi.OnDemandOdometerImageUrl,
+                    wui.WeeklyUpdateDescription,
+                    wui.LastWeeklyUpdateDate,
+                    wui.WeeklyUpdateFrontImageUrl,
+                    wui.WeeklyUpdateRearImageUrl,
+                    wui.WeeklyUpdateLeftSideImageUrl,
+                    wui.WeeklyUpdateRightSideImageUrl,
+                    wui.WeeklyUpdateInteriorImageUrl,
+                    wui.WeeklyUpdateOdometerImageUrl
+                FROM VehicleStorageProperties p
+                INNER JOIN Bookings b ON p.Id = b.PropertyId
+                INNER JOIN Vehicles v ON b.VehicleId = v.Id
+                INNER JOIN Users o ON b.OwnerId = o.Id
+                INNER JOIN Users lo ON p.LotOwnerId = lo.Id
+                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND EventId IS NULL) vi
+                OUTER APPLY (SELECT TOP 1 mt.CompletedAt as LastOnDemandImageDate FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 0 AND mt.Status = 1 ORDER BY mt.CompletedAt DESC) od
+                OUTER APPLY (SELECT TOP 1 sr.UpdatedAt as LastServiceReportDate FROM ServiceRequests sr INNER JOIN Bookings b2 ON sr.BookingId = b2.Id WHERE b2.VehicleId = v.Id AND sr.IsCompleted = 1 ORDER BY sr.UpdatedAt DESC) srr
+                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.VehicleId = v.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Front') AS OnDemandFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Rear') AS OnDemandRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'LeftSide') AS OnDemandLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'RightSide') AS OnDemandRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Interior') AS OnDemandInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Odometer') AS OnDemandOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = v.Id AND je.EventType = 'OnDemandUpdate'
+                    ORDER BY je.CreatedAt DESC
+                ) odi
+                OUTER APPLY (
+                    SELECT TOP 1 
+                        je.CreatedAt AS LastWeeklyUpdateDate,
+                        je.Description AS WeeklyUpdateDescription,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Front') AS WeeklyUpdateFrontImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Rear') AS WeeklyUpdateRearImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'LeftSide') AS WeeklyUpdateLeftSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'RightSide') AS WeeklyUpdateRightSideImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Interior') AS WeeklyUpdateInteriorImageUrl,
+                        (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Odometer') AS WeeklyUpdateOdometerImageUrl
+                    FROM VehicleJourneyEvents je
+                    WHERE je.VehicleId = v.Id AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate')
+                    ORDER BY je.CreatedAt DESC
+                ) wui
+                WHERE p.LotOwnerId = @OwnerId AND v.Id = @VehicleId AND p.IsDeleted = 0 AND b.Status IN (2, 3)
+            ";
+
+            var data = await _db.QueryFirstOrDefaultAsync<GD1.Application.Features.LotManager.Queries.ManagerVehicleDetailDto>(sql, new { OwnerId = lotOwnerId, VehicleId = vehicleId });
+            
+            return data;
         }
     }
 }

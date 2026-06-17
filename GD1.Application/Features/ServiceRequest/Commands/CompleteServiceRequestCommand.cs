@@ -27,6 +27,7 @@ namespace GD1.Application.Features.ServiceRequest.Commands
         private readonly IEmailService _emailService;
         private readonly IGenericRepository<MaintenanceTask> _taskRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Notification> _notificationRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _lotManagerRepo;
 
         public CompleteServiceRequestCommandHandler(
             IGenericRepository<GD1.Domain.Entities.ServiceRequest> requestRepo,
@@ -35,7 +36,8 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             IFileService fileService,
             IEmailService emailService,
             IGenericRepository<MaintenanceTask> taskRepo,
-            IGenericRepository<GD1.Domain.Entities.Notification> notificationRepo)
+            IGenericRepository<GD1.Domain.Entities.Notification> notificationRepo,
+            IGenericRepository<GD1.Domain.Entities.LotManager> lotManagerRepo)
         {
             _requestRepo = requestRepo;
             _centerRepo = centerRepo;
@@ -44,6 +46,7 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             _emailService = emailService;
             _taskRepo = taskRepo;
             _notificationRepo = notificationRepo;
+            _lotManagerRepo = lotManagerRepo;
         }
 
         public async Task<BaseResponse<string>> Handle(CompleteServiceRequestCommand request, CancellationToken ct)
@@ -87,7 +90,7 @@ namespace GD1.Application.Features.ServiceRequest.Commands
                 var journeyEvent = new VehicleJourneyEvent
                 {
                     VehicleId = serviceRequest.Booking.VehicleId,
-                    EventType = "Service Completed",
+                    EventType = "After Service Condition",
                     Description = request.CompletionNotes,
                     CreatedAt = System.DateTime.UtcNow,
                     Images = new System.Collections.Generic.List<VehicleImage>()
@@ -97,7 +100,7 @@ namespace GD1.Application.Features.ServiceRequest.Commands
                 journeyEvent.Images.Add(new VehicleImage
                 {
                     VehicleId = serviceRequest.Booking.VehicleId,
-                    Label = "Service Bill",
+                    Label = "After Service Condition",
                     ImageUrl = billUrl,
                     UploadedBy = "SCAdmin"
                 });
@@ -108,24 +111,30 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             // Generate MaintenanceTask for Manager
             if (serviceRequest.Booking != null && serviceRequest.Booking.AssignedManagerId != null)
             {
-                await _taskRepo.AddAsync(new MaintenanceTask
+                var lotManagers = await _lotManagerRepo.FindAsync(lm => lm.ManagerId == serviceRequest.Booking.AssignedManagerId.Value);
+                var lotManager = lotManagers.FirstOrDefault();
+
+                if (lotManager != null)
                 {
-                    VehicleId = serviceRequest.Booking.VehicleId,
-                    BookingId = serviceRequest.Booking.Id,
-                    ManagerId = serviceRequest.Booking.AssignedManagerId.Value,
-                    Type = GD1.Domain.Entities.Enums.MaintenanceTaskType.WeeklyConditionCheck,
-                    Status = GD1.Domain.Entities.Enums.MaintenanceTaskStatus.Pending,
-                    RequestedAt = System.DateTime.UtcNow
-                });
-                
-                await _notificationRepo.AddAsync(new GD1.Domain.Entities.Notification
-                {
-                    UserId = serviceRequest.Booking.AssignedManagerId.Value,
-                    Title = "Service Completed - Condition Check Required",
-                    Body = $"Service for {serviceRequest.Booking?.Vehicle?.RegistrationNo} is completed. Please submit a condition report.",
-                    ActionUrl = $"/lot-manager/tasks",
-                    CreatedAt = System.DateTime.UtcNow
-                });
+                    await _taskRepo.AddAsync(new MaintenanceTask
+                    {
+                        VehicleId = serviceRequest.Booking.VehicleId,
+                        BookingId = serviceRequest.Booking.Id,
+                        ManagerId = lotManager.Id,
+                        Type = GD1.Domain.Entities.Enums.MaintenanceTaskType.WeeklyConditionCheck,
+                        Status = GD1.Domain.Entities.Enums.MaintenanceTaskStatus.Pending,
+                        RequestedAt = System.DateTime.UtcNow
+                    });
+                    
+                    await _notificationRepo.AddAsync(new GD1.Domain.Entities.Notification
+                    {
+                        UserId = serviceRequest.Booking.AssignedManagerId.Value,
+                        Title = "Service Completed - Condition Check Required",
+                        Body = $"Service for {serviceRequest.Booking?.Vehicle?.RegistrationNo} is completed. Please submit a condition report.",
+                        ActionUrl = $"/lot-manager/tasks",
+                        CreatedAt = System.DateTime.UtcNow
+                    });
+                }
             }
 
             // Notify Lot Owner
