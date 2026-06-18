@@ -91,7 +91,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _franchiseRepo;
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenter> _serviceCenterRepo;
-        private readonly IGenericRepository<Payment> _paymentRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.Payment> _paymentRepo;
 
         public GetAdminDashboardStatsQueryHandler(
             IGenericRepository<User> userRepo,
@@ -101,7 +101,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> franchiseRepo,
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<GD1.Domain.Entities.ServiceCenter> serviceCenterRepo,
-            IGenericRepository<Payment> paymentRepo)
+            IGenericRepository<GD1.Domain.Entities.Payment> paymentRepo)
         {
             _userRepo = userRepo;
             _bookingRepo = bookingRepo;
@@ -124,54 +124,65 @@ namespace GD1.Application.Features.GD1Admin.Queries
             var serviceCenters = await _serviceCenterRepo.GetAllAsync();
 
             // Only "paid" payments — these are real completed transactions
-            var paidPayments = (await _paymentRepo.FindAsync(p => p.Status == "paid")).ToList();
+            // Wrapped in try-catch so any payment data issue never breaks the whole dashboard
+            List<GD1.Domain.Entities.Payment> paidPayments = new();
+            List<GD1.Domain.Entities.ServiceRequest> paidServiceJobs = new();
+            decimal totalAdminRevenue = 0m;
+            try
+            {
+                paidPayments = (await _paymentRepo.FindAsync(p => p.Status == "paid")).ToList();
+                paidServiceJobs = serviceJobs.Where(s => s.IsPaid).ToList();
+                var totalGarageAdminCut = paidPayments.Sum(p => p.AdminCutAmount);
+                var totalServiceAdminCut = paidServiceJobs.Sum(s => s.PlatformFee);
+                totalAdminRevenue = totalGarageAdminCut + totalServiceAdminCut;
+            }
+            catch { /* If payment data fails, revenue shows as 0 */ }
 
-            // Admin's real garage revenue = AdminCutAmount on each paid payment
-            var totalGarageAdminCut = paidPayments.Sum(p => p.AdminCutAmount);
-
-            // Admin's real service revenue = PlatformFee on each paid service request
-            var paidServiceJobs = serviceJobs.Where(s => s.IsPaid).ToList();
-            var totalServiceAdminCut = paidServiceJobs.Sum(s => s.PlatformFee);
-
-            var totalAdminRevenue = totalGarageAdminCut + totalServiceAdminCut;
-
-            // Build a lookup: BookingId → Payment (paid)
-            var paidPaymentByBooking = paidPayments.ToDictionary(p => p.BookingId, p => p);
-
-            // ---- Top 5 Garages (by paid bookings) ----
-            var topGarages = paidPayments
+            // ---- Top 5 Garages (rank by all bookings, revenue from paid admin cut) ----
+            var paidAdminCutByProperty = paidPayments
                 .Join(bookings, p => p.BookingId, b => b.Id, (p, b) => new { p, b })
                 .GroupBy(x => x.b.PropertyId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.p.AdminCutAmount));
+
+            var topGarages = bookings
+                .GroupBy(b => b.PropertyId)
                 .OrderByDescending(g => g.Count())
                 .Take(5)
                 .Select(g =>
                 {
                     var prop = properties.FirstOrDefault(p => p.Id == g.Key);
+                    paidAdminCutByProperty.TryGetValue(g.Key, out var adminCut);
                     return new TopGarageDto
                     {
                         PropertyId = g.Key,
                         Name = prop?.Name ?? $"Garage #{g.Key}",
                         Location = prop?.AddressLine ?? "N/A",
                         TotalBookings = g.Count(),
-                        TotalRevenue = g.Sum(x => x.p.AdminCutAmount)
+                        TotalRevenue = adminCut // only real paid admin cut
                     };
                 }).ToList();
 
-            // ---- Top 5 Service Centers (by paid service requests) ----
-            var topServiceCenters = paidServiceJobs
+            // ---- Top 5 Service Centers (rank by all non-cancelled, revenue from paid platform fee) ----
+            var paidFeeByServiceCenter = paidServiceJobs
+                .GroupBy(s => s.ServiceCenterId)
+                .ToDictionary(g => g.Key, g => g.Sum(s => s.PlatformFee));
+
+            var topServiceCenters = serviceJobs
+                .Where(s => s.Status != "Cancelled")
                 .GroupBy(s => s.ServiceCenterId)
                 .OrderByDescending(g => g.Count())
                 .Take(5)
                 .Select(g =>
                 {
                     var sc = serviceCenters.FirstOrDefault(s => s.Id == g.Key);
+                    paidFeeByServiceCenter.TryGetValue(g.Key, out var platformFee);
                     return new TopServiceCenterDto
                     {
                         ServiceCenterId = g.Key,
                         Name = sc?.Name ?? $"Service Center #{g.Key}",
                         Location = sc?.AddressLine ?? "N/A",
                         TotalServiceBookings = g.Count(),
-                        TotalRevenue = g.Sum(s => s.PlatformFee)
+                        TotalRevenue = platformFee // only real paid platform fee
                     };
                 }).ToList();
 
@@ -238,8 +249,11 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 ActiveBookings = bookings.Count(b => b.Status == BookingStatus.InLot || b.Status == BookingStatus.AwaitingAgreement),
                 VehiclesStored = storedVehicles.Count(),
                 ServiceJobs = serviceJobs.Count(s => s.Status != "Cancelled"),
-                TotalServiceBookings = paidServiceJobs.Count,
-                TotalBookings = paidPayments.Select(p => p.BookingId).Distinct().Count(),
+                // Total bookings = all bookings ever made (not just paid)
+                TotalBookings = bookings.Count(),
+                // Total service bookings = all non-cancelled service requests
+                TotalServiceBookings = serviceJobs.Count(s => s.Status != "Cancelled"),
+                // Revenue = only from completed paid transactions (admin's actual cut)
                 TotalRevenue = totalAdminRevenue,
                 NetProfit = totalAdminRevenue * 0.85m,
                 MonthlyRevenue = totalAdminRevenue,

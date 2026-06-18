@@ -47,7 +47,7 @@ namespace GD1.Application.Features.LotManager.Commands
 
         public async Task<BaseResponse<string>> Handle(SubmitOnDemandImagesCommand request, CancellationToken cancellationToken)
         {
-            var tasks = await _taskRepo.FindAsync(t => t.Id == request.TaskId, "Manager,Booking,Vehicle");
+            var tasks = await _taskRepo.FindAsync(t => t.Id == request.TaskId, "Manager", "Booking", "Vehicle");
             var task = tasks.FirstOrDefault();
             
             if (task == null || task.Manager == null || task.Manager.ManagerId != request.ManagerId)

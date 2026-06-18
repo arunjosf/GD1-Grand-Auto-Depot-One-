@@ -69,6 +69,7 @@ namespace GD1.Application.Features.LotBooking.DTOs
         public string? OwnerName { get; set; }
         public string? LotOwnerName { get; set; }
         public string? LotOwnerPhone { get; set; }
+        public string? VerificationStatus { get; set; }
 
         public bool HasActiveServiceRequest { get; set; }
         public long? ActiveServiceRequestId { get; set; }

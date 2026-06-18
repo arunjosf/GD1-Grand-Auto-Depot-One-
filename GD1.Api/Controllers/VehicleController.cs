@@ -136,6 +136,22 @@ namespace GD1.Api.Controllers
             return Ok(response);
         }
 
+        [HttpGet("{id}/vehicle-owner/vehicle-journey")]
+        [Authorize(Policy = "VehicleOwner")]
+        public async Task<IActionResult> GetJourneyOwner(long id, [FromQuery] int? month, [FromQuery] int? year)
+        {
+            var query = new GetVehicleJourneyQuery
+            {
+                VehicleId = id,
+                Month = month,
+                Year = year,
+                UserId = GetUserId(),
+                UserRole = GD1.Domain.Entities.Enums.UserRole.VehicleOwner
+            };
+            var response = await _mediator.Send(query);
+            return Ok(response);
+        }
+
         [HttpPost("{id}/vehicle-owner/request-images")]
         [Authorize(Policy = "VehicleOwner")]
         public async Task<IActionResult> RequestImages(long id)

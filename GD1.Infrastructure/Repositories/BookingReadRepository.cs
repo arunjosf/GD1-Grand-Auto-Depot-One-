@@ -320,7 +320,7 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT b.Id, b.VehicleId,
                        v.Brand AS VehicleBrand, v.Model AS VehicleModel,
-                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.HasServiceRecommendation, v.ManagerServiceRemarks,
+                       v.RegistrationNo, v.VehicleRcUrl, v.OwnerIdProofUrl, v.VerificationStatus, v.HasServiceRecommendation, v.ManagerServiceRemarks,
                        (SELECT TOP 1 sr.Id FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment') ORDER BY sr.Id DESC) AS ActiveServiceRequestId,
                        CAST(CASE WHEN EXISTS (SELECT 1 FROM ServiceRequests sr WHERE sr.BookingId = b.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Service Completed', 'Payment')) THEN 1 ELSE 0 END AS BIT) AS HasActiveServiceRequest,
                        (SELECT TOP 1 mt.CompletedAt FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 1 ORDER BY mt.CompletedAt DESC) AS LastServiceReportDate,
