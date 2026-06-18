@@ -31,6 +31,8 @@ namespace GD1.Application.Features.ServiceRequest.Queries
         public long VehicleOwnerId { get; set; }
         public string VehicleOwnerName { get; set; } = string.Empty;
         public string VehicleOwnerPhone { get; set; } = string.Empty;
+        public string? VehicleRcUrl { get; set; }
+        public string? VehicleLatestConditionImageUrl { get; set; }
 
         // Storage lot
         public long? PropertyId { get; set; }

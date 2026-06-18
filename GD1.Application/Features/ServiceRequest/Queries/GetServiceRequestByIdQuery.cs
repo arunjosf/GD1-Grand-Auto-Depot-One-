@@ -1,4 +1,5 @@
 using GD1.Application.Common;
+using GD1.Domain.Entities;
 using GD1.Domain.Interfaces;
 using MediatR;
 
@@ -22,17 +23,20 @@ namespace GD1.Application.Features.ServiceRequest.Queries
         private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenter> _centerRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Booking> _bookingRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
+        private readonly IGenericRepository<VehicleJourneyEvent> _journeyRepo;
 
         public GetServiceRequestByIdQueryHandler(
             IGenericRepository<GD1.Domain.Entities.ServiceRequest> requestRepo,
             IGenericRepository<GD1.Domain.Entities.ServiceCenter> centerRepo,
             IGenericRepository<GD1.Domain.Entities.Booking> bookingRepo,
-            IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo)
+            IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
+            IGenericRepository<VehicleJourneyEvent> journeyRepo)
         {
             _requestRepo = requestRepo;
             _centerRepo = centerRepo;
             _bookingRepo = bookingRepo;
             _vehicleRepo = vehicleRepo;
+            _journeyRepo = journeyRepo;
         }
 
         public async Task<BaseResponse<MyServiceRequestDto>> Handle(GetServiceRequestByIdQuery request, CancellationToken cancellationToken)
@@ -68,6 +72,18 @@ namespace GD1.Application.Features.ServiceRequest.Queries
             var sc = scList.FirstOrDefault();
             var vh = bk.Vehicle;
 
+            // Fetch latest condition image for this vehicle (on-demand, weekly, or pickup)
+            var journeyEvents = await _journeyRepo.FindAsync(
+                e => e.VehicleId == bk.VehicleId &&
+                     (e.EventType == "OnDemandUpdate" || e.EventType == "WeeklyUpdate" || 
+                      e.EventType == "VehiclePickedUp" || e.EventType == "AdHocMaintenance"),
+                "Images");
+            var latestConditionImage = journeyEvents
+                .OrderByDescending(e => e.Id)
+                .SelectMany(e => e.Images)
+                .Select(i => i.ImageUrl)
+                .FirstOrDefault();
+
             var dto = new MyServiceRequestDto
             {
                 Id = req.Id,
@@ -79,6 +95,8 @@ namespace GD1.Application.Features.ServiceRequest.Queries
                 VehicleOwnerId = vh?.OwnerId ?? 0,
                 VehicleOwnerName = vh?.Owner?.FullName ?? "",
                 VehicleOwnerPhone = vh?.Owner?.PhoneNumber ?? "",
+                VehicleRcUrl = vh?.VehicleRcUrl,
+                VehicleLatestConditionImageUrl = latestConditionImage,
                 PropertyId = bk.PropertyId,
                 PropertyName = bk.Property?.Name,
                 PropertyCity = bk.Property?.City,
