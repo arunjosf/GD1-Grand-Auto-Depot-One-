@@ -86,6 +86,9 @@ namespace GD1.Application.Features.Pickup.Commands
                 await _verificationRepo.UpdateAsync(verification);
             }
 
+            pickup.Status = GD1.Domain.Entities.Enums.PickupStatus.InTransit;
+            await _pickupRepo.UpdateAsync(pickup);
+
             return new BaseResponse<string> { Success = true, Message = "Pre-ride condition submitted successfully." };
         }
     }

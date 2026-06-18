@@ -86,8 +86,8 @@ namespace GD1.Application.Features.Pickup.Commands
             var booking = await _bookingRepo.GetByIdAsync(pickup.BookingId);
             if (booking == null) throw new Exception("Booking not found");
 
-            if (pickup.Status != PickupStatus.InTransit)
-                throw new Exception($"Cannot submit a lot arrival condition report while the pickup is in the '{pickup.Status}' status. Expected 'InTransit'.");
+            if (pickup.Status != PickupStatus.InTransit && pickup.Status != PickupStatus.VehiclePicked)
+                throw new Exception($"Cannot submit a lot arrival condition report while the pickup is in the '{pickup.Status}' status. Expected 'InTransit' or 'VehiclePicked'.");
 
             var frontTask = _gemini.VerifyImageReadabilityAsync(request.FrontImageUrl, "Car Exterior Front");
             var rearTask = _gemini.VerifyImageReadabilityAsync(request.RearImageUrl, "Car Exterior Rear");
