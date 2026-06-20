@@ -60,7 +60,7 @@ namespace GD1.Api.Controllers
         }
 
         [HttpGet("vehicles/{id}")]
-        public async Task<IActionResult> GetVehicleDetail(long id)
+        public async Task<IActionResult> GetVehicleDetail(long id, [FromQuery] long? bookingId)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out var userId))
@@ -68,8 +68,28 @@ namespace GD1.Api.Controllers
                 return Unauthorized("User ID not found in token.");
             }
 
-            var result = await _mediator.Send(new GetLotOwnerVehicleDetailQuery { LotOwnerId = userId, VehicleId = id });
+            var result = await _mediator.Send(new GetLotOwnerVehicleDetailQuery { LotOwnerId = userId, VehicleId = id, BookingId = bookingId });
             return Ok(result);
+        }
+
+        [HttpPost("vehicles/{vehicleId}/stop-storing")]
+        public async Task<IActionResult> StopStoringVehicle(long vehicleId)
+        {
+            var userIdClaim = User.FindFirst("userId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+
+            var result = await _mediator.Send(new GD1.Application.Features.LotOwner.Commands.StopVehicleStoringCommand 
+            { 
+                LotOwnerId = userId, 
+                VehicleId = vehicleId 
+            });
+            
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }

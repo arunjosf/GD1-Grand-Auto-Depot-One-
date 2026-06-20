@@ -33,7 +33,7 @@ namespace GD1.Application.Features.ServiceRequest.Commands
             serviceRequest.RazorpayPaymentId = request.RazorpayPaymentId;
             serviceRequest.RazorpayOrderId = request.RazorpayOrderId;
             serviceRequest.RazorpaySignature = request.RazorpaySignature;
-            serviceRequest.Status = "Payment";
+            serviceRequest.Status = "Completed";
 
             await _requestRepo.UpdateAsync(serviceRequest);
 

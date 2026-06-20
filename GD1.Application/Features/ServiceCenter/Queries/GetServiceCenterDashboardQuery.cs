@@ -23,6 +23,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
         public int TotalMechanics { get; set; }
         public List<MonthlyRevenueDto> MonthlyRevenue { get; set; } = new();
         public List<MyServiceRequestDto> PendingBookings { get; set; } = new();
+        public List<MyServiceRequestDto> CompletedBookings { get; set; } = new();
     }
 
     public class MonthlyRevenueDto
@@ -107,13 +108,46 @@ namespace GD1.Application.Features.ServiceCenter.Queries
                 });
             }
 
+            var completedRequests = allRequests.Where(x => x.IsCompleted == true || x.Status == "Service Completed" || x.Status == "Completed").OrderByDescending(x => x.UpdatedAt).Take(5).ToList();
+            var completedDtos = new List<MyServiceRequestDto>();
+
+            foreach(var cr in completedRequests)
+            {
+                var bk = await _bookingRepo.GetByIdAsync(cr.BookingId);
+                var vhList = bk != null ? await _vehicleRepo.FindAsync(v => v.Id == bk.VehicleId, "Images") : null;
+                var vh = vhList?.FirstOrDefault();
+
+                completedDtos.Add(new MyServiceRequestDto
+                {
+                    Id = cr.Id,
+                    BookingId = cr.BookingId,
+                    VehicleId = vh?.Id ?? 0,
+                    VehicleBrand = vh?.Brand ?? "",
+                    VehicleModel = vh?.Model ?? "",
+                    VehicleRegistrationNo = vh?.RegistrationNo ?? "",
+                    ServiceType = cr.ServiceType,
+                    Notes = cr.Notes,
+                    ScheduledDate = cr.ScheduledDate,
+                    Status = cr.Status,
+                    CreatedAt = cr.CreatedAt,
+                    PropertyCity = cr.Booking?.Property?.City,
+                    PropertyAddress = cr.Booking?.Property?.AddressLine,
+                    PropertyLatitude = cr.Booking?.Property?.Latitude,
+                    PropertyLongitude = cr.Booking?.Property?.Longitude,
+                    ServiceCenterLatitude = cr.ServiceCenter?.Latitude,
+                    ServiceCenterLongitude = cr.ServiceCenter?.Longitude,
+                    ServiceCenterImage = vh?.Images?.FirstOrDefault()?.ImageUrl
+                });
+            }
+
             var dto = new ServiceCenterDashboardDto
             {
                 TotalRevenue = totalRevenue,
                 TotalBookings = totalBookings,
                 TotalMechanics = totalMechanics,
                 MonthlyRevenue = monthlyRevenue,
-                PendingBookings = pendingDtos
+                PendingBookings = pendingDtos,
+                CompletedBookings = completedDtos
             };
 
             return BaseResponse<ServiceCenterDashboardDto>.Ok(dto, "Success");

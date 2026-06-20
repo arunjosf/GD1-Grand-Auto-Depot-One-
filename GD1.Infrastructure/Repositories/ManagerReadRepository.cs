@@ -111,7 +111,7 @@ namespace GD1.Infrastructure.Repositories
                 INNER JOIN Vehicles v ON b.VehicleId = v.Id
                 INNER JOIN Users o ON b.OwnerId = o.Id
                 INNER JOIN LotManagers lm ON pr.ManagerId = lm.Id
-                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND EventId IS NULL) vi
+                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND UploadedBy = 'Owner' AND EventId IS NULL ORDER BY Id ASC) vi
                 WHERE lm.ManagerId = @ManagerId AND pr.Status {statusFilter}
                 ORDER BY pr.RequestedPickupTime ASC
             ";
@@ -129,21 +129,23 @@ namespace GD1.Infrastructure.Repositories
                     v.RegistrationNo,
                     o.FullName as OwnerName,
                     b.StartDate as StoredSince,
+                    b.EndDate,
+                    b.Status as BookingStatus,
                     vi.ImageUrl,
                     CAST(ISNULL(pnd.HasPendingOnDemandRequest, 0) AS BIT) as HasPendingOnDemandRequest
                 FROM LotManagers lm
                 INNER JOIN Bookings b ON lm.PropertyId = b.PropertyId
                 INNER JOIN Vehicles v ON b.VehicleId = v.Id
                 INNER JOIN Users o ON b.OwnerId = o.Id
-                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND EventId IS NULL) vi
-                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.VehicleId = v.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
+                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND UploadedBy = 'Owner' AND EventId IS NULL ORDER BY Id ASC) vi
+                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.BookingId = b.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
                 WHERE lm.ManagerId = @ManagerId AND lm.IsActive = 1 AND b.Status IN (2, 3) -- InLot, Completed
                 ORDER BY b.StartDate DESC
             ";
             return await _db.QueryAsync<ManagerVehicleDto>(sql, new { ManagerId = managerId });
         }
 
-        public async Task<ManagerVehicleDetailDto> GetVehicleDetailAsync(long managerId, long vehicleId)
+        public async Task<ManagerVehicleDetailDto> GetVehicleDetailAsync(long managerId, long vehicleId, long? bookingId = null)
         {
             var sql = @"
                 SELECT 
@@ -162,10 +164,16 @@ namespace GD1.Infrastructure.Repositories
                     lo.FullName as LotOwnerName,
                     lo.PhoneNumber as LotOwnerPhone,
                     b.StartDate as StoredSince,
+                    b.EndDate as EndDate,
+                    b.Status as BookingStatus,
                     b.PricePerDay,
                     vi.ImageUrl,
                     od.LastOnDemandImageDate,
                     srr.LastServiceReportDate,
+                    srr.LastServiceCost,
+                    srr.LastServiceNotes,
+                    srr.LastServiceCenterName,
+                    srr.LastServiceBillUrl,
                     CAST(ISNULL(pnd.HasPendingOnDemandRequest, 0) AS BIT) as HasPendingOnDemandRequest,
                     odi.OnDemandFrontImageUrl,
                     odi.OnDemandRearImageUrl,
@@ -184,13 +192,24 @@ namespace GD1.Infrastructure.Repositories
                 FROM LotManagers lm
                 INNER JOIN VehicleStorageProperties p ON lm.PropertyId = p.Id
                 INNER JOIN Users lo ON p.LotOwnerId = lo.Id
-                INNER JOIN Bookings b ON b.PropertyId = lm.PropertyId AND b.VehicleId = @VehicleId AND b.Status IN (2, 3)
+                INNER JOIN (
+                    SELECT TOP 1 * FROM Bookings b2 
+                    WHERE b2.VehicleId = @VehicleId AND b2.Status IN (2, 3) 
+                      AND (@BookingId IS NULL OR b2.Id = @BookingId)
+                    ORDER BY b2.CreatedAt DESC
+                ) b ON b.PropertyId = lm.PropertyId
                 INNER JOIN Vehicles v ON b.VehicleId = v.Id
                 INNER JOIN Users o ON b.OwnerId = o.Id
-                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND EventId IS NULL) vi
-                OUTER APPLY (SELECT TOP 1 mt.CompletedAt as LastOnDemandImageDate FROM MaintenanceTasks mt WHERE mt.VehicleId = v.Id AND mt.Type = 0 AND mt.Status = 1 ORDER BY mt.CompletedAt DESC) od
-                OUTER APPLY (SELECT TOP 1 sr.UpdatedAt as LastServiceReportDate FROM ServiceRequests sr INNER JOIN Bookings b2 ON sr.BookingId = b2.Id WHERE b2.VehicleId = v.Id AND sr.IsCompleted = 1 ORDER BY sr.UpdatedAt DESC) srr
-                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.VehicleId = v.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
+                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND UploadedBy = 'Owner' AND EventId IS NULL ORDER BY Id ASC) vi
+                OUTER APPLY (SELECT TOP 1 mt.CompletedAt as LastOnDemandImageDate FROM MaintenanceTasks mt WHERE mt.BookingId = b.Id AND mt.Type = 0 AND mt.Status = 1 ORDER BY mt.CompletedAt DESC) od
+                OUTER APPLY (
+                    SELECT TOP 1 sr.UpdatedAt as LastServiceReportDate, sr.ServiceCost as LastServiceCost, sr.CompletionNotes as LastServiceNotes, c.Name as LastServiceCenterName, sr.BillUrl as LastServiceBillUrl
+                    FROM ServiceRequests sr 
+                    INNER JOIN ServiceCenters c ON sr.ServiceCenterId = c.Id
+                    WHERE sr.BookingId = b.Id AND (sr.IsCompleted = 1 OR sr.Status IN ('Service Completed', 'Completed', 'Payment Completed')) 
+                    ORDER BY sr.UpdatedAt DESC
+                ) srr
+                OUTER APPLY (SELECT TOP 1 1 as HasPendingOnDemandRequest FROM MaintenanceTasks mt2 WHERE mt2.BookingId = b.Id AND mt2.Type = 0 AND mt2.Status = 0) pnd
                 OUTER APPLY (
                     SELECT TOP 1 
                         (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Front') AS OnDemandFrontImageUrl,
@@ -200,7 +219,7 @@ namespace GD1.Infrastructure.Repositories
                         (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Interior') AS OnDemandInteriorImageUrl,
                         (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Odometer') AS OnDemandOdometerImageUrl
                     FROM VehicleJourneyEvents je
-                    WHERE je.VehicleId = v.Id AND je.EventType = 'OnDemandUpdate'
+                    WHERE je.BookingId = b.Id AND je.EventType = 'OnDemandUpdate'
                     ORDER BY je.CreatedAt DESC
                 ) odi
                 OUTER APPLY (
@@ -214,12 +233,12 @@ namespace GD1.Infrastructure.Repositories
                         (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Interior') AS WeeklyUpdateInteriorImageUrl,
                         (SELECT TOP 1 ImageUrl FROM VehicleImages vi2 WHERE vi2.EventId = je.Id AND vi2.Label = 'Odometer') AS WeeklyUpdateOdometerImageUrl
                     FROM VehicleJourneyEvents je
-                    WHERE je.VehicleId = v.Id AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate')
+                    WHERE je.BookingId = b.Id AND je.EventType IN ('WeeklyUpdate', 'AdHocMaintenanceUpdate', 'Weekly Condition Submitted')
                     ORDER BY je.CreatedAt DESC
                 ) wui
                 WHERE lm.ManagerId = @ManagerId AND lm.IsActive = 1 AND v.Id = @VehicleId
             ";
-            return await _db.QueryFirstOrDefaultAsync<ManagerVehicleDetailDto>(sql, new { ManagerId = managerId, VehicleId = vehicleId });
+            return await _db.QueryFirstOrDefaultAsync<ManagerVehicleDetailDto>(sql, new { ManagerId = managerId, VehicleId = vehicleId, BookingId = bookingId });
         }
     }
 }

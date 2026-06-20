@@ -36,6 +36,7 @@ namespace GD1.Application.Features.LotManager.Queries
         public string? MechanicEmail { get; set; }
         public string? CompletionNotes { get; set; }
         public string? BillUrl { get; set; }
+        public bool IsCompleted { get; set; }
 
         // Storage lot details
         public long? PropertyId { get; set; }
@@ -124,6 +125,7 @@ namespace GD1.Application.Features.LotManager.Queries
                 MechanicEmail = r.MechanicEmail,
                 CompletionNotes = r.CompletionNotes,
                 BillUrl = r.BillUrl,
+                IsCompleted = r.IsCompleted ?? false,
                 PropertyId = r.Booking?.PropertyId,
                 PropertyName = r.Booking?.Property?.Name,
                 PropertyCity = r.Booking?.Property?.City,

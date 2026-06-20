@@ -76,6 +76,10 @@ namespace GD1.Application.Features.LotBooking.DTOs
         public bool HasServiceRecommendation { get; set; }
         public string? ManagerServiceRemarks { get; set; }
         public DateTime? LastServiceReportDate { get; set; }
+        public decimal? LastServiceCost { get; set; }
+        public string? LastServiceNotes { get; set; }
+        public string? LastServiceCenterName { get; set; }
+        public string? LastServiceBillUrl { get; set; }
 
         public bool HasPendingOnDemandRequest { get; set; }
         public DateTime? PendingOnDemandRequestDate { get; set; }
@@ -159,7 +163,7 @@ namespace GD1.Application.Features.LotBooking.DTOs
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public ConditionReportDto? RecentOnDemandImages => 
-            string.IsNullOrEmpty(OnDemandFrontImageUrl) ? null : new ConditionReportDto
+            (string.IsNullOrEmpty(OnDemandFrontImageUrl) && string.IsNullOrEmpty(OnDemandRearImageUrl) && string.IsNullOrEmpty(OnDemandLeftSideImageUrl) && string.IsNullOrEmpty(OnDemandRightSideImageUrl) && string.IsNullOrEmpty(OnDemandInteriorImageUrl) && string.IsNullOrEmpty(OnDemandOdometerImageUrl)) ? null : new ConditionReportDto
             {
                 FrontImageUrl = string.IsNullOrWhiteSpace(OnDemandFrontImageUrl) ? null : OnDemandFrontImageUrl,
                 RearImageUrl = string.IsNullOrWhiteSpace(OnDemandRearImageUrl) ? null : OnDemandRearImageUrl,

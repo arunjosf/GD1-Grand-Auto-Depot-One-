@@ -56,12 +56,13 @@ namespace GD1.Infrastructure.Repositories
                                             .OrderByDescending(e => e.CreatedAt)
                                             .Select(e => (DateTime?)e.CreatedAt)
                                             .FirstOrDefault(),
-                    PickupStatus = v.Bookings
+                    PickupStatus = v.Bookings.OrderByDescending(b => b.CreatedAt).Take(1)
                                     .SelectMany(b => b.PickupRequests)
                                     .OrderByDescending(pr => pr.CreatedAt)
                                     .Select(pr => pr.Status.ToString())
                                     .FirstOrDefault(),
-                    JourneyEvents = v.Bookings.SelectMany(b => b.JourneyEvents)
+                    JourneyEvents = v.Bookings.OrderByDescending(b => b.CreatedAt).Take(1)
+                                     .SelectMany(b => b.JourneyEvents)
                                      .OrderByDescending(e => e.CreatedAt)
                                      .Select(e => new VehicleJourneyEventDto
                                      {
@@ -77,7 +78,8 @@ namespace GD1.Infrastructure.Repositories
                                              EventId = img.EventId
                                          }).ToList()
                                      }).ToList(),
-                    RecentOnDemandImages = v.Bookings.SelectMany(b => b.JourneyEvents)
+                    RecentOnDemandImages = v.Bookings.OrderByDescending(b => b.CreatedAt).Take(1)
+                                            .SelectMany(b => b.JourneyEvents)
                                             .Where(e => e.EventType == "OnDemandUpdate")
                                             .OrderByDescending(e => e.CreatedAt)
                                             .SelectMany(e => e.Images)
@@ -89,7 +91,8 @@ namespace GD1.Infrastructure.Repositories
                                                 UploadedBy = img.UploadedBy,
                                                 EventId = img.EventId
                                             }).ToList(),
-                    RecentWeeklyCheckImages = v.Bookings.SelectMany(b => b.JourneyEvents)
+                    RecentWeeklyCheckImages = v.Bookings.OrderByDescending(b => b.CreatedAt).Take(1)
+                                               .SelectMany(b => b.JourneyEvents)
                                                .Where(e => e.EventType == "WeeklyUpdate" || e.EventType == "AdHocMaintenanceUpdate")
                                                .OrderByDescending(e => e.CreatedAt)
                                                .SelectMany(e => e.Images)
@@ -101,7 +104,8 @@ namespace GD1.Infrastructure.Repositories
                                                    UploadedBy = img.UploadedBy,
                                                    EventId = img.EventId
                                                }).ToList(),
-                    PickupImages = v.Bookings.SelectMany(b => b.JourneyEvents)
+                    PickupImages = v.Bookings.OrderByDescending(b => b.CreatedAt).Take(1)
+                                    .SelectMany(b => b.JourneyEvents)
                                     .Where(e => e.EventType == "VehiclePickedUp")
                                     .OrderByDescending(e => e.CreatedAt)
                                     .SelectMany(e => e.Images)
@@ -113,7 +117,8 @@ namespace GD1.Infrastructure.Repositories
                                         UploadedBy = img.UploadedBy,
                                         EventId = img.EventId
                                     }).ToList(),
-                    LotArrivalImages = v.Bookings.SelectMany(b => b.JourneyEvents)
+                    LotArrivalImages = v.Bookings.OrderByDescending(b => b.CreatedAt).Take(1)
+                                        .SelectMany(b => b.JourneyEvents)
                                         .Where(e => e.EventType == "VehicleStored")
                                         .OrderByDescending(e => e.CreatedAt)
                                         .SelectMany(e => e.Images)

@@ -26,17 +26,20 @@ namespace GD1.Application.Features.ServiceRequest.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.ServiceRequest> _requestRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenter> _scRepo;
+        private readonly IGenericRepository<GD1.Domain.Entities.VehicleJourneyEvent> _journeyRepo;
         private readonly INotificationService _notificationService;
 
         public BookServiceCommandHandler(
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
             IGenericRepository<GD1.Domain.Entities.ServiceRequest> requestRepo,
             IGenericRepository<GD1.Domain.Entities.ServiceCenter> scRepo,
+            IGenericRepository<GD1.Domain.Entities.VehicleJourneyEvent> journeyRepo,
             INotificationService notificationService)
         {
             _vehicleRepo = vehicleRepo;
             _requestRepo = requestRepo;
             _scRepo = scRepo;
+            _journeyRepo = journeyRepo;
             _notificationService = notificationService;
         }
 
@@ -87,6 +90,16 @@ namespace GD1.Application.Features.ServiceRequest.Commands
                     "/service-center/bookings"
                 );
             }
+
+            var journeyEvent = new GD1.Domain.Entities.VehicleJourneyEvent
+            {
+                VehicleId = vehicle.Id,
+                EventType = "Service Booked",
+                Description = $"Service booked at {serviceCenter?.Name} on {DateTime.UtcNow.ToShortDateString()}",
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            await _journeyRepo.AddAsync(journeyEvent);
 
             return BaseResponse<string>.Ok("Service request booked successfully.");
         }

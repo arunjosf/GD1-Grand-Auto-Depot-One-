@@ -30,6 +30,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
         public string Status { get; set; } = string.Empty;
         public string? ServiceCenterImage { get; set; }
         public decimal ServiceCost { get; set; }
+        public bool IsCompleted { get; set; }
         
         public long? PropertyId { get; set; }
         public string? PropertyName { get; set; }
@@ -86,6 +87,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
                 Status = r.Status,
                 ServiceCenterImage = r.Booking?.Vehicle?.Images?.FirstOrDefault()?.ImageUrl,
                 ServiceCost = r.ServiceCost,
+                IsCompleted = r.IsCompleted ?? false,
                 PropertyId = r.Booking?.PropertyId,
                 PropertyName = r.Booking?.Property?.Name,
                 PropertyOwnerPhone = r.Booking?.Property?.LotOwner?.PhoneNumber,

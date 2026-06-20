@@ -13,6 +13,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public string Status { get; set; } = string.Empty;
         public string Tier { get; set; } = "Private Garage";
         public int TotalSlots { get; set; }
+        public int AvailableSlots { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal AverageRating { get; set; }
         public int TotalReviews { get; set; }

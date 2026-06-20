@@ -83,6 +83,8 @@ namespace GD1.Application.Features.Pickup.Commands
             pickup.ManagerArrivalTime = request.ArrivalTime;
             pickup.Status = PickupStatus.Assigned;
 
+            booking.AssignedManagerId = actualManager.ManagerId;
+            await _bookingRepo.UpdateAsync(booking);
             await _pickupRepo.UpdateAsync(pickup);
 
             try

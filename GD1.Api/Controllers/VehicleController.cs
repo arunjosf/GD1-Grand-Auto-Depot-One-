@@ -119,7 +119,7 @@ namespace GD1.Api.Controllers
 
         [HttpGet("{id}/lot-owner/manager/vehicle-journey")]
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,LotOwner,Manager")]
-        public async Task<IActionResult> GetJourney(long id, [FromQuery] int? month, [FromQuery] int? year)
+        public async Task<IActionResult> GetJourney(long id, [FromQuery] int? month, [FromQuery] int? year, [FromQuery] long? bookingId)
         {
             var roleIdStr = User.FindFirst("role")?.Value ?? "0";
             var role = (GD1.Domain.Entities.Enums.UserRole)int.Parse(roleIdStr);
@@ -127,6 +127,7 @@ namespace GD1.Api.Controllers
             var query = new GetVehicleJourneyQuery 
             { 
                 VehicleId = id, 
+                BookingId = bookingId,
                 Month = month, 
                 Year = year,
                 UserId = GetUserId(),
@@ -138,11 +139,12 @@ namespace GD1.Api.Controllers
 
         [HttpGet("{id}/vehicle-owner/vehicle-journey")]
         [Authorize(Policy = "VehicleOwner")]
-        public async Task<IActionResult> GetJourneyOwner(long id, [FromQuery] int? month, [FromQuery] int? year)
+        public async Task<IActionResult> GetJourneyOwner(long id, [FromQuery] int? month, [FromQuery] int? year, [FromQuery] long? bookingId)
         {
             var query = new GetVehicleJourneyQuery
             {
                 VehicleId = id,
+                BookingId = bookingId,
                 Month = month,
                 Year = year,
                 UserId = GetUserId(),

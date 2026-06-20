@@ -181,7 +181,18 @@ namespace GD1.Api.Hubs
             _context.ChatMessages.Add(chatMessage);
             await _context.SaveChangesAsync();
 
-            await Clients.Group($"{category}-{referenceId}").SendAsync("ReceiveMessage", chatMessage);
+            var dto = new GD1.Application.Features.Chat.Queries.ChatMessageDto
+            {
+                Id = chatMessage.Id,
+                BookingId = chatMessage.BookingId,
+                ServiceRequestId = chatMessage.ServiceRequestId,
+                SenderId = chatMessage.SenderId,
+                ReceiverId = chatMessage.ReceiverId,
+                MessageContent = chatMessage.MessageContent,
+                CreatedAt = chatMessage.CreatedAt
+            };
+
+            await Clients.Group($"{category}-{referenceId}").SendAsync("ReceiveMessage", dto);
         }
 
         public async Task SendWebRTCSignal(string category, long referenceId, string signalData)

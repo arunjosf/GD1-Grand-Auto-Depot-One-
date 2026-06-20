@@ -236,6 +236,19 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("payments")]
+        [Authorize(Roles = "ServiceCenter")]
+        public async Task<IActionResult> GetPayments()
+        {
+            var adminId = GetUserId();
+
+            var result = await _mediator.Send(new GD1.Application.Features.ServiceCenter.Queries.GetServiceCenterPaymentsQuery
+            {
+                AdminId = adminId
+            });
+            return Ok(result);
+        }
+
         [HttpGet("mechanics")]
         [Authorize]
         public async Task<IActionResult> GetMechanics()

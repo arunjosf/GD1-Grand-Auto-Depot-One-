@@ -49,7 +49,16 @@ namespace GD1.Infrastructure.Repositories
             const string sql = @"
                 SELECT u.Id, u.FullName, u.Email, u.PhoneNumber, u.Role, u.IsActive, u.CreatedAt,
                        a.Id as AgentId, a.City, a.State, a.PostalCode, a.SelfieUrl, a.IdProofUrl, a.ApprovalStatus, a.Latitude, a.Longitude,
-                       CASE WHEN u.Role = 3 THEN (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = a.Id AND Status IN ('Assigned', 'InProgress')) ELSE NULL END as PendingInspections
+                       CASE WHEN u.Role = 3 THEN (SELECT COUNT(*) FROM InspectionAssignments WHERE AgentId = a.Id AND Status IN ('Assigned', 'InProgress')) ELSE NULL END as PendingInspections,
+                       CASE WHEN u.Role = 1 THEN 
+                           CAST(CASE WHEN EXISTS (
+                               SELECT 1 FROM Bookings b JOIN Vehicles v ON b.VehicleId = v.Id 
+                               WHERE v.OwnerId = u.Id AND b.Status NOT IN (3, 4, 14) AND b.EndDate >= GETUTCDATE()
+                           ) OR EXISTS (
+                               SELECT 1 FROM ServiceRequests sr JOIN Vehicles v ON sr.VehicleId = v.Id 
+                               WHERE v.OwnerId = u.Id AND sr.Status NOT IN ('Completed', 'Cancelled', 'Declined')
+                           ) THEN 1 ELSE 0 END AS bit)
+                       ELSE CAST(0 AS bit) END as HasActiveBooking
                 FROM Users u
                 LEFT JOIN GD1Agents a ON u.Id = a.Id
                 WHERE u.Role < 5 
@@ -72,6 +81,7 @@ namespace GD1.Infrastructure.Repositories
                 AgentId = u.AgentId,
                 Role = (GD1.Domain.Entities.Enums.UserRole)u.Role,
                 IsActive = u.IsActive,
+                HasActiveBooking = u.HasActiveBooking ?? false,
                 CreatedAt = u.CreatedAt,
                 City = u.City,
                 State = u.State,

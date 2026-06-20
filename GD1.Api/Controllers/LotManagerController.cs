@@ -104,6 +104,14 @@ namespace GD1.Api.Controllers
             return response.Success ? Ok(response) : BadRequest(response);
         }
 
+        [HttpPost("submit-afterservice")]
+        public async Task<IActionResult> SubmitAfterServiceCondition([FromBody] GD1.Application.Features.LotManager.Commands.SubmitAfterServiceConditionCommand command)
+        {
+            command.ManagerId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var response = await _mediator.Send(command);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+
         [HttpPost("recommend-service")]
         public async Task<IActionResult> RecommendService([FromBody] GD1.Application.Features.LotManager.Commands.RecommendServiceCommand command)
         {
@@ -197,9 +205,9 @@ namespace GD1.Api.Controllers
         }
 
         [HttpGet("vehicles/{id}")]
-        public async Task<IActionResult> GetManagerVehicleDetail(long id)
+        public async Task<IActionResult> GetManagerVehicleDetail(long id, [FromQuery] long? bookingId)
         {
-            var result = await _mediator.Send(new GetManagerVehicleDetailQuery { ManagerId = GetUserId(), VehicleId = id });
+            var result = await _mediator.Send(new GetManagerVehicleDetailQuery { ManagerId = GetUserId(), VehicleId = id, BookingId = bookingId });
             return Ok(result);
         }
 

@@ -37,15 +37,18 @@ namespace GD1.Application.Features.GD1Admin.Queries
         private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.Vehicle> _vehicleRepo;
         private readonly GD1.Application.Interfaces.IGeminiService _geminiService;
+        private readonly IGenericRepository<GD1.Domain.Entities.Booking> _bookingRepo;
 
         public GetAllStoragePropertyQueryHandler(
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<GD1.Domain.Entities.Vehicle> vehicleRepo,
-            GD1.Application.Interfaces.IGeminiService geminiService)
+            GD1.Application.Interfaces.IGeminiService geminiService,
+            IGenericRepository<GD1.Domain.Entities.Booking> bookingRepo)
         {
             _propertyRepo = propertyRepo;
             _vehicleRepo = vehicleRepo;
             _geminiService = geminiService;
+            _bookingRepo = bookingRepo;
         }
 
         public async Task<BaseResponse<IEnumerable<StoragePropertyListDto>>> Handle(GetAllStoragePropertyQuery query, CancellationToken ct)
@@ -97,9 +100,24 @@ namespace GD1.Application.Features.GD1Admin.Queries
 
             var resultDtos = new List<StoragePropertyListDto>();
 
+            var activeBookings = await _bookingRepo.FindAsync(b => b.Status != GD1.Domain.Entities.Enums.BookingStatus.Completed && b.Status != GD1.Domain.Entities.Enums.BookingStatus.Cancelled && b.SlotId.HasValue);
+            var now = DateTime.UtcNow;
+
             foreach (var prop in properties)
             {
-                var availableSlots = prop.Slots.AsEnumerable();
+                var availableSlots = prop.Slots.AsEnumerable().Select(s => 
+                {
+                    // Dynamically consider a slot unoccupied if its booking has expired
+                    if (s.IsOccupied)
+                    {
+                        var slotBooking = activeBookings.FirstOrDefault(b => b.SlotId == s.Id);
+                        if (slotBooking == null || slotBooking.EndDate <= now)
+                        {
+                            s.IsOccupied = false;
+                        }
+                    }
+                    return s;
+                });
                 
                 bool hasCompatibleSlots = true;
 
@@ -143,6 +161,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
                         Status = prop.Status,
                         Tier = "Premium Private Garage",
                         TotalSlots = prop.Slots.Count,
+                        AvailableSlots = prop.Slots.Count(s => !s.IsOccupied),
                         PricePerDay = prop.PricePerDay,
                         AverageRating = prop.AverageRating,
                         TotalReviews = prop.TotalReviews,

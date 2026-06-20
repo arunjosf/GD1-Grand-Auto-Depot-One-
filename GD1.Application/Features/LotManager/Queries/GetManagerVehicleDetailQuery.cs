@@ -10,6 +10,7 @@ namespace GD1.Application.Features.LotManager.Queries
     {
         public long ManagerId { get; set; }
         public long VehicleId { get; set; }
+        public long? BookingId { get; set; }
     }
 
     public class GetManagerVehicleDetailQueryHandler : IRequestHandler<GetManagerVehicleDetailQuery, BaseResponse<ManagerVehicleDetailDto>>
@@ -19,7 +20,7 @@ namespace GD1.Application.Features.LotManager.Queries
 
         public async Task<BaseResponse<ManagerVehicleDetailDto>> Handle(GetManagerVehicleDetailQuery request, CancellationToken cancellationToken)
         {
-            var data = await _repo.GetVehicleDetailAsync(request.ManagerId, request.VehicleId);
+            var data = await _repo.GetVehicleDetailAsync(request.ManagerId, request.VehicleId, request.BookingId);
             if (data == null)
             {
                 return BaseResponse<ManagerVehicleDetailDto>.Fail("Vehicle not found or you don't have access.");

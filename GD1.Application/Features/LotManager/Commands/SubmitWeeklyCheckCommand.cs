@@ -111,7 +111,7 @@ namespace GD1.Application.Features.LotManager.Commands
             {
                 VehicleId = vehicleId,
                 BookingId = bookingId,
-                EventType = request.TaskId.HasValue && request.TaskId.Value > 0 ? "WeeklyUpdate" : "AdHocMaintenanceUpdate",
+                EventType = (request.TaskId.HasValue && request.TaskId.Value > 0) ? "WeeklyUpdate" : "AdHocMaintenanceUpdate",
                 Description = description,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

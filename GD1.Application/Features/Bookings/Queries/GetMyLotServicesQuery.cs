@@ -80,6 +80,7 @@ namespace GD1.Application.Features.Bookings.Queries
                 MechanicEmail = r.MechanicEmail,
                 CompletionNotes = r.CompletionNotes,
                 BillUrl = r.BillUrl,
+                IsCompleted = r.IsCompleted ?? false,
                 PropertyId = r.Booking?.PropertyId,
                 PropertyName = r.Booking?.Property?.Name,
                 PropertyCity = r.Booking?.Property?.City,

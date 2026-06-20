@@ -35,6 +35,13 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpPost("users/{id}/toggle-block")]
+        public async Task<IActionResult> ToggleUserBlock(long id)
+        {
+            var result = await _mediator.Send(new ToggleUserBlockCommand { UserId = id });
+            return Ok(result);
+        }
+
 
 
         [HttpGet("franchise/applications")]
@@ -130,7 +137,33 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("bookings")]
+        public async Task<IActionResult> GetAllAdminBookings()
+        {
+            var result = await _mediator.Send(new GetAllAdminBookingsQuery());
+            return Ok(result);
+        }
 
+        [HttpGet("partners")]
+        public async Task<IActionResult> GetAllPartners()
+        {
+            var result = await _mediator.Send(new GetAllPartnersQuery());
+            return Ok(result);
+        }
+
+        [HttpGet("partners/garages/{id}")]
+        public async Task<IActionResult> GetPartnerGarageDetail(long id)
+        {
+            var result = await _mediator.Send(new GetPartnerGarageDetailQuery { Id = id });
+            return Ok(result);
+        }
+
+        [HttpGet("partners/service-centers/{id}")]
+        public async Task<IActionResult> GetPartnerServiceCenterDetail(long id)
+        {
+            var result = await _mediator.Send(new GetPartnerServiceCenterDetailQuery { Id = id });
+            return Ok(result);
+        }
 
         private long GetUserId()
         {

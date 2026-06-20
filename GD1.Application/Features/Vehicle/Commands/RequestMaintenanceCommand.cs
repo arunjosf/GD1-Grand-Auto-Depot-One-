@@ -58,12 +58,12 @@ namespace GD1.Application.Features.Vehicle.Commands
                 return BaseResponse<string>.Fail("No lot manager assigned to this property.");
 
             // Check if there is already a pending weekly check
-            var pendingWeeklyTasks = await _taskRepo.FindAsync(t => t.VehicleId == request.VehicleId && t.Status == MaintenanceTaskStatus.Pending && t.Type == MaintenanceTaskType.WeeklyConditionCheck);
+            var pendingWeeklyTasks = await _taskRepo.FindAsync(t => t.BookingId == activeBooking.Id && t.Status == MaintenanceTaskStatus.Pending && t.Type == MaintenanceTaskType.WeeklyConditionCheck);
             if (pendingWeeklyTasks.Any())
                 return BaseResponse<string>.Fail("A weekly report update will be completed shortly. On-demand image request cancelled.");
 
             // Check if there is already a pending request
-            var pendingTasks = await _taskRepo.FindAsync(t => t.VehicleId == request.VehicleId && t.Status == MaintenanceTaskStatus.Pending && t.Type == MaintenanceTaskType.OnDemandImage);
+            var pendingTasks = await _taskRepo.FindAsync(t => t.BookingId == activeBooking.Id && t.Status == MaintenanceTaskStatus.Pending && t.Type == MaintenanceTaskType.OnDemandImage);
             if (pendingTasks.Any())
                 return BaseResponse<string>.Fail("You already have an image update request pending.");
 

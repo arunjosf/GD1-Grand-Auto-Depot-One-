@@ -17,6 +17,7 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public UserRole Role { get; set; }
         public string RoleName => Role.ToString();
         public bool IsActive { get; set; }
+        public bool HasActiveBooking { get; set; }
         public DateTime CreatedAt { get; set; }
         
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]

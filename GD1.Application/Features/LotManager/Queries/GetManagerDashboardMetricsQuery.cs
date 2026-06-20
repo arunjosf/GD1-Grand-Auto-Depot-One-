@@ -54,6 +54,8 @@ namespace GD1.Application.Features.LotManager.Queries
         public string ImageUrl { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public System.DateTime StoredSince { get; set; }
+        public System.DateTime EndDate { get; set; }
+        public string BookingStatus { get; set; } = string.Empty;
         public bool HasPendingOnDemandRequest { get; set; }
     }
 
@@ -68,6 +70,10 @@ namespace GD1.Application.Features.LotManager.Queries
         public string Category { get; set; } = string.Empty;
         public DateTime? LastOnDemandImageDate { get; set; }
         public DateTime? LastServiceReportDate { get; set; }
+        public decimal? LastServiceCost { get; set; }
+        public string? LastServiceNotes { get; set; }
+        public string? LastServiceCenterName { get; set; }
+        public string? LastServiceBillUrl { get; set; }
         public string VerificationStatus { get; set; } = string.Empty;
         public decimal PricePerDay { get; set; }
         public bool HasServiceRecommendation { get; set; }
@@ -92,7 +98,7 @@ namespace GD1.Application.Features.LotManager.Queries
 
         [System.Text.Json.Serialization.JsonIgnoreAttribute(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public GD1.Application.Features.LotBooking.DTOs.ConditionReportDto? RecentOnDemandImages =>
-            string.IsNullOrEmpty(OnDemandFrontImageUrl) ? null : new GD1.Application.Features.LotBooking.DTOs.ConditionReportDto
+            (string.IsNullOrEmpty(OnDemandFrontImageUrl) && string.IsNullOrEmpty(OnDemandRearImageUrl) && string.IsNullOrEmpty(OnDemandLeftSideImageUrl) && string.IsNullOrEmpty(OnDemandRightSideImageUrl) && string.IsNullOrEmpty(OnDemandInteriorImageUrl) && string.IsNullOrEmpty(OnDemandOdometerImageUrl)) ? null : new GD1.Application.Features.LotBooking.DTOs.ConditionReportDto
             {
                 FrontImageUrl = string.IsNullOrWhiteSpace(OnDemandFrontImageUrl) ? null : OnDemandFrontImageUrl,
                 RearImageUrl = string.IsNullOrWhiteSpace(OnDemandRearImageUrl) ? null : OnDemandRearImageUrl,

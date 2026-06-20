@@ -52,7 +52,9 @@ namespace GD1.Application.Features.LotManager.Queries
                 Type = t.Type,
                 RequestedAt = t.RequestedAt,
                 RemainingDays = t.Booking != null ? (int)(t.Booking.EndDate - DateTime.UtcNow).TotalDays : 0,
-                ImageUrl = t.Vehicle?.Images?.OrderByDescending(x => x.Id).FirstOrDefault()?.ImageUrl ?? string.Empty
+                ImageUrl = t.Vehicle?.Images?.Where(x => x.Label != null && x.Label.Equals("Front", StringComparison.OrdinalIgnoreCase)).FirstOrDefault()?.ImageUrl 
+                           ?? t.Vehicle?.Images?.OrderByDescending(x => x.Id).FirstOrDefault()?.ImageUrl 
+                           ?? string.Empty
             }).OrderBy(t => t.RequestedAt).ToList();
 
             return BaseResponse<IEnumerable<PendingTaskDto>>.Ok(dtos);
