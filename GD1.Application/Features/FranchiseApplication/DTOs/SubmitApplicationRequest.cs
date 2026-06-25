@@ -48,7 +48,6 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         [RegularExpression(@"^\d{6}$", ErrorMessage = "Postal Code must be exactly 6 digits.")]
         public string PostalCode { get; set; } = string.Empty;
 
-        [Range(1, double.MaxValue, ErrorMessage = "Price per day must be greater than 0.")]
         public decimal PricePerDay { get; set; }
 
         public double? Latitude { get; set; }
@@ -72,8 +71,16 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public bool HasWorkshop { get; set; }
         public bool HasWashingArea { get; set; }
 
-        [MinLength(1, ErrorMessage = "At least one garage (slot) is required.")]
         public List<GarageSlotRequest> Slots { get; set; } = [];
+
+        [Required(ErrorMessage = "Razorpay payment is required.")]
+        public string RazorpayOrderId { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Razorpay payment ID is required.")]
+        public string RazorpayPaymentId { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Razorpay signature is required.")]
+        public string RazorpaySignature { get; set; } = string.Empty;
     }
 
     public class GarageSlotRequest

@@ -29,7 +29,7 @@ namespace GD1.Infrastructure.Repositories
                 SELECT * FROM FranchiseApplications WHERE Id = @Id;
                 SELECT * FROM FranchiseSlots WHERE ApplicationId = @Id;
                 SELECT * FROM PropertyImages WHERE ApplicationId = @Id;
-                SELECT a.*, u.FullName as AgentName 
+                SELECT a.*, u.FullName as AgentName, u.PhoneNumber as AgentPhone 
                 FROM InspectionAssignments a 
                 LEFT JOIN Users u ON a.AgentId = u.Id
                 WHERE a.ApplicationId = @Id;";
@@ -128,14 +128,20 @@ namespace GD1.Infrastructure.Repositories
 
         public async Task<IEnumerable<UserListDto>> GetNearbyAgentsAsync(double lat, double lon)
         {
-            // Simple bounding box or distance calculation using SQL
             const string sql = @"
-                SELECT u.Id, u.FullName, u.Email, u.PhoneNumber, u.Role, u.IsActive, u.CreatedAt
-                FROM GD1Agents a
-                JOIN Users u ON a.Id = u.Id
-                WHERE a.IsVerified = 1 
-                AND a.Latitude IS NOT NULL AND a.Longitude IS NOT NULL
-                ORDER BY (ABS(a.Latitude - @Lat) + ABS(a.Longitude - @Lon)) ASC";
+                SELECT * FROM (
+                    SELECT u.Id, u.FullName, u.Email, u.PhoneNumber, u.Role, u.IsActive, u.CreatedAt, u.AvatarUrl, a.City,
+                           (6371 * acos(cos(radians(@Lat)) * cos(radians(a.Latitude)) * cos(radians(a.Longitude) - radians(@Lon)) + sin(radians(@Lat)) * sin(radians(a.Latitude)))) AS DistanceKm,
+                           (SELECT STRING_AGG(CONVERT(VARCHAR, ia.ScheduledDate, 23), ',') 
+                            FROM InspectionAssignments ia 
+                            WHERE ia.AgentId = a.Id AND ia.Status IN ('Assigned', 'InProgress')) AS BookedDates
+                    FROM GD1Agents a
+                    JOIN Users u ON a.Id = u.Id
+                    WHERE a.IsVerified = 1 
+                    AND a.Latitude IS NOT NULL AND a.Longitude IS NOT NULL
+                ) AS NearbyAgents
+                WHERE DistanceKm <= 30
+                ORDER BY DistanceKm ASC";
 
             using var db = CreateConnection();
             return await db.QueryAsync<UserListDto>(sql, new { Lat = lat, Lon = lon });
@@ -144,7 +150,7 @@ namespace GD1.Infrastructure.Repositories
         public async Task<IEnumerable<UserListDto>> GetAllAgentsAsync(bool verifiedOnly, string? city, string? state)
         {
             var sql = @"
-                SELECT u.Id, u.FullName, u.Email, u.PhoneNumber, u.Role, u.IsActive, u.CreatedAt
+                SELECT u.Id, u.FullName, u.Email, u.PhoneNumber, u.Role, u.IsActive, u.CreatedAt, u.AvatarUrl, a.City
                 FROM GD1Agents a
                 JOIN Users u ON a.Id = u.Id
                 WHERE 1=1";
@@ -156,5 +162,52 @@ namespace GD1.Infrastructure.Repositories
             using var db = CreateConnection();
             return await db.QueryAsync<UserListDto>(sql, new { City = city, State = state });
         }
+
+        public async Task<IEnumerable<ApplicationDto>> GetAgentAssignedApplicationsAsync(long agentId)
+        {
+            const string sql = @"
+                SELECT DISTINCT f.*
+                FROM FranchiseApplications f
+                JOIN InspectionAssignments ia ON f.Id = ia.ApplicationId
+                WHERE ia.AgentId = @AgentId
+                ORDER BY f.CreatedAt DESC";
+
+            using var db = CreateConnection();
+            var apps = (await db.QueryAsync<ApplicationDto>(sql, new { AgentId = agentId })).ToList();
+
+            foreach (var app in apps)
+            {
+                const string slotSql = "SELECT * FROM FranchiseSlots WHERE ApplicationId = @AppId";
+                app.Slots = (await db.QueryAsync<FranchiseSlotDto>(slotSql, new { AppId = app.Id })).ToList();
+
+                const string imgSql = "SELECT TOP 1 ImageUrl FROM PropertyImages WHERE ApplicationId = @AppId AND IsMain = 1";
+                app.FrontImageUrl = await db.QueryFirstOrDefaultAsync<string>(imgSql, new { AppId = app.Id }) ?? "";
+
+                const string assignSql = @"
+                    SELECT a.Id, a.ScheduledDate, a.Status
+                    FROM InspectionAssignments a
+                    WHERE a.ApplicationId = @AppId AND a.AgentId = @AgentId
+                    ORDER BY a.CreatedAt ASC";
+                app.Assignments = (await db.QueryAsync<InspectionAssignmentDto>(assignSql, new { AppId = app.Id, AgentId = agentId })).ToList();
+
+                foreach (var assign in app.Assignments)
+                {
+                    const string reportSql = "SELECT * FROM InspectionReports WHERE AssignmentId = @AssignId";
+                    assign.Report = await db.QuerySingleOrDefaultAsync<FranchiseInspectionReportDto>(reportSql, new { AssignId = assign.Id });
+                    
+                    if (assign.Report != null)
+                    {
+                        const string slotVerSql = "SELECT * FROM InspectionSlotItems WHERE ReportId = @ReportId";
+                        assign.Report.SlotVerifications = (await db.QueryAsync<InspectionSlotVerificationDto>(slotVerSql, new { ReportId = assign.Report.Id })).ToList();
+                        
+                        const string agentImgSql = "SELECT * FROM PropertyImages WHERE ApplicationId = @AppId AND UploadedBy = 'Agent'";
+                        assign.Report.SiteImages = (await db.QueryAsync<PropertyImageDto>(agentImgSql, new { AppId = app.Id })).ToList();
+                    }
+                }
+            }
+
+            return apps;
+        }
     }
 }
+

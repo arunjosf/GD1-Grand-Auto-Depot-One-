@@ -774,5 +774,35 @@ namespace GD1.Infrastructure.Repositories
             
             return data;
         }
+
+        public async Task<IEnumerable<GD1.Application.Features.LotManager.Queries.SelfDropDto>> GetLotOwnerSelfDropsAsync(long lotOwnerId, bool isCompleted)
+        {
+            string statusFilter = isCompleted ? "IN (2, 3)" : "IN (1)"; // 1 = Confirmed, 2 = InLot, 3 = Completed
+            var sql = $@"
+                SELECT 
+                    b.Id as BookingId,
+                    o.FullName as CustomerName,
+                    v.Brand as VehicleBrand,
+                    v.Model as VehicleModel,
+                    v.RegistrationNo,
+                    b.StartDate,
+                    b.EndDate,
+                    CASE b.Status
+                        WHEN 1 THEN 'Confirmed'
+                        WHEN 2 THEN 'InLot'
+                        WHEN 3 THEN 'Completed'
+                        ELSE 'Unknown'
+                    END as Status,
+                    vi.ImageUrl as VehicleImage
+                FROM VehicleStorageProperties p
+                INNER JOIN Bookings b ON p.Id = b.PropertyId
+                INNER JOIN Vehicles v ON b.VehicleId = v.Id
+                INNER JOIN Users o ON b.OwnerId = o.Id
+                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND UploadedBy = 'Owner' AND EventId IS NULL ORDER BY Id ASC) vi
+                WHERE p.LotOwnerId = @LotOwnerId AND b.IsPickupRequested = 0 AND b.Status {statusFilter}
+                ORDER BY b.StartDate ASC
+            ";
+            return await _db.QueryAsync<GD1.Application.Features.LotManager.Queries.SelfDropDto>(sql, new { LotOwnerId = lotOwnerId });
+        }
     }
 }

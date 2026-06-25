@@ -12,10 +12,12 @@ namespace GD1.Api.Controllers
     public class ServiceCenterController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly GD1.Application.Common.Interfaces.IPaymentService _paymentService;
 
-        public ServiceCenterController(IMediator mediator)
+        public ServiceCenterController(IMediator mediator, GD1.Application.Common.Interfaces.IPaymentService paymentService)
         {
             _mediator = mediator;
+            _paymentService = paymentService;
         }
 
         [HttpGet("proxy-pdf")]
@@ -69,6 +71,16 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpPost("create-application-order")]
+        [Authorize]
+        public async Task<IActionResult> CreateApplicationOrder()
+        {
+            // Application fee is 12,000 INR for Service Centers
+            var (orderId, _) = await _paymentService.CreateStandardOrderAsync(
+                $"sc_app_{GetUserId()}_{DateTime.UtcNow.Ticks}", 12000m);
+            return Ok(new { orderId });
+        }
+
         [HttpPost("apply")]
         [Authorize]
         public async Task<IActionResult> Apply([FromBody] SubmitServiceCenterRequest req)
@@ -86,10 +98,12 @@ namespace GD1.Api.Controllers
                 State = req.State,
                 Country = req.Country,
                 PostalCode = req.PostalCode,
-                OemCertificateUrl = req.OemCertificateUrl,
-                SupportedBrands = req.SupportedBrands,
+                BusinessRegistrationUrl = req.BusinessRegistrationUrl,
                 OwnerIdProofUrl = req.OwnerIdProofUrl,
-                Images = req.Images
+                Images = req.Images,
+                RazorpayPaymentId = req.RazorpayPaymentId,
+                RazorpayOrderId = req.RazorpayOrderId,
+                RazorpaySignature = req.RazorpaySignature
             });
             return Ok(result);
         }
@@ -142,6 +156,29 @@ namespace GD1.Api.Controllers
                 CompletionNotes = req.CompletionNotes ?? "",
                 BillFile = req.BillFile,
                 Amount = req.Amount
+            });
+            return Ok(result);
+        }
+
+        [HttpGet("my-applications")]
+        [Authorize]
+        public async Task<IActionResult> GetMyApplications()
+        {
+            var result = await _mediator.Send(new GD1.Application.Features.ServiceCenter.Queries.GetMyServiceCenterApplicationsQuery
+            {
+                ApplicantId = GetUserId()
+            });
+            return Ok(result);
+        }
+
+        [HttpPost("applications/{id}/cancel")]
+        [Authorize]
+        public async Task<IActionResult> CancelApplication(long id)
+        {
+            var result = await _mediator.Send(new GD1.Application.Features.ServiceCenter.Commands.CancelMyServiceCenterApplicationCommand
+            {
+                ApplicationId = id,
+                ApplicantId = GetUserId()
             });
             return Ok(result);
         }
@@ -292,10 +329,12 @@ namespace GD1.Api.Controllers
         public string State { get; set; } = string.Empty;
         public string Country { get; set; } = "India";
         public string? PostalCode { get; set; }
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
+        public string? BusinessRegistrationUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public List<string> Images { get; set; } = new List<string>();
+        public string? RazorpayPaymentId { get; set; }
+        public string? RazorpayOrderId { get; set; }
+        public string? RazorpaySignature { get; set; }
     }
 
 

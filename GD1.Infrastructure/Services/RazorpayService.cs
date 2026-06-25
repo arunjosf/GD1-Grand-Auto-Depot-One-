@@ -61,7 +61,44 @@ namespace GD1.Infrastructure.Services
 
             Order order = _client.Order.Create(options);
             string createdOrderId = order["id"].ToString() ?? string.Empty;
-            return Task.FromResult((createdOrderId, amountInInr));
+            return Task.FromResult<(string orderId, decimal amount)>((createdOrderId, amountInInr));
+        }
+
+        public Task<(string orderId, decimal amount)> CreateStandardOrderAsync(string receiptId, decimal amountInInr)
+        {
+            if (_client == null)
+                throw new System.Exception("Razorpay is not configured.");
+
+            int amountInPaise = (int)(amountInInr * 100);
+            Dictionary<string, object> options = new Dictionary<string, object>
+            {
+                { "amount", amountInPaise },
+                { "currency", "INR" },
+                { "receipt", receiptId }
+            };
+
+            Order order = _client.Order.Create(options);
+            return Task.FromResult<(string orderId, decimal amount)>((order["id"].ToString() ?? string.Empty, amountInInr));
+        }
+
+        public Task<(bool IsSuccess, string RefundId)> RefundPaymentAsync(string paymentId, decimal amountInInr)
+        {
+            if (_client == null)
+                throw new System.Exception("Razorpay is not configured.");
+
+            try
+            {
+                Dictionary<string, object> options = new Dictionary<string, object>();
+                options.Add("amount", (int)(amountInInr * 100));
+                Payment payment = _client.Payment.Fetch(paymentId);
+                Refund refund = payment.Refund(options);
+                string refundId = refund?["id"]?.ToString() ?? string.Empty;
+                return Task.FromResult((refund != null, refundId));
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Razorpay Refund Error: {ex.Message}", ex);
+            }
         }
 
         public bool VerifySignature(string orderId, string paymentId, string signature)

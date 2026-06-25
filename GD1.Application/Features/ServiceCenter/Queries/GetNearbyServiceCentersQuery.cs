@@ -33,7 +33,6 @@ namespace GD1.Application.Features.ServiceCenter.Queries
         public string PhoneNumber { get; set; } = string.Empty;
         public string AddressLine { get; set; } = string.Empty;
         public string City { get; set; } = string.Empty;
-        public string? SupportedBrands { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public double DistanceInKm { get; set; }
@@ -85,8 +84,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
             if (!string.IsNullOrEmpty(request.SearchText))
             {
                 var lowerSearch = request.SearchText.ToLower();
-                query = query.Where(sc => sc.Name.ToLower().Contains(lowerSearch) || 
-                                         (sc.SupportedBrands != null && sc.SupportedBrands.ToLower().Contains(lowerSearch)));
+                query = query.Where(sc => sc.Name.ToLower().Contains(lowerSearch));
             }
 
             var results = new List<NearbyServiceCenterDto>();
@@ -103,7 +101,6 @@ namespace GD1.Application.Features.ServiceCenter.Queries
                     PhoneNumber = sc.PhoneNumber,
                     AddressLine = sc.AddressLine,
                     City = sc.City,
-                    SupportedBrands = sc.SupportedBrands,
                     Latitude = sc.Latitude,
                     Longitude = sc.Longitude,
                     DistanceInKm = Math.Round(dist, 2)
@@ -118,8 +115,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
             if (results.Any())
             {
                 var top5 = results.Take(5).ToList();
-                var serializedStr = string.Join("\n", top5.Select(s => 
-                    $"- ID: {s.Id}, Name: {s.Name}, Distance: {s.DistanceInKm}km, Brands: {s.SupportedBrands}"));
+                var serializedStr = string.Join("\n", top5.Select(s => $"- ID: {s.Id}, Name: {s.Name}, Distance: {s.DistanceInKm}km"));
 
                 aiRec = await _geminiService.GetBestServiceCenterRecommendationAsync(serializedStr);
             }

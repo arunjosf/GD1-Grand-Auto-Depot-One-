@@ -21,6 +21,8 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public bool IsAiVerified { get; set; }
         public GD1.Domain.Entities.Enums.ApplicationType ApplicationType { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsRefunded { get; set; }
+        public string? RefundTransactionId { get; set; }
         
         public int SlotCount { get; set; }
     }

@@ -13,5 +13,6 @@ namespace GD1.Application.Interfaces.Repositories
         Task<IEnumerable<PendingAgentDto>> GetPendingAgentsAsync();
         Task<IEnumerable<UserListDto>> GetNearbyAgentsAsync(double lat, double lon);
         Task<IEnumerable<UserListDto>> GetAllAgentsAsync(bool verifiedOnly, string? city, string? state);
+        Task<IEnumerable<ApplicationDto>> GetAgentAssignedApplicationsAsync(long agentId);
     }
 }

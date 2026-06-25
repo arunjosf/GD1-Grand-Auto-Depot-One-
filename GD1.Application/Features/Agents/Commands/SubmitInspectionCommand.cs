@@ -3,6 +3,7 @@ using GD1.Application.Features.FranchiseApplication.DTOs;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Application.Interfaces.Services;
 using GD1.Domain.Entities;
+using GD1.Domain.Entities.Enums;
 using GD1.Domain.Interfaces;
 using MediatR;
 using System;
@@ -41,6 +42,7 @@ namespace GD1.Application.Features.Agents.Commands
         private readonly IGenericRepository<InspectionSlotItem> _slotItemRepo;
         private readonly IGenericRepository<PropertyImage> _imageRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
+        private readonly IGenericRepository<User> _userRepo;
         private readonly INotificationService _notifService;
 
         public SubmitInspectionCommandHandler(
@@ -49,6 +51,7 @@ namespace GD1.Application.Features.Agents.Commands
             IGenericRepository<InspectionSlotItem> slotItemRepo,
             IGenericRepository<PropertyImage> imageRepo,
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
+            IGenericRepository<User> userRepo,
             INotificationService notifService)
         {
             _assignRepo = assignRepo;
@@ -56,6 +59,7 @@ namespace GD1.Application.Features.Agents.Commands
             _slotItemRepo = slotItemRepo;
             _imageRepo = imageRepo;
             _appRepo = appRepo;
+            _userRepo = userRepo;
             _notifService = notifService;
         }
 
@@ -115,6 +119,19 @@ namespace GD1.Application.Features.Agents.Commands
                     actionType: "TrackApplication",
                     referenceId: application.Id
                 );
+                
+                // Push real-time notification to all GD1 Admins
+                var admins = await _userRepo.FindAsync(u => u.Role == UserRole.GD1Admin);
+                foreach (var admin in admins)
+                {
+                    await _notifService.SendAsync(
+                        userId: admin.Id,
+                        title: "Agent Inspection Submitted",
+                        body: $"An inspection report for {application.BusinessName} has been submitted by the assigned agent.",
+                        actionType: "ViewApplication",
+                        referenceId: application.Id
+                    );
+                }
             }
 
             return BaseResponse<string>.Ok(string.Empty, "Inspection report submitted.");

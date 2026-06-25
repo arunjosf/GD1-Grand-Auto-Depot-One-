@@ -28,10 +28,12 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
 
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
+        public string? BusinessRegistrationUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public System.Collections.Generic.List<string> Images { get; set; } = new System.Collections.Generic.List<string>();
+        public string? RazorpayPaymentId { get; set; }
+        public string? RazorpayOrderId { get; set; }
+        public string? RazorpaySignature { get; set; }
     }
 
     public class SubmitServiceCenterCommandHandler : IRequestHandler<SubmitServiceCenterCommand, BaseResponse<long>>
@@ -49,11 +51,11 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
 
         public async Task<BaseResponse<long>> Handle(SubmitServiceCenterCommand cmd, CancellationToken ct)
         {
-            if (string.IsNullOrEmpty(cmd.OemCertificateUrl))
-                return BaseResponse<long>.Fail("OEM Certificate is required for Service Centers.");
+            if (string.IsNullOrEmpty(cmd.BusinessRegistrationUrl))
+                return BaseResponse<long>.Fail("Business Registration is required for Service Centers.");
                 
-            if (cmd.Images == null || cmd.Images.Count == 0)
-                return BaseResponse<long>.Fail("At least one facility image is required.");
+            // if (cmd.Images == null || cmd.Images.Count == 0)
+            //     return BaseResponse<long>.Fail("At least one facility image is required.");
                 
             // Geocode if not provided
             if (!cmd.Latitude.HasValue || !cmd.Longitude.HasValue || (cmd.Latitude.Value == 0 && cmd.Longitude.Value == 0))
@@ -78,7 +80,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             var application = new GD1.Domain.Entities.ServiceCenterPartneringApplication
             {
                 ApplicantId = cmd.ApplicantId,
-                Name = !string.IsNullOrWhiteSpace(cmd.BusinessName) ? cmd.BusinessName : (cmd.SupportedBrands ?? "Authorized Service Center"),
+                Name = cmd.BusinessName ?? "Authorized Service Center",
                 OwnerName = cmd.OwnerName,
                 Email = cmd.ContactEmail,
                 PhoneNumber = cmd.PhoneNumber,
@@ -91,14 +93,17 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                 Latitude = cmd.Latitude,
                 Longitude = cmd.Longitude,
                 
-                OemCertificateUrl = cmd.OemCertificateUrl,
-                SupportedBrands = cmd.SupportedBrands,
+                BusinessRegistrationUrl = cmd.BusinessRegistrationUrl,
                 OwnerIdProofUrl = cmd.OwnerIdProofUrl,
                 Images = cmd.Images.Select(url => new GD1.Domain.Entities.ServiceCenterImage
                 {
                     ImageUrl = url,
                     CreatedAt = DateTime.UtcNow
                 }).ToList(),
+
+                FeeTransactionId = cmd.RazorpayPaymentId ?? string.Empty,
+                FeeStatus = string.IsNullOrEmpty(cmd.RazorpayPaymentId) ? "Pending" : "Paid",
+                ApplicationFee = 12000m,
 
                 Status = "PendingReview",
                 CreatedAt = DateTime.UtcNow

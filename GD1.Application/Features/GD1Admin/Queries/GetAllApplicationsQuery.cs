@@ -33,7 +33,9 @@ namespace GD1.Application.Features.GD1Admin.Queries
             var statusStr = query.Status?.ToString();
             var result = await _repo.GetAllApplicationsAsync(statusStr);
             
-            var adminDtos = result.Select(app => new ApplicationListDto
+            var adminDtos = result
+                .Where(app => app.ApplicationType == ApplicationType.Franchise)
+                .Select(app => new ApplicationListDto
             {
                 Id = app.Id,
                 ApplicationType = app.ApplicationType,
@@ -46,6 +48,8 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 Status = app.Status ?? FranchiseStatus.Pending,
                 IsAiVerified = app.IsAiVerified,
                 CreatedAt = app.CreatedAt,
+                IsRefunded = app.IsRefunded,
+                RefundTransactionId = app.RefundTransactionId,
                 PropertyFrontImageUrl = app.FrontImageUrl,
                 SlotCount = app.Slots.Count
             });

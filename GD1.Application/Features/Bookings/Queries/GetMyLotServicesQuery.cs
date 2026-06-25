@@ -98,7 +98,6 @@ namespace GD1.Application.Features.Bookings.Queries
                     State = r.ServiceCenter.State,
                     Latitude = r.ServiceCenter.Latitude,
                     Longitude = r.ServiceCenter.Longitude,
-                    SupportedBrands = r.ServiceCenter.SupportedBrands,
                     AverageRating = r.ServiceCenter.AverageRating
                 }
             }).ToList();

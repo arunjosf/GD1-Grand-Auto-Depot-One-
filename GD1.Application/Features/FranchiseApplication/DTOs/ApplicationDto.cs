@@ -20,8 +20,10 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public double? Longitude { get; set; }
         public GD1.Domain.Entities.Enums.FranchiseStatus? Status { get; set; }
 
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
+        public string? BusinessRegistrationUrl { get; set; }
+        public string? LicenseDocumentUrl { get; set; }
+        public string? OwnerIdProofUrl { get; set; }
+        public string? PropertyProofUrl { get; set; }
         public bool IsAiVerified { get; set; }
         public string? AdminNotes { get; set; }
         public decimal ApplicationFee { get; set; }
@@ -32,6 +34,8 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public string FrontImageUrl { get; set; } = string.Empty;
         public string? OtherImageUrls { get; set; } // Legacy or flattened
         public string FeeStatus { get; set; } = string.Empty;
+        public bool IsRefunded { get; set; }
+        public string? RefundTransactionId { get; set; }
 
         public bool HasCCTV { get; set; }
         public bool HasSecurity { get; set; }
@@ -91,6 +95,7 @@ namespace GD1.Application.Features.FranchiseApplication.DTOs
         public DateTime ScheduledDate { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? AgentName { get; set; }
+        public string? AgentPhone { get; set; }
         public FranchiseInspectionReportDto? Report { get; set; }
     }
 

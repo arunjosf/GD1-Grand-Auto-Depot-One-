@@ -8,6 +8,7 @@ namespace GD1.Application.Interfaces.Repositories
     {
         Task<ManagerDashboardMetricsDto> GetDashboardMetricsAsync(long managerId);
         Task<IEnumerable<ManagerPickupDto>> GetPickupsAsync(long managerId, bool isCompleted);
+        Task<IEnumerable<GD1.Application.Features.LotManager.Queries.SelfDropDto>> GetSelfDropsAsync(long managerId, bool isCompleted);
         Task<IEnumerable<ManagerVehicleDto>> GetVehiclesAsync(long managerId);
         Task<ManagerVehicleDetailDto> GetVehicleDetailAsync(long managerId, long vehicleId, long? bookingId = null);
     }

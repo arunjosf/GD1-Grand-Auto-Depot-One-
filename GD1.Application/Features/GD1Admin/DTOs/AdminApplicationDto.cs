@@ -27,6 +27,8 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public decimal ApplicationFee { get; set; }
         public decimal PricePerDay { get; set; }
         public string FeeStatus { get; set; } = string.Empty;
+        public bool IsRefunded { get; set; }
+        public string? RefundTransactionId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? PreferredInspectionDate { get; set; }
         
@@ -39,6 +41,11 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public string PropertyFrontImageUrl { get; set; } = string.Empty;
         public List<string> OtherImageUrls { get; set; } = [];
 
+        public string? BusinessRegistrationUrl { get; set; }
+        public string? LicenseDocumentUrl { get; set; }
+        public string? OwnerIdProofUrl { get; set; }
+        public string? PropertyProofUrl { get; set; }
+
         public AdminAgentSummaryDto? AssignedAgent { get; set; }
         public AdminInspectionReportDto? InspectionReport { get; set; }
 
@@ -47,8 +54,6 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         public List<InspectionAssignmentDto> Assignments { get; set; } = [];
 
         // Service Center Specific (Nullable)
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
     }
 
     public class AdminAgentSummaryDto

@@ -25,9 +25,16 @@ namespace GD1.Domain.Entities
         
         public string? AdminNotes { get; set; }
 
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
+        public string? BusinessRegistrationUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
+
+        public decimal ApplicationFee { get; set; } = 2000m;
+        public string FeeStatus { get; set; } = "Pending";
+        public string FeeTransactionId { get; set; } = string.Empty;
+        public DateTime? PreferredInspectionDate { get; set; }
+        public decimal PricePerDay { get; set; }
+        public bool IsAiVerified { get; set; } = false;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         public ICollection<ServiceCenterImage> Images { get; set; } = [];
     }

@@ -4,6 +4,7 @@ using GD1.Domain.Entities;
 using GD1.Domain.Entities.Enums;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Application.Interfaces.Services;
+using GD1.Application.Common.Interfaces;
 using MediatR;
 using System;
 using System.Collections.Generic;
@@ -30,6 +31,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<VehicleStorageSlot> _slotRepo;
         private readonly IGenericRepository<User> _userRepo;
         private readonly INotificationService _notificationService;
+        private readonly IPaymentService _paymentService;
 
         public UpdateApplicationStatusCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> repo,
@@ -38,7 +40,8 @@ namespace GD1.Application.Features.GD1Admin.Commands
             IGenericRepository<VehicleStorageProperty> propertyRepo,
             IGenericRepository<VehicleStorageSlot> slotRepo,
             IGenericRepository<User> userRepo,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IPaymentService paymentService)
         {
             _repo = repo;
             _assignRepo = assignRepo;
@@ -47,6 +50,7 @@ namespace GD1.Application.Features.GD1Admin.Commands
             _slotRepo = slotRepo;
             _userRepo = userRepo;
             _notificationService = notificationService;
+            _paymentService = paymentService;
         }
 
         public async Task<BaseResponse<string>> Handle(UpdateApplicationStatusCommand cmd, CancellationToken ct)
@@ -60,10 +64,12 @@ namespace GD1.Application.Features.GD1Admin.Commands
 
             if (targetStatus == FranchiseStatus.Approved)
             {
-                // Verify if inspection is completed
-                var assignments = await _assignRepo.FindAsync(a => a.ApplicationId == app.Id && a.Status == "Completed");
-                if (!assignments.Any())
-                    return BaseResponse<string>.Fail("Cannot approve without a completed inspection.");
+                if (app.ApplicationType == ApplicationType.Franchise)
+                {
+                    // Verify if inspection is completed
+                    var assignments = await _assignRepo.FindAsync(a => a.ApplicationId == app.Id && a.Status == "Completed");
+                    if (!assignments.Any())
+                        return BaseResponse<string>.Fail("Cannot approve Franchise without a completed inspection.");
 
                     // 1. Create Property (Franchise)
                     var storageProperty = new VehicleStorageProperty
@@ -118,6 +124,56 @@ namespace GD1.Application.Features.GD1Admin.Commands
 
                         await _userRepo.UpdateAsync(user);
                     }
+                } // End if Franchise
+                else if (app.ApplicationType == ApplicationType.ServiceCenter)
+                {
+                    // No property/slots to create for Service Center approval in this context
+                    var user = await _userRepo.GetByIdAsync(app.ApplicantId);
+                    if (user != null)
+                    {
+                        if (user.Role == UserRole.VehicleOwner)
+                            user.Role = UserRole.LotOwner;
+                        
+                        if (string.IsNullOrEmpty(user.PhoneNumber))
+                            user.PhoneNumber = app.PhoneNumber;
+
+                        await _userRepo.UpdateAsync(user);
+                    }
+                }
+            }
+            else if (targetStatus == FranchiseStatus.Rejected)
+            {
+                // Refund logic
+                if (!string.IsNullOrEmpty(app.FeeTransactionId))
+                {
+                    decimal refundAmount = 2000m;
+                    if (app.ApplicationType == ApplicationType.Franchise)
+                    {
+                        var hasInspection = await _assignRepo.FindAsync(a => a.ApplicationId == app.Id && a.Status == "Completed");
+                        if (hasInspection.Any())
+                        {
+                            refundAmount = 1000m;
+                        }
+                    }
+
+                    try
+                    {
+                        var refundResult = await _paymentService.RefundPaymentAsync(app.FeeTransactionId, refundAmount);
+                        if (!refundResult.IsSuccess)
+                        {
+                            cmd.AdminNotes += $" [Note: Automatic refund of ₹{refundAmount} failed due to invalid payment ID. Please process manually.]";
+                        }
+                        else
+                        {
+                            app.IsRefunded = true;
+                            app.RefundTransactionId = refundResult.RefundId;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        cmd.AdminNotes += $" [Note: Automatic refund error: {ex.Message}]";
+                    }
+                }
             }
 
             app.Status = targetStatus;

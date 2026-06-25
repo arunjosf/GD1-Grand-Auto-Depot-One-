@@ -22,19 +22,22 @@ namespace GD1.Application.Features.GD1Admin.Commands
         private readonly IGenericRepository<GD1.Domain.Entities.ServiceCenterImage> _imageRepo;
         private readonly IGenericRepository<GD1.Domain.Entities.User> _userRepo;
         private readonly GD1.Application.Interfaces.IEmailService _emailService;
+        private readonly GD1.Application.Common.Interfaces.IPaymentService _paymentService;
 
         public UpdateServiceCenterStatusCommandHandler(
             IGenericRepository<GD1.Domain.Entities.ServiceCenterPartneringApplication> appRepo,
             IGenericRepository<GD1.Domain.Entities.ServiceCenter> scRepo,
             IGenericRepository<GD1.Domain.Entities.ServiceCenterImage> imageRepo,
             IGenericRepository<GD1.Domain.Entities.User> userRepo,
-            GD1.Application.Interfaces.IEmailService emailService)
+            GD1.Application.Interfaces.IEmailService emailService,
+            GD1.Application.Common.Interfaces.IPaymentService paymentService)
         {
             _appRepo = appRepo;
             _scRepo = scRepo;
             _imageRepo = imageRepo;
             _userRepo = userRepo;
             _emailService = emailService;
+            _paymentService = paymentService;
         }
 
         public async Task<BaseResponse<long>> Handle(UpdateServiceCenterStatusCommand cmd, CancellationToken ct)
@@ -68,8 +71,6 @@ namespace GD1.Application.Features.GD1Admin.Commands
                     Latitude = app.Latitude,
                     Longitude = app.Longitude,
                     
-                    OemCertificateUrl = app.OemCertificateUrl,
-                    SupportedBrands = app.SupportedBrands,
                     OwnerIdProofUrl = app.OwnerIdProofUrl,
 
                     Status = "Approved",
@@ -107,6 +108,22 @@ namespace GD1.Application.Features.GD1Admin.Commands
             else if (cmd.Decision == GD1.Domain.Entities.Enums.ApplicationReviewDecision.Rejected)
             {
                 app.Status = "Rejected";
+
+                if (!string.IsNullOrEmpty(app.FeeTransactionId))
+                {
+                    try
+                    {
+                        var refundResult = await _paymentService.RefundPaymentAsync(app.FeeTransactionId, app.ApplicationFee);
+                        if (!refundResult.IsSuccess)
+                        {
+                            cmd.AdminNotes += $" [Note: Automatic refund of ₹{app.ApplicationFee} failed due to invalid payment ID. Please process manually.]";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        cmd.AdminNotes += $" [Note: Automatic refund error: {ex.Message}]";
+                    }
+                }
             }
             else
             {

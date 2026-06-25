@@ -40,7 +40,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
 
             if (!string.IsNullOrEmpty(query.Status))
             {
-                queryable = queryable.Where(a => a.Status.Equals(query.Status, System.StringComparison.OrdinalIgnoreCase));
+                queryable = queryable.Where(a => a.Status.ToString().Equals(query.Status, System.StringComparison.OrdinalIgnoreCase));
             }
 
             if (!string.IsNullOrEmpty(query.SearchTerm))
@@ -48,7 +48,6 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 var term = query.SearchTerm.ToLower();
                 queryable = queryable.Where(a =>
                     a.Name.ToLower().Contains(term) ||
-                    (a.SupportedBrands != null && a.SupportedBrands.ToLower().Contains(term)) ||
                     a.OwnerName.ToLower().Contains(term) ||
                     a.City.ToLower().Contains(term)
                 );
@@ -75,10 +74,8 @@ namespace GD1.Application.Features.GD1Admin.Queries
             {
                 string googleMapUrl = "";
 
-                if (!string.IsNullOrEmpty(sc.SupportedBrands))
                 {
                     var zipString = !string.IsNullOrEmpty(sc.PostalCode) ? $"+{sc.PostalCode}" : "";
-                    googleMapUrl = $"https://www.google.com/maps/search/{sc.SupportedBrands}+service+center{zipString}";
                 }
 
                 return new AdminServiceCenterApplicationDto
@@ -95,15 +92,14 @@ namespace GD1.Application.Features.GD1Admin.Queries
                     State = sc.State,
                     Country = sc.Country,
                     PostalCode = sc.PostalCode,
-                    Latitude = sc.Latitude ?? 0,
-                    Longitude = sc.Longitude ?? 0,
+                    Latitude = sc.Latitude,
+                    Longitude = sc.Longitude,
                     Status = sc.Status,
-                    IsVerified = false,
+                    IsVerified = sc.IsAiVerified,
                     AdminNotes = sc.AdminNotes,
                     CreatedAt = sc.CreatedAt,
-                    OemCertificateUrl = sc.OemCertificateUrl,
-                    SupportedBrands = sc.SupportedBrands,
                     OwnerIdProofUrl = sc.OwnerIdProofUrl,
+                    BusinessRegistrationUrl = sc.BusinessRegistrationUrl,
                     GoogleMapVerifyUrl = googleMapUrl,
                     Images = sc.Images?.Select(i => i.ImageUrl).ToList() ?? new System.Collections.Generic.List<string>()
                 };

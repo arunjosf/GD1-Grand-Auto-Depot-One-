@@ -18,6 +18,7 @@ namespace GD1.Application.Interfaces.Repositories
         Task<Dictionary<long, int>> GetOccupiedCountsAsync();
         Task<IEnumerable<BookingDto>> GetAllAsync();
         Task<IEnumerable<GD1.Application.Features.LotManager.Queries.ManagerVehicleDto>> GetLotOwnerVehiclesAsync(long lotOwnerId);
+        Task<IEnumerable<GD1.Application.Features.LotManager.Queries.SelfDropDto>> GetLotOwnerSelfDropsAsync(long lotOwnerId, bool isCompleted);
         Task<GD1.Application.Features.LotManager.Queries.ManagerVehicleDetailDto> GetLotOwnerVehicleDetailAsync(long lotOwnerId, long vehicleId, long? bookingId = null);
     }
 }

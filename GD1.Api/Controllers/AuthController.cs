@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace GD1.Api.Controllers
 {
@@ -127,6 +128,28 @@ namespace GD1.Api.Controllers
 
             if (user == null) return NotFound("User not found");
 
+            string businessName = "";
+            string businessLocation = "";
+
+            if (user.Role == GD1.Domain.Entities.Enums.UserRole.LotOwner)
+            {
+                var property = await db.VehicleStorageProperties.FirstOrDefaultAsync(p => p.LotOwnerId == userId);
+                if (property != null)
+                {
+                    businessName = property.Name;
+                    businessLocation = $"{property.City}, {property.State}";
+                }
+            }
+            else if (user.Role == GD1.Domain.Entities.Enums.UserRole.ServiceCenter)
+            {
+                var sc = await db.ServiceCenters.FirstOrDefaultAsync(s => s.AdminId == userId);
+                if (sc != null)
+                {
+                    businessName = sc.Name;
+                    businessLocation = $"{sc.City}, {sc.State}";
+                }
+            }
+
             return Ok(new
             {
                 userId = user.Id,
@@ -134,7 +157,9 @@ namespace GD1.Api.Controllers
                 fullName = user.FullName,
                 phoneNumber = user.PhoneNumber,
                 role = user.Role.ToString(),
-                roleId = (int)user.Role
+                roleId = (int)user.Role,
+                businessName,
+                businessLocation
             });
         }
 

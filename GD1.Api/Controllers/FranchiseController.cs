@@ -15,10 +15,23 @@ namespace GD1.Api.Controllers
     public class FranchiseController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly GD1.Application.Common.Interfaces.IPaymentService _paymentService;
+        private readonly GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.FranchiseApplication> _appRepo;
 
-        public FranchiseController(IMediator mediator)
+        public FranchiseController(IMediator mediator, GD1.Application.Common.Interfaces.IPaymentService paymentService, GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo)
         {
             _mediator = mediator;
+            _paymentService = paymentService;
+            _appRepo = appRepo;
+        }
+
+        [HttpPost("create-application-order")]
+        [Authorize]
+        public async Task<IActionResult> CreateApplicationOrder()
+        {
+            // Application fee is always 2000 INR
+            var (orderId, _) = await _paymentService.CreateStandardOrderAsync($"app_{GetUserId()}_{DateTime.UtcNow.Ticks}", 2000m);
+            return Ok(new { orderId });
         }
 
         [HttpPost("apply")]
@@ -50,6 +63,9 @@ namespace GD1.Api.Controllers
                 HasFireSafety = req.HasFireSafety,
                 HasWorkshop = req.HasWorkshop,
                 HasWashingArea = req.HasWashingArea,
+                RazorpayOrderId = req.RazorpayOrderId,
+                RazorpayPaymentId = req.RazorpayPaymentId,
+                RazorpaySignature = req.RazorpaySignature,
                 PropertyImages = new[] { req.FrontImageUrl }.Concat(req.OtherImageUrls ?? new List<string>()).Where(x => !string.IsNullOrEmpty(x)).ToList(),
                 Slots = req.Slots.Select(s => new FranchiseSlotRequest
                 {
@@ -83,6 +99,32 @@ namespace GD1.Api.Controllers
                 ApplicantId = GetUserId()
             });
             return Ok(result);
+        }
+
+        [HttpPost("applications/{id}/refund")]
+        [Authorize(Roles = "GD1Admin")]
+        public async Task<IActionResult> RefundApplicationFee(long id)
+        {
+            var application = await _appRepo.GetByIdAsync(id);
+            if (application == null) return NotFound("Application not found");
+            
+            if (application.FeeStatus == "Refunded" || application.Status == GD1.Domain.Entities.Enums.FranchiseStatus.Rejected)
+                return BadRequest("Application already refunded or rejected.");
+
+            if (!string.IsNullOrEmpty(application.FeeTransactionId))
+            {
+                var refundResult = await _paymentService.RefundPaymentAsync(application.FeeTransactionId, application.ApplicationFee);
+                if (!refundResult.IsSuccess)
+                {
+                    return BadRequest(new { message = "Application cancelled, but automatic refund failed." });
+                }
+            }
+
+            application.FeeStatus = "Refunded";
+            application.Status = GD1.Domain.Entities.Enums.FranchiseStatus.Rejected;
+            await _appRepo.UpdateAsync(application);
+
+            return Ok(new { success = true, message = "Application rejected and fee refunded." });
         }
 
         private long GetUserId()

@@ -3,6 +3,7 @@ using GD1.Application.Interfaces;
 using GD1.Application.Interfaces.Repositories;
 using GD1.Domain.Entities;
 using GD1.Domain.Interfaces;
+using GD1.Application.Common.Interfaces;
 using MediatR;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
         private readonly IGenericRepository<User> _userRepo;
         private readonly IEmailService _emailService;
         private readonly IGenericRepository<Notification> _notificationRepo;
+        private readonly IPaymentService _paymentService;
 
         public CancelMyApplicationCommandHandler(
             IGenericRepository<GD1.Domain.Entities.FranchiseApplication> appRepo,
@@ -33,7 +35,8 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             IGenericRepository<Agent> agentRepo,
             IGenericRepository<User> userRepo,
             IEmailService emailService,
-            IGenericRepository<Notification> notificationRepo)
+            IGenericRepository<Notification> notificationRepo,
+            IPaymentService paymentService)
         {
             _appRepo = appRepo;
             _assignRepo = assignRepo;
@@ -41,6 +44,7 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
             _userRepo = userRepo;
             _emailService = emailService;
             _notificationRepo = notificationRepo;
+            _paymentService = paymentService;
         }
 
         public async Task<BaseResponse<string>> Handle(CancelMyApplicationCommand cmd, CancellationToken ct)
@@ -76,9 +80,21 @@ namespace GD1.Application.Features.FranchiseApplication.Commands
                 }
             }
             
-            app.IsDeleted = true;
+            app.Status = GD1.Domain.Entities.Enums.FranchiseStatus.Cancelled;
             app.AdminNotes = "Cancelled by User.";
             app.UpdatedAt = DateTime.UtcNow;
+
+            if (!assignments.Any() && !string.IsNullOrEmpty(app.FeeTransactionId))
+            {
+                try
+                {
+                    await _paymentService.RefundPaymentAsync(app.FeeTransactionId, 2000);
+                }
+                catch
+                {
+                    // If refund fails, log it or handle it. We still mark as Cancelled.
+                }
+            }
             
             await _appRepo.UpdateAsync(app);
 

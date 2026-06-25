@@ -61,7 +61,6 @@ namespace GD1.Application.Features.ServiceCenter.Queries
                 State = sc.State,
                 Country = sc.Country,
                 PostalCode = sc.PostalCode,
-                SupportedBrands = sc.SupportedBrands,
                 Latitude = sc.Latitude,
                 Longitude = sc.Longitude,
                 DistanceKm = CalculateDistance(property.Latitude.Value, property.Longitude.Value, sc.Latitude.Value, sc.Longitude.Value),

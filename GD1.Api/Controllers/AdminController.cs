@@ -99,7 +99,7 @@ namespace GD1.Api.Controllers
         }
 
         [HttpPost("service-centers/{id}/update-status")]
-        public async Task<IActionResult> UpdateServiceCenterStatus(long id, [FromForm] UpdateSCStatusRequest req)
+        public async Task<IActionResult> UpdateServiceCenterStatus(long id, [FromBody] UpdateSCStatusRequest req)
         {
             var result = await _mediator.Send(new UpdateServiceCenterStatusCommand
             {

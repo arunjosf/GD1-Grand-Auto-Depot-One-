@@ -29,8 +29,7 @@ namespace GD1.Domain.Entities
         public bool IsVerified { get; set; } = false;
         public bool IsActive { get; set; } = true;
 
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
+        public string? BusinessRegistrationUrl { get; set; }
         public string OwnerName { get; set; } = string.Empty;
         public string? OwnerIdProofUrl { get; set; }
         public string? AdminNotes { get; set; }

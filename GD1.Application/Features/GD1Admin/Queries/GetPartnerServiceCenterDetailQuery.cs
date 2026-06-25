@@ -25,8 +25,6 @@ namespace GD1.Application.Features.GD1Admin.Queries
         public string? ImageUrl { get; set; }
         public int TotalBookings { get; set; }
 
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
         public string? OwnerIdProofUrl { get; set; }
     }
 
@@ -60,8 +58,6 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 PhoneNumber = serviceCenter.PhoneNumber,
                 ImageUrl = serviceCenter.Images?.OrderByDescending(x => x.Id).FirstOrDefault()?.ImageUrl,
                 TotalBookings = serviceRequests.Count(),
-                OemCertificateUrl = serviceCenter.OemCertificateUrl,
-                SupportedBrands = serviceCenter.SupportedBrands,
                 OwnerIdProofUrl = serviceCenter.OwnerIdProofUrl
             };
 

@@ -31,16 +31,14 @@ namespace GD1.Domain.Entities
         public string? LicenseDocumentUrl { get; set; }
         public string? OwnerIdProofUrl { get; set; }
         public string? PropertyProofUrl { get; set; }
-        
-        // Service Center fields
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
 
         public decimal PricePerDay { get; set; }
 
         public decimal ApplicationFee { get; set; } = 2000;
         public string FeeStatus { get; set; } = "Pending";
         public string? FeeTransactionId { get; set; }
+        public string? RefundTransactionId { get; set; }
+        public bool IsRefunded { get; set; }
 
         public FranchiseStatus Status { get; set; } = FranchiseStatus.Pending;
         public bool IsAiVerified { get; set; }

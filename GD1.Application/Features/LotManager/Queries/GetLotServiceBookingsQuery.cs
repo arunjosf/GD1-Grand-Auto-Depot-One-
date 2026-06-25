@@ -61,7 +61,6 @@ namespace GD1.Application.Features.LotManager.Queries
         public string State { get; set; } = string.Empty;
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
-        public string? SupportedBrands { get; set; }
         public decimal AverageRating { get; set; }
     }
 
@@ -143,7 +142,6 @@ namespace GD1.Application.Features.LotManager.Queries
                     State = r.ServiceCenter.State,
                     Latitude = r.ServiceCenter.Latitude,
                     Longitude = r.ServiceCenter.Longitude,
-                    SupportedBrands = r.ServiceCenter.SupportedBrands,
                     AverageRating = r.ServiceCenter.AverageRating
                 }
             }).OrderBy(x => x.ScheduledDate ?? DateTime.MaxValue).ToList();

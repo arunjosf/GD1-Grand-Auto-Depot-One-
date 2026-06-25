@@ -30,9 +30,8 @@ namespace GD1.Application.Features.GD1Admin.DTOs
         
         public DateTime CreatedAt { get; set; }
 
-        public string? OemCertificateUrl { get; set; }
-        public string? SupportedBrands { get; set; }
         public string? OwnerIdProofUrl { get; set; }
+        public string? BusinessRegistrationUrl { get; set; }
         
         public string? GoogleMapVerifyUrl { get; set; }
 
