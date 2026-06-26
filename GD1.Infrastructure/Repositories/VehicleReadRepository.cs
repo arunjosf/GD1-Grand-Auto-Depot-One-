@@ -61,7 +61,7 @@ namespace GD1.Infrastructure.Repositories
                                     .OrderByDescending(pr => pr.CreatedAt)
                                     .Select(pr => pr.Status.ToString())
                                     .FirstOrDefault(),
-                    JourneyEvents = v.Bookings.OrderByDescending(b => b.CreatedAt).Take(1)
+                    JourneyEvents = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot)
                                      .SelectMany(b => b.JourneyEvents)
                                      .OrderByDescending(e => e.CreatedAt)
                                      .Select(e => new VehicleJourneyEventDto

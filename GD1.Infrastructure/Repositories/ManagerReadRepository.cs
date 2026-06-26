@@ -242,7 +242,7 @@ namespace GD1.Infrastructure.Repositories
         }
         public async Task<IEnumerable<GD1.Application.Features.LotManager.Queries.SelfDropDto>> GetSelfDropsAsync(long managerId, bool isCompleted)
         {
-            string statusFilter = isCompleted ? "IN (2, 3)" : "IN (1)"; // 1 = Confirmed, 2 = InLot, 3 = Completed
+            string statusFilter = isCompleted ? "IN (2, 3)" : "IN (1, 4, 6, 14)"; // 1 = Confirmed, 2 = InLot, 3 = Completed
             var sql = $@"
                 SELECT 
                     b.Id as BookingId,
@@ -256,6 +256,9 @@ namespace GD1.Infrastructure.Repositories
                         WHEN 1 THEN 'Confirmed'
                         WHEN 2 THEN 'InLot'
                         WHEN 3 THEN 'Completed'
+                        WHEN 4 THEN 'Cancelled'
+                        WHEN 6 THEN 'AgreementDeclined'
+                        WHEN 14 THEN 'AdminRejected'
                         ELSE 'Unknown'
                     END as Status,
                     vi.ImageUrl as VehicleImage

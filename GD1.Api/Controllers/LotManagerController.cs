@@ -197,6 +197,34 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("self-drops")]
+        public async Task<IActionResult> GetManagerSelfDrops([FromQuery] bool isCompleted = false)
+        {
+            var result = await _mediator.Send(new GetManagerSelfDropsQuery { ManagerId = GetUserId(), IsCompleted = isCompleted });
+            return Ok(result);
+        }
+
+        [HttpGet("self-drops/{id}")]
+        public async Task<IActionResult> GetManagerSelfDropDetail(long id)
+        {
+            var result = await _mediator.Send(new GetSelfDropDetailQuery 
+            { 
+                BookingId = id, 
+                UserId = GetUserId(),
+                Role = GD1.Domain.Entities.Enums.UserRole.Manager
+            });
+            return Ok(result);
+        }
+
+        [HttpPost("self-drops/{id}/start-storing")]
+        public async Task<IActionResult> StartSelfDropStorage(long id, [FromBody] StartSelfDropStorageCommand command)
+        {
+            if (id != command.BookingId) return BadRequest("ID mismatch");
+            command.ManagerId = GetUserId();
+            var response = await _mediator.Send(command);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+
         [HttpGet("vehicles")]
         public async Task<IActionResult> GetManagerVehicles()
         {

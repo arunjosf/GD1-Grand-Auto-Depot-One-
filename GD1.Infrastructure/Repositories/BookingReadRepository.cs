@@ -777,7 +777,7 @@ namespace GD1.Infrastructure.Repositories
 
         public async Task<IEnumerable<GD1.Application.Features.LotManager.Queries.SelfDropDto>> GetLotOwnerSelfDropsAsync(long lotOwnerId, bool isCompleted)
         {
-            string statusFilter = isCompleted ? "IN (2, 3)" : "IN (1)"; // 1 = Confirmed, 2 = InLot, 3 = Completed
+            string statusFilter = isCompleted ? "IN (2, 3)" : "IN (1, 4, 6, 14)"; // 1 = Confirmed, 2 = InLot, 3 = Completed
             var sql = $@"
                 SELECT 
                     b.Id as BookingId,
@@ -791,6 +791,9 @@ namespace GD1.Infrastructure.Repositories
                         WHEN 1 THEN 'Confirmed'
                         WHEN 2 THEN 'InLot'
                         WHEN 3 THEN 'Completed'
+                        WHEN 4 THEN 'Cancelled'
+                        WHEN 6 THEN 'AgreementDeclined'
+                        WHEN 14 THEN 'AdminRejected'
                         ELSE 'Unknown'
                     END as Status,
                     vi.ImageUrl as VehicleImage
@@ -803,6 +806,51 @@ namespace GD1.Infrastructure.Repositories
                 ORDER BY b.StartDate ASC
             ";
             return await _db.QueryAsync<GD1.Application.Features.LotManager.Queries.SelfDropDto>(sql, new { LotOwnerId = lotOwnerId });
+        }
+
+        public async Task<GD1.Application.Features.LotManager.Queries.SelfDropDetailDto?> GetSelfDropDetailAsync(long bookingId, long userId, GD1.Domain.Entities.Enums.UserRole role)
+        {
+            // Authorization logic via SQL
+            string authJoin = "";
+            string authWhere = "";
+            if (role == GD1.Domain.Entities.Enums.UserRole.Manager)
+            {
+                authJoin = "INNER JOIN LotManagers lm ON b.PropertyId = lm.PropertyId AND lm.ManagerId = @UserId AND lm.IsActive = 1";
+            }
+            else if (role == GD1.Domain.Entities.Enums.UserRole.LotOwner)
+            {
+                authWhere = "AND p.LotOwnerId = @UserId";
+            }
+            else return null;
+
+            var sql = $@"
+                SELECT 
+                    b.Id AS BookingId,
+                    v.Brand AS VehicleBrand, v.Model AS VehicleModel, v.RegistrationNo,
+                    vi.ImageUrl AS VehicleImage,
+                    u.FullName AS CustomerName, u.PhoneNumber AS CustomerPhone, u.Email AS CustomerEmail,
+                    b.StartDate, b.EndDate,
+                    COALESCE(s.SlotNumber, 'Unassigned') AS SlotName,
+                    p.Name AS PropertyName,
+                    v.OwnerIdProofUrl, v.VehicleRcUrl,
+                    CASE b.Status WHEN 1 THEN 'Confirmed' WHEN 2 THEN 'InLot' WHEN 3 THEN 'Completed'
+                        WHEN 4 THEN 'Cancelled'
+                        WHEN 6 THEN 'AgreementDeclined'
+                        WHEN 14 THEN 'AdminRejected' ELSE 'Unknown' END AS Status,
+                    pv.FrontImageUrl, pv.RearImageUrl, pv.LeftSideImageUrl, pv.RightSideImageUrl, pv.InteriorImageUrl, pv.OdometerImageUrl,
+                    pv.ManagerRemarks, pv.VerifiedAt
+                FROM Bookings b
+                INNER JOIN Vehicles v ON b.VehicleId = v.Id
+                INNER JOIN Users u ON b.OwnerId = u.Id
+                INNER JOIN VehicleStorageProperties p ON b.PropertyId = p.Id
+                LEFT JOIN VehicleStorageSlots s ON b.SlotId = s.Id
+                LEFT JOIN PickupVerifications pv ON b.Id = pv.BookingId AND pv.Type = 1 -- LotArrival
+                {authJoin}
+                OUTER APPLY (SELECT TOP 1 ImageUrl FROM VehicleImages WHERE VehicleId = v.Id AND UploadedBy = 'Owner' AND EventId IS NULL ORDER BY Id ASC) vi
+                WHERE b.Id = @BookingId {authWhere}
+            ";
+
+            return await _db.QueryFirstOrDefaultAsync<GD1.Application.Features.LotManager.Queries.SelfDropDetailDto>(sql, new { BookingId = bookingId, UserId = userId });
         }
     }
 }

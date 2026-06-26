@@ -59,6 +59,33 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("self-drops")]
+        public async Task<IActionResult> GetLotOwnerSelfDrops([FromQuery] bool isCompleted = false)
+        {
+            var userIdClaim = User.FindFirst("userId")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out var userId))
+                return Unauthorized("User ID not found in token.");
+
+            var result = await _mediator.Send(new GetLotOwnerSelfDropsQuery { LotOwnerId = userId, IsCompleted = isCompleted });
+            return Ok(result);
+        }
+
+        [HttpGet("self-drops/{id}")]
+        public async Task<IActionResult> GetLotOwnerSelfDropDetail(long id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out var userId))
+                return Unauthorized("User ID not found in token.");
+
+            var result = await _mediator.Send(new GD1.Application.Features.LotManager.Queries.GetSelfDropDetailQuery 
+            { 
+                BookingId = id, 
+                UserId = userId,
+                Role = GD1.Domain.Entities.Enums.UserRole.LotOwner
+            });
+            return Ok(result);
+        }
+
         [HttpGet("vehicles/{id}")]
         public async Task<IActionResult> GetVehicleDetail(long id, [FromQuery] long? bookingId)
         {

@@ -45,13 +45,7 @@ namespace GD1.Application.Features.Vehicle.Commands
             var activeBooking = bookings.FirstOrDefault();
 
             if (activeBooking == null)
-            {
-                // Fallback check if it's stored via PickupStatus
-                var pickupBookings = await _bookingRepo.FindAsync(b => b.VehicleId == request.VehicleId, "Property.Managers");
-                activeBooking = pickupBookings.FirstOrDefault();
-                if (activeBooking == null)
-                    return BaseResponse<string>.Fail("Vehicle is not currently actively stored at any lot.");
-            }
+                return BaseResponse<string>.Fail("Vehicle is not currently actively stored at any lot.");
 
             var manager = activeBooking.Property?.Managers?.FirstOrDefault();
             if (manager == null)

@@ -20,5 +20,6 @@ namespace GD1.Application.Interfaces.Repositories
         Task<IEnumerable<GD1.Application.Features.LotManager.Queries.ManagerVehicleDto>> GetLotOwnerVehiclesAsync(long lotOwnerId);
         Task<IEnumerable<GD1.Application.Features.LotManager.Queries.SelfDropDto>> GetLotOwnerSelfDropsAsync(long lotOwnerId, bool isCompleted);
         Task<GD1.Application.Features.LotManager.Queries.ManagerVehicleDetailDto> GetLotOwnerVehicleDetailAsync(long lotOwnerId, long vehicleId, long? bookingId = null);
+        Task<GD1.Application.Features.LotManager.Queries.SelfDropDetailDto?> GetSelfDropDetailAsync(long bookingId, long userId, GD1.Domain.Entities.Enums.UserRole role);
     }
 }
