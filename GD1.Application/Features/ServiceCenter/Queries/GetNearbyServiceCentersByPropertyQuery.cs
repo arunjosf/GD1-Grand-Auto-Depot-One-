@@ -41,7 +41,7 @@ namespace GD1.Application.Features.ServiceCenter.Queries
             }
 
             var allCenters = await _scRepo.GetAllAsync();
-            var approvedCenters = allCenters.Where(sc => sc.Status == "Approved");
+            var approvedCenters = allCenters.Where(sc => sc.Status == "Approved" && !sc.IsHidden && !sc.IsBlocked);
 
             var allImages = await _imageRepo.GetAllAsync();
 

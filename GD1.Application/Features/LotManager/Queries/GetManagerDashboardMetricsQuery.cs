@@ -2,6 +2,7 @@ using GD1.Application.Common;
 using GD1.Application.Interfaces.Repositories;
 using MediatR;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ namespace GD1.Application.Features.LotManager.Queries
         public int UpcomingServicesCount { get; set; }
         public int PendingOnDemandCount { get; set; }
         public int PendingWeeklyCount { get; set; }
+        public bool IsPropertyHidden { get; set; }
         public List<PerformanceGraphItemDto> PerformanceGraphData { get; set; } = new();
     }
 
@@ -68,8 +70,8 @@ namespace GD1.Application.Features.LotManager.Queries
         public string LotOwnerName { get; set; } = string.Empty;
         public string LotOwnerPhone { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
-        public DateTime? LastOnDemandImageDate { get; set; }
-        public DateTime? LastServiceReportDate { get; set; }
+        public System.DateTime? LastOnDemandImageDate { get; set; }
+        public System.DateTime? LastServiceReportDate { get; set; }
         public decimal? LastServiceCost { get; set; }
         public string? LastServiceNotes { get; set; }
         public string? LastServiceCenterName { get; set; }
@@ -124,11 +126,33 @@ namespace GD1.Application.Features.LotManager.Queries
     public class GetManagerDashboardMetricsQueryHandler : IRequestHandler<GetManagerDashboardMetricsQuery, BaseResponse<ManagerDashboardMetricsDto>>
     {
         private readonly IManagerReadRepository _repo;
-        public GetManagerDashboardMetricsQueryHandler(IManagerReadRepository repo) => _repo = repo;
+        private readonly GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.LotManager> _managerRepo;
+        private readonly GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.VehicleStorageProperty> _propertyRepo;
+
+        public GetManagerDashboardMetricsQueryHandler(
+            IManagerReadRepository repo,
+            GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.LotManager> managerRepo,
+            GD1.Domain.Interfaces.IGenericRepository<GD1.Domain.Entities.VehicleStorageProperty> propertyRepo)
+        {
+            _repo = repo;
+            _managerRepo = managerRepo;
+            _propertyRepo = propertyRepo;
+        }
 
         public async Task<BaseResponse<ManagerDashboardMetricsDto>> Handle(GetManagerDashboardMetricsQuery request, CancellationToken cancellationToken)
         {
             var data = await _repo.GetDashboardMetricsAsync(request.ManagerId);
+            
+            var manager = await _managerRepo.GetByIdAsync(request.ManagerId);
+            if (manager != null)
+            {
+                var property = await _propertyRepo.GetByIdAsync(manager.PropertyId);
+                if (property != null)
+                {
+                    data.IsPropertyHidden = property.IsHidden;
+                }
+            }
+
             return BaseResponse<ManagerDashboardMetricsDto>.Ok(data);
         }
     }

@@ -448,6 +448,32 @@ namespace GD1.Infrastructure.Services
                     throw new UnauthorizedAccessException("Your manager account is pending approval from your lot owner.");
             }
 
+            // Block users whose properties are blocked by admin
+            if (user.Role == UserRole.LotOwner)
+            {
+                var properties = await _db.VehicleStorageProperties.Where(p => p.LotOwnerId == user.Id).ToListAsync();
+                if (properties.Any() && properties.All(p => p.IsBlocked))
+                {
+                    throw new UnauthorizedAccessException("Your account is blocked by the administrator.");
+                }
+            }
+            if (user.Role == UserRole.Manager)
+            {
+                var managers = await _db.LotManagers.Include(m => m.Property).Where(m => m.ManagerId == user.Id).ToListAsync();
+                if (managers.Any() && managers.All(m => m.Property.IsBlocked))
+                {
+                    throw new UnauthorizedAccessException("Your account is blocked by the administrator.");
+                }
+            }
+            if (user.Role == UserRole.ServiceCenter)
+            {
+                var centers = await _db.ServiceCenters.Where(s => s.AdminId == user.Id).ToListAsync();
+                if (centers.Any() && centers.All(c => c.IsBlocked))
+                {
+                    throw new UnauthorizedAccessException("Your account is blocked by the administrator.");
+                }
+            }
+
             var accessToken = GenerateAccessToken(user);
             var refreshToken = await SaveRefreshTokenAsync(user.Id);
 

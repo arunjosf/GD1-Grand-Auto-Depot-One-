@@ -28,6 +28,8 @@ namespace GD1.Domain.Entities
         public decimal AverageRating { get; set; }
         public bool IsVerified { get; set; } = false;
         public bool IsActive { get; set; } = true;
+        public bool IsHidden { get; set; } = false;
+        public bool IsBlocked { get; set; } = false;
 
         public string? BusinessRegistrationUrl { get; set; }
         public string OwnerName { get; set; } = string.Empty;

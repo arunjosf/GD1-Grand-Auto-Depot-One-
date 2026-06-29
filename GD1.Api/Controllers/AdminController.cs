@@ -165,6 +165,20 @@ namespace GD1.Api.Controllers
             return Ok(result);
         }
 
+        [HttpPost("partners/garages/{id}/toggle-status")]
+        public async Task<IActionResult> ToggleGarageStatus(long id, [FromBody] ToggleStatusRequest req)
+        {
+            var result = await _mediator.Send(new ToggleGarageStatusCommand { GarageId = id, ActionType = req.ActionType });
+            return Ok(result);
+        }
+
+        [HttpPost("partners/service-centers/{id}/toggle-status")]
+        public async Task<IActionResult> ToggleServiceCenterStatus(long id, [FromBody] ToggleStatusRequest req)
+        {
+            var result = await _mediator.Send(new ToggleServiceCenterStatusCommand { ServiceCenterId = id, ActionType = req.ActionType });
+            return Ok(result);
+        }
+
         private long GetUserId()
         {
             var value = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -199,5 +213,10 @@ namespace GD1.Api.Controllers
     {
         public GD1.Domain.Entities.Enums.ApplicationReviewDecision Decision { get; set; }
         public string? AdminNotes { get; set; }
+    }
+
+    public class ToggleStatusRequest
+    {
+        public string ActionType { get; set; } = string.Empty;
     }
 }

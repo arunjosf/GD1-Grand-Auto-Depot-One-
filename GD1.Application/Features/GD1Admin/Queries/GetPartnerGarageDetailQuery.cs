@@ -25,6 +25,9 @@ namespace GD1.Application.Features.GD1Admin.Queries
         public string? ImageUrl { get; set; }
         public int TotalBookings { get; set; }
         public int TotalSlots { get; set; }
+        public bool IsHidden { get; set; }
+        public bool IsBlocked { get; set; }
+        public List<AdminActiveBookingDto> ActiveBookings { get; set; } = new();
 
         public string? BusinessRegistrationUrl { get; set; }
         public string? LicenseDocumentUrl { get; set; }
@@ -33,6 +36,16 @@ namespace GD1.Application.Features.GD1Admin.Queries
 
         public AgentInspectionDto? AgentInspection { get; set; }
         public List<string> OwnerUploadedImages { get; set; } = new();
+    }
+
+    public class AdminActiveBookingDto
+    {
+        public long Id { get; set; }
+        public string StartDate { get; set; } = string.Empty;
+        public string EndDate { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string VehicleRegistration { get; set; } = string.Empty;
+        public string VehicleName { get; set; } = string.Empty;
     }
 
     public class AgentInspectionDto
@@ -70,7 +83,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 .OrderByDescending(x => x.CreatedAt)
                 .FirstOrDefault();
 
-            var bookings = await _bookingRepo.FindAsync(x => x.PropertyId == request.Id);
+                var bookings = await _bookingRepo.FindAsync(x => x.PropertyId == request.Id, "Vehicle");
 
             var dto = new PartnerGarageDetailDto
             {
@@ -83,6 +96,19 @@ namespace GD1.Application.Features.GD1Admin.Queries
                 ImageUrl = property.ActivePropertyImages?.OrderByDescending(x => x.Id).FirstOrDefault()?.ImageUrl,
                 TotalBookings = bookings.Count(),
                 TotalSlots = property.Slots?.Count ?? 0,
+                IsHidden = property.IsHidden,
+                IsBlocked = property.IsBlocked,
+                ActiveBookings = bookings
+                    .Where(b => b.Status == Domain.Entities.Enums.BookingStatus.InLot || b.Status == Domain.Entities.Enums.BookingStatus.Confirmed)
+                    .Select(b => new AdminActiveBookingDto
+                    {
+                        Id = b.Id,
+                        StartDate = b.StartDate.ToString("MMM dd, yyyy"),
+                        EndDate = b.EndDate.ToString("MMM dd, yyyy"),
+                        Status = b.Status.ToString(),
+                        VehicleRegistration = b.Vehicle?.RegistrationNo ?? "",
+                        VehicleName = $"{b.Vehicle?.Brand} {b.Vehicle?.Model}"
+                    }).ToList(),
                 OwnerUploadedImages = property.ActivePropertyImages?.Select(x => x.ImageUrl).ToList() ?? new List<string>()
             };
 

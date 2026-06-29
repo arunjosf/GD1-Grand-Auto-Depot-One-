@@ -32,6 +32,7 @@ namespace GD1.Application.Features.LotOwner.Queries
         public string SlowestYear { get; set; } = string.Empty;
         public string BestMonth { get; set; } = string.Empty;
         public string SlowestMonth { get; set; } = string.Empty;
+        public bool IsPropertyHidden { get; set; }
     }
 
     public class MonthlyBookingDataDto
@@ -48,6 +49,7 @@ namespace GD1.Application.Features.LotOwner.Queries
 
     public class BestManagerDto
     {
+        public long UserId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string AvatarUrl { get; set; } = string.Empty;
         public int PickupsDone { get; set; }
@@ -73,6 +75,7 @@ namespace GD1.Application.Features.LotOwner.Queries
         private readonly IGenericRepository<GD1.Domain.Entities.LotManager> _lotManagerRepo;
         private readonly IGenericRepository<PickupRequest> _pickupRepo;
         private readonly IGenericRepository<MaintenanceTask> _taskRepo;
+        private readonly IGenericRepository<VehicleStorageProperty> _propertyRepo;
 
         public GetLotOwnerDashboardMetricsQueryHandler(
             IGenericRepository<Booking> bookingRepo, 
@@ -80,7 +83,8 @@ namespace GD1.Application.Features.LotOwner.Queries
             IGenericRepository<GD1.Domain.Entities.Payment> paymentRepo,
             IGenericRepository<GD1.Domain.Entities.LotManager> lotManagerRepo,
             IGenericRepository<PickupRequest> pickupRepo,
-            IGenericRepository<MaintenanceTask> taskRepo)
+            IGenericRepository<MaintenanceTask> taskRepo,
+            IGenericRepository<VehicleStorageProperty> propertyRepo)
         {
             _bookingRepo = bookingRepo;
             _userRepo = userRepo;
@@ -88,14 +92,19 @@ namespace GD1.Application.Features.LotOwner.Queries
             _lotManagerRepo = lotManagerRepo;
             _pickupRepo = pickupRepo;
             _taskRepo = taskRepo;
+            _propertyRepo = propertyRepo;
         }
 
         public async Task<BaseResponse<LotOwnerDashboardMetricsDto>> Handle(GetLotOwnerDashboardMetricsQuery request, CancellationToken cancellationToken)
         {
+            var properties = await _propertyRepo.FindAsync(p => p.LotOwnerId == request.LotOwnerId);
+            var isHidden = properties.Any(p => p.IsHidden);
+
             var bookings = await _bookingRepo.FindAsync(b => b.Property.LotOwnerId == request.LotOwnerId, "Property", "Vehicle", "Vehicle.Owner", "Vehicle.Images");
             var payments = await _paymentRepo.FindAsync(p => p.Booking.Property.LotOwnerId == request.LotOwnerId && p.Status == "paid");
 
             var dto = new LotOwnerDashboardMetricsDto();
+            dto.IsPropertyHidden = isHidden;
 
             if (!bookings.Any())
             {
@@ -151,6 +160,7 @@ namespace GD1.Application.Features.LotOwner.Queries
                 int totalScore = pickupsDone + weeklyDone + onDemandDone;
 
                 managerStats.Add(new BestManagerDto {
+                    UserId = lm.ManagerId,
                     Name = lm.Manager?.FullName ?? "",
                     AvatarUrl = !string.IsNullOrEmpty(lm.SelfieUrl) ? lm.SelfieUrl : (lm.Manager?.AvatarUrl ?? ""),
                     PickupsDone = pickupsDone,

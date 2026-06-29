@@ -21,6 +21,8 @@ namespace GD1.Domain.Entities
         public double? Longitude { get; set; }
         
         public string Status { get; set; } = "Active";
+        public bool IsHidden { get; set; } = false;
+        public bool IsBlocked { get; set; } = false;
 
         // Property-level facilities (Since slots are just garages)
         public bool HasCCTV { get; set; }

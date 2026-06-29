@@ -77,6 +77,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
 
             var properties = await _propertyRepo.FindAsync(p => 
                 p.Status == "Active" &&
+                (isAdmin || (!p.IsHidden && !p.IsBlocked)) &&
                 (string.IsNullOrEmpty(query.City) || p.City.ToLower() == query.City.ToLower()) && 
                 (string.IsNullOrEmpty(query.Name) || p.Name.Contains(query.Name)) &&
                 (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
@@ -90,6 +91,7 @@ namespace GD1.Application.Features.GD1Admin.Queries
             {
                 properties = await _propertyRepo.FindAsync(p => 
                     p.Status == "Active" &&
+                    (isAdmin || (!p.IsHidden && !p.IsBlocked)) &&
                     (string.IsNullOrEmpty(query.Name) || p.Name.Contains(query.Name)) &&
                     (string.IsNullOrEmpty(query.ExtraFacilities) || (p.ExtraFacilities != null && p.ExtraFacilities.Contains(query.ExtraFacilities))) &&
                     (!query.HasCCTV.HasValue || p.HasCCTV == query.HasCCTV.Value) &&

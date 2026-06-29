@@ -66,13 +66,28 @@ namespace GD1.Application.Features.Chat.Queries
             }
 
             var allChats = await _chatRepo.GetAllAsync();
-            var messages = allChats
+            
+            var relevantChats = allChats
                 .Where(c => 
                     (request.BookingId.HasValue && c.BookingId == request.BookingId.Value) ||
                     (request.ServiceRequestId.HasValue && c.ServiceRequestId == request.ServiceRequestId.Value) ||
                     (request.DirectUserId.HasValue && c.BookingId == null && c.ServiceRequestId == null &&
                      ((c.SenderId == request.UserId && c.ReceiverId == request.DirectUserId.Value) ||
                       (c.SenderId == request.DirectUserId.Value && c.ReceiverId == request.UserId))))
+                .ToList();
+
+            bool needsSave = false;
+            foreach(var msg in relevantChats)
+            {
+                if (!msg.IsRead && msg.SenderId != request.UserId)
+                {
+                    msg.IsRead = true;
+                    await _chatRepo.UpdateAsync(msg);
+                    needsSave = true;
+                }
+            }
+
+            var messages = relevantChats
                 .OrderBy(c => c.CreatedAt)
                 .Select(c => new ChatMessageDto
                 {

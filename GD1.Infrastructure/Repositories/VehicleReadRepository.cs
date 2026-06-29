@@ -47,11 +47,12 @@ namespace GD1.Infrastructure.Repositories
                     WidthFeet = v.WidthFeet,
                     HeightFeet = v.HeightFeet,
                     IsStored = v.Bookings.Any(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot),
-                    ActiveBookingId = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => (long?)b.Id).FirstOrDefault(),
-                    LotName = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => b.Property.Name).FirstOrDefault(),
-                    Location = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => b.Property.City).FirstOrDefault(),
-                    StartDate = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).Select(b => (DateTime?)b.StartDate).FirstOrDefault(),
+                    ActiveBookingId = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).OrderByDescending(b => b.CreatedAt).Select(b => (long?)b.Id).FirstOrDefault(),
+                    LotName = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).OrderByDescending(b => b.CreatedAt).Select(b => b.Property.Name).FirstOrDefault(),
+                    Location = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).OrderByDescending(b => b.CreatedAt).Select(b => b.Property.City).FirstOrDefault(),
+                    StartDate = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot).OrderByDescending(b => b.CreatedAt).Select(b => (DateTime?)b.StartDate).FirstOrDefault(),
                     LastConditionUpdate = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot)
+                                            .OrderByDescending(b => b.CreatedAt)
                                             .SelectMany(b => b.JourneyEvents)
                                             .OrderByDescending(e => e.CreatedAt)
                                             .Select(e => (DateTime?)e.CreatedAt)
@@ -62,6 +63,8 @@ namespace GD1.Infrastructure.Repositories
                                     .Select(pr => pr.Status.ToString())
                                     .FirstOrDefault(),
                     JourneyEvents = v.Bookings.Where(b => b.Status == GD1.Domain.Entities.Enums.BookingStatus.InLot)
+                                     .OrderByDescending(b => b.CreatedAt)
+                                     .Take(1)
                                      .SelectMany(b => b.JourneyEvents)
                                      .OrderByDescending(e => e.CreatedAt)
                                      .Select(e => new VehicleJourneyEventDto

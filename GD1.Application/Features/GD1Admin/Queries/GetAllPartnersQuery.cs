@@ -28,6 +28,9 @@ namespace GD1.Application.Features.GD1Admin.Queries
         public string PhoneNumber { get; set; } = string.Empty;
         public string? ImageUrl { get; set; }
         public int TotalBookings { get; set; }
+        public int ActiveBookings { get; set; }
+        public bool IsHidden { get; set; }
+        public bool IsBlocked { get; set; }
     }
 
     public class PartnerServiceCenterDto
@@ -39,6 +42,9 @@ namespace GD1.Application.Features.GD1Admin.Queries
         public string PhoneNumber { get; set; } = string.Empty;
         public string? ImageUrl { get; set; }
         public int TotalBookings { get; set; }
+        public int ActiveBookings { get; set; }
+        public bool IsHidden { get; set; }
+        public bool IsBlocked { get; set; }
     }
 
     public class GetAllPartnersQueryHandler : IRequestHandler<GetAllPartnersQuery, BaseResponse<PartnersDto>>
@@ -80,7 +86,10 @@ namespace GD1.Application.Features.GD1Admin.Queries
                     City = prop.City,
                     PhoneNumber = prop.LotOwner?.PhoneNumber ?? "N/A",
                     ImageUrl = prop.ActivePropertyImages.OrderByDescending(x => x.Id).FirstOrDefault()?.ImageUrl,
-                    TotalBookings = bookings.Count(b => b.PropertyId == prop.Id)
+                    TotalBookings = bookings.Count(b => b.PropertyId == prop.Id),
+                    ActiveBookings = bookings.Count(b => b.PropertyId == prop.Id && b.Status != Domain.Entities.Enums.BookingStatus.Completed && b.Status != Domain.Entities.Enums.BookingStatus.Cancelled),
+                    IsHidden = prop.IsHidden,
+                    IsBlocked = prop.IsBlocked
                 });
             }
 
@@ -94,7 +103,10 @@ namespace GD1.Application.Features.GD1Admin.Queries
                     City = sc.City,
                     PhoneNumber = sc.PhoneNumber,
                     ImageUrl = sc.Images.OrderByDescending(x => x.Id).FirstOrDefault()?.ImageUrl,
-                    TotalBookings = serviceRequests.Count(sr => sr.ServiceCenterId == sc.Id)
+                    TotalBookings = serviceRequests.Count(sr => sr.ServiceCenterId == sc.Id),
+                    ActiveBookings = serviceRequests.Count(sr => sr.ServiceCenterId == sc.Id && sr.IsCompleted != true && sr.Status != "Completed" && sr.Status != "Cancelled"),
+                    IsHidden = sc.IsHidden,
+                    IsBlocked = sc.IsBlocked
                 });
             }
 
