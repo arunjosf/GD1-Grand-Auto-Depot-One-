@@ -1,5 +1,6 @@
 using GD1.Application.Features.AgreementFeature.Commands;
 using MediatR;
+using GD1.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -13,10 +14,12 @@ namespace GD1.Api.Controllers
     public class AgreementController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly IPdfGeneratorService _pdfGenerator;
 
-        public AgreementController(IMediator mediator)
+        public AgreementController(IMediator mediator, IPdfGeneratorService pdfGenerator)
         {
             _mediator = mediator;
+            _pdfGenerator = pdfGenerator;
         }
 
         [HttpPost("{id}/respond")]
@@ -75,30 +78,9 @@ namespace GD1.Api.Controllers
 
             if (!result.Success) return BadRequest(result);
 
-            var converter = new SelectPdf.HtmlToPdf();
-            
-            // Add some basic styling for the PDF
-            var htmlContent = $@"
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: Arial, sans-serif; padding: 20px; }}
-                    h1 {{ color: #333; }}
-                    h3 {{ color: #444; margin-top: 20px; }}
-                    p {{ line-height: 1.6; color: #555; }}
-                </style>
-            </head>
-            <body>
-                {result.Data.Content}
-            </body>
-            </html>";
+            var pdfBytes = _pdfGenerator.GenerateAgreementPdf(result.Data.Content);
 
-            var doc = converter.ConvertHtmlString(htmlContent);
-            using var memoryStream = new System.IO.MemoryStream();
-            doc.Save(memoryStream);
-            doc.Close();
-
-            return File(memoryStream.ToArray(), "application/pdf", $"Agreement_{id}.pdf");
+            return File(pdfBytes, "application/pdf", $"Agreement_{id}.pdf");
         }
     }
 }
