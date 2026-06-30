@@ -23,6 +23,7 @@ namespace GD1.Infrastructure.Services
             var host = _config["Email:Host"] ?? "smtp.gmail.com";
             var port = int.Parse(_config["Email:Port"] ?? "587");
             var sender = (_config["Email:SenderEmail"] ?? "").Trim();
+            var user = (_config["Email:User"] ?? sender).Trim();
             var name = _config["Email:SenderName"] ?? "GD1";
             var password = (_config["Email:Password"] ?? "").Replace(" ", "");
             var useDevMode = _config.GetValue<bool>("Email:UseDevMode");
