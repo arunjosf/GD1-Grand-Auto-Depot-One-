@@ -60,7 +60,7 @@ namespace GD1.Infrastructure.Services
                 // Use Auto to let MailKit decide the best security option
                 await client.ConnectAsync(host, port, SecureSocketOptions.Auto);
                 
-                await client.AuthenticateAsync(sender, password);
+                await client.AuthenticateAsync(user, password);
                 await client.SendAsync(message);
                 await client.DisconnectAsync(true);
                 _logger.LogInformation("Email sent successfully to {To}", to);
