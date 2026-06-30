@@ -78,9 +78,10 @@ namespace GD1.Api.Controllers
 
             if (!result.Success) return BadRequest(result);
 
-            var pdfBytes = _pdfGenerator.GenerateAgreementPdf(result.Data.Content);
+            var pdfBytes = _pdfGenerator.GenerateFromHtml(result.Data.Content);
 
             return File(pdfBytes, "application/pdf", $"Agreement_{id}.pdf");
         }
     }
 }
+
