@@ -16,8 +16,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
-    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.78.0-alpha" />
-    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Pinecone" Version="1.74.0-preview" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.78.0" />
     <PackageReference Include="Select.HtmlToPdf.NetCore" Version="26.2.0" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />

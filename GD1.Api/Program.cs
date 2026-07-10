@@ -23,6 +23,10 @@ using Microsoft.OpenApi.Models;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.Google;
+#pragma warning disable SKEXP0070 
+#pragma warning disable SKEXP0020
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -161,9 +165,27 @@ builder.Services.AddControllers()
         };
     });
 
+var googleKey = builder.Configuration["AI:GoogleApiKey"];
+var pineconeKey = builder.Configuration["AI:PineconeApiKey"];
+
+var kernelBuilder = Kernel.CreateBuilder();
+
+
+kernelBuilder.AddGoogleAIGeminiChatCompletion(
+    modelId: "gemini-1.5-flash",
+    apiKey: googleKey
+);
+
+kernelBuilder.AddGoogleAIEmbeddingGenerator(
+    modelId: "text-embedding-004",
+    apiKey: googleKey
+);
+var kernel = kernelBuilder.Build();
+
+builder.Services.AddSingleton(kernel);
+
 builder.Services.AddSignalR();
 
-// Register Hosted Services
 builder.Services.AddHostedService<MonthlyRevenueNotificationService>();
 
 builder.Services.AddEndpointsApiExplorer();
