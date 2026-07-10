@@ -172,12 +172,12 @@ var kernelBuilder = Kernel.CreateBuilder();
 
 
 kernelBuilder.AddGoogleAIGeminiChatCompletion(
-    modelId: "gemini-1.5-flash-latest",
+    modelId: "models/gemini-1.5-flash", 
     apiKey: googleKey
 );
 
-kernelBuilder.AddGoogleAIEmbeddingGenerator(
-    modelId: "text-embedding-004",
+kernelBuilder.AddGoogleAIGeminiChatCompletion(
+    modelId: "models/gemini-1.5-flash", 
     apiKey: googleKey
 );
 var kernel = kernelBuilder.Build();
