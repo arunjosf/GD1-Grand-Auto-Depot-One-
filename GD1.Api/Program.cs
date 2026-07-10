@@ -177,7 +177,7 @@ kernelBuilder.AddGoogleAIGeminiChatCompletion(
 );
 
 kernelBuilder.AddGoogleAIGeminiChatCompletion(
-    modelId: "models/gemini-1.5-flash", 
+    modelId: "gemini-1.5-flash", 
     apiKey: googleKey
 );
 var kernel = kernelBuilder.Build();
