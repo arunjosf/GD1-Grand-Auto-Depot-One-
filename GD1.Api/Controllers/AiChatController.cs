@@ -30,7 +30,7 @@ namespace GD1.Api.Controllers
                 return StatusCode(500, new { reply = "AI service is not configured." });
 
             // Google Gemini REST API endpoint (Google AI Studio - Free Tier)
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={apiKey}";
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={apiKey}";
 
             // Build the request body exactly as Google expects it
             var requestBody = new
