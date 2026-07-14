@@ -36,7 +36,7 @@ namespace GD1.Api.Controllers
             // Build the request body in OpenAI-compatible format
             var requestBody = new
             {
-                model = "llama3-8b-8192", // Free Llama 3 model on Groq
+                model = "llama-3.1-8b-instant", // Free Llama 3.1 model on Groq
                 messages = new[]
                 {
                     new
