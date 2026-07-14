@@ -165,18 +165,7 @@ builder.Services.AddControllers()
         };
     });
 
-var googleKey = builder.Configuration["AI:GoogleApiKey"];
 
-var kernelBuilder = Kernel.CreateBuilder();
-
-// Single, clean registration for Google Gemini Chat (Google AI Studio key)
-kernelBuilder.AddGoogleAIGeminiChatCompletion(
-    modelId: "gemini-1.5-flash",
-    apiKey: googleKey
-);
-
-var kernel = kernelBuilder.Build();
-builder.Services.AddSingleton(kernel);
 
 builder.Services.AddSignalR();
 
