@@ -152,16 +152,23 @@ namespace GD1.Application.Features.LotBooking.Commands
                     b.Status != BookingStatus.AgreementDeclined && 
                     b.Status != BookingStatus.AdminRejected && 
                     b.Status != BookingStatus.AwaitingAgreement &&
-                    b.Status != BookingStatus.Pending &&
+                    b.Status != BookingStatus.VerifiedPendingPayment &&
                     b.Status != BookingStatus.Completed);
 
                 bool hasSlotOverlap = slotBookings.Any(b => 
                     req.StartDate < b.EndDate && req.EndDate > b.StartDate);
-                    
+
                 if (hasSlotOverlap)
-                    return BaseResponse<CreateBookingResponse>.Fail("The selected garage is already booked during the selected dates.");
-                    
-                // STRICTLY VALIDATE IF SLOT IS CURRENTLY OCCUPIED
+                {
+                    var conflictingBooking = slotBookings.First(b =>
+                        req.StartDate < b.EndDate && req.EndDate > b.StartDate);
+
+                    if (conflictingBooking.OwnerId == cmd.OwnerId)
+                        return BaseResponse<CreateBookingResponse>.Fail("You have already booked this slot for the selected dates.");
+                    else
+                        return BaseResponse<CreateBookingResponse>.Fail("This slot is currently unavailable for your selected dates. Please choose another slot or different dates.");
+                }
+
                 if (slot.IsOccupied)
                 {
                     var activeStored = await _storedVehicleRepo.FindAsync(sv => sv.SlotId == req.SlotId.Value && sv.IsActive);

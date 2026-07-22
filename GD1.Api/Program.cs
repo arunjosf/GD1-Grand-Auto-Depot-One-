@@ -25,8 +25,6 @@ using Microsoft.SemanticKernel.Connectors.Google;
 using StackExchange.Redis;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
-using StackExchange.Redis;
-using Microsoft.SemanticKernel;
 using System.Text;
 using GD1.Infrastructure.Services;
 
@@ -90,8 +88,12 @@ kernelBuilder.AddOpenAIChatCompletion(
     endpoint: new Uri("https://api.groq.com/openai/v1/")
 );
 
+builder.Services.AddTransient<GD1.Api.Plugins.SearchLotsPlugin>();
+kernelBuilder.Plugins.AddFromType<GD1.Api.Plugins.SearchLotsPlugin>();
+
 var kernel = kernelBuilder.Build();
 builder.Services.AddSingleton(kernel);
+#pragma warning restore SKEXP0010
 
 builder.Services.AddHttpClient<ISmsService, SmsService>();
 builder.Services.AddHttpClient(); 

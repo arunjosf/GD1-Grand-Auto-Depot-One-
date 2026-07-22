@@ -94,7 +94,7 @@ namespace GD1.Infrastructure.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing PDF message.");
-                // If it fails, leave it in the queue to retry
+                await args.CompleteMessageAsync(args.Message);
             }
         }
 
