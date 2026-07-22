@@ -8,6 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using GD1.Application.Interfaces.Services;
+using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Configuration;
+using System.Text.Json;
 
 namespace GD1.Application.Features.LotBooking.Commands
 {
@@ -99,7 +102,24 @@ namespace GD1.Application.Features.LotBooking.Commands
 
                 await _agreementRepo.AddAsync(agreement);
 
-                // Notify User
+                try
+                {
+                    var connectionString = Environment.GetEnvironmentVariable("Azure__ServiceBusConnectionString")
+                        ?? "Your_Local_Connection_String_Here_For_Testing";  
+
+                    await using var client = new ServiceBusClient(connectionString);
+                    var sender = client.CreateSender("pdf-queue");
+
+                    var payload = new { AgreementId = agreement.Id };
+                    var message = new ServiceBusMessage(JsonSerializer.Serialize(payload));
+
+                    await sender.SendMessageAsync(message);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Queue Error: {ex.Message}");
+                }
+
                 try
                 {
                     await _notificationService.SendAsync(
@@ -108,7 +128,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                         body: $"Your booking at {property.Name} has been verified by the owner. Please confirm the booking to proceed to payment.",
                         actionType: "ConfirmBooking",
                         referenceId: agreement.Id,
-                        actionUrl: $"/agreement/{booking.Id}"); // Link directly to the newly generated agreement
+                        actionUrl: $"/agreement/{booking.Id}"); 
                 }
                 catch { }
 
@@ -120,7 +140,6 @@ namespace GD1.Application.Features.LotBooking.Commands
                 booking.RejectionReason = request.RejectionReason;
                 await _bookingRepo.UpdateAsync(booking);
 
-                // Notify User
                 try
                 {
                     await _notificationService.SendAsync(

@@ -28,6 +28,8 @@ using System.IdentityModel.Tokens.Jwt;
 using StackExchange.Redis;
 using Microsoft.SemanticKernel;
 using System.Text;
+using GD1.Infrastructure.Services;
+
 #pragma warning disable SKEXP0070 
 #pragma warning disable SKEXP0020
 
@@ -100,6 +102,8 @@ builder.Services.AddHttpClient<GD1.Application.Interfaces.IGeocodingService, GD1
 builder.Services.AddScoped<GD1.Application.Interfaces.Services.IPdfGeneratorService, GD1.Infrastructure.Services.PdfGeneratorService>();
 builder.Services.AddHostedService<UnverifiedUserCleanupService>();
 builder.Services.AddHostedService<BookingCleanupService>();
+builder.Services.AddHostedService<PdfWorker>();
+
 
 builder.Services.AddScoped<GD1.Application.Interfaces.Services.INotificationService, GD1.Api.Services.NotificationService>();
 
