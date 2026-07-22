@@ -88,8 +88,6 @@ kernelBuilder.AddOpenAIChatCompletion(
     endpoint: new Uri("https://api.groq.com/openai/v1/")
 );
 
-builder.Services.AddTransient<GD1.Api.Plugins.SearchLotsPlugin>();
-kernelBuilder.Plugins.AddFromType<GD1.Api.Plugins.SearchLotsPlugin>();
 
 var kernel = kernelBuilder.Build();
 builder.Services.AddSingleton(kernel);
@@ -241,7 +239,15 @@ builder.Services.AddSwaggerGen(opt =>
 
         var app = builder.Build();
 
-    if (app.Environment.IsDevelopment())
+kernel.Plugins.AddFromObject(
+    new GD1.Api.Plugins.SearchLotsPlugin(
+        app.Services.GetRequiredService<IHttpClientFactory>(),
+        builder.Configuration
+    ),
+    "SearchLots"
+);
+
+if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
         app.UseSwaggerUI();
