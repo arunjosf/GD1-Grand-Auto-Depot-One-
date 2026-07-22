@@ -21,15 +21,16 @@ namespace GD1.Infrastructure
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            services.AddDbContext<AppDbContext>(options =>
-      options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
-          sqlOptions =>
-          {
-              sqlOptions.EnableRetryOnFailure(
-                  maxRetryCount: 5,
-                  maxRetryDelay: TimeSpan.FromSeconds(10),
-                  errorNumbersToAdd: null);
-          }));
+           services.AddDbContext<AppDbContext>(options =>
+           options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
+               sqlOptions =>
+               {
+                   sqlOptions.CommandTimeout(120); 
+                   sqlOptions.EnableRetryOnFailure(
+                       maxRetryCount: 5,
+                       maxRetryDelay: TimeSpan.FromSeconds(10),
+                       errorNumbersToAdd: null);
+               }));
 
             services.AddScoped<IDbConnection>(sp =>
                 new SqlConnection(configuration.GetConnectionString("DefaultConnection")));
