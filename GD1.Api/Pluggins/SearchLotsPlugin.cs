@@ -29,7 +29,8 @@ namespace GD1.Api.Plugins
                 var result = await _mediator.Send(new GetAllStoragePropertyQuery 
                 { 
                     City = location,
-                    VehicleId = vehicleId
+                    VehicleId = vehicleId,
+                    Recommend = !vehicleId.HasValue // Bypass strict vehicle ID validation for generic chatbot searches
                 });
                 return JsonSerializer.Serialize(result);
             }

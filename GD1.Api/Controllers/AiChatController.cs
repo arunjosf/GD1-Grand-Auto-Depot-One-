@@ -16,12 +16,18 @@ namespace GD1.Api.Controllers
         private readonly Kernel _kernel;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
+        private readonly StackExchange.Redis.IConnectionMultiplexer _redis;
 
-        public AiChatController(Kernel kernel, IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        public AiChatController(
+            Kernel kernel, 
+            IHttpClientFactory httpClientFactory, 
+            IConfiguration configuration,
+            StackExchange.Redis.IConnectionMultiplexer redis)
         {
             _kernel = kernel;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+            _redis = redis;
         }
 
         [HttpPost("ask")]
@@ -32,24 +38,48 @@ namespace GD1.Api.Controllers
 
             try
             {
-                var intent = await DetectIntentAsync(request.Message);
+                long userId = 0;
+                var userIdClaim = User?.FindFirst("userId")?.Value 
+                    ?? User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                    ?? User?.FindFirst("sub")?.Value;
+                if (long.TryParse(userIdClaim, out var parsedId)) {
+                    userId = parsedId;
+                }
+
+                // Retrieve message history from Redis using User ID (or IP address if guest)
+                var db = _redis.GetDatabase();
+                var redisKey = userId > 0 ? $"chat_history:{userId}" : $"chat_history:guest:{Request.HttpContext.Connection.RemoteIpAddress}";
+                
+                var historyJson = await db.StringGetAsync(redisKey);
+                var messages = new List<RedisChatMessage>();
+                if (!string.IsNullOrEmpty(historyJson))
+                {
+                    messages = JsonSerializer.Deserialize<List<RedisChatMessage>>(historyJson) ?? new List<RedisChatMessage>();
+                }
+
+                // If user requests a clean reset
+                if (request.Message.Equals("/clear", StringComparison.OrdinalIgnoreCase))
+                {
+                    await db.KeyDeleteAsync(redisKey);
+                    return Ok(new { reply = "Conversation history cleared." });
+                }
+
+                // Construct full context string (previous 3 turns) to accurately classify intent
+                var contextBuilder = new StringBuilder();
+                foreach (var msg in messages.TakeLast(6))
+                {
+                    contextBuilder.AppendLine($"{msg.Role}: {msg.Content}");
+                }
+                contextBuilder.AppendLine($"user: {request.Message}");
+
+                var intent = await DetectIntentAsync(contextBuilder.ToString());
 
                 if (intent == "SEARCH_LOTS")
                 {
-                    long userId = 0;
-                    var userIdClaim = User?.FindFirst("userId")?.Value 
-                        ?? User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
-                        ?? User?.FindFirst("sub")?.Value;
-                    if (long.TryParse(userIdClaim, out var parsedId)) {
-                        userId = parsedId;
-                    }
-
                     var chatService = _kernel.GetRequiredService<IChatCompletionService>();
-
-                    var history = new ChatHistory();
+                    var chatHistory = new ChatHistory();
                     
-                    // We feed the user ID directly into the system message instructions
-                    history.AddSystemMessage(
+                    chatHistory.AddSystemMessage(
                         $"You are Lara, GD1's virtual assistant. Your job is to help users find suitable parking spaces.\n\n" +
                         $"1. Crucial: The logged-in user's ID is {userId}.\n" +
                         $"2. If the user wants to search parking but hasn't specified their vehicle, use the `get_user_vehicles` tool with user ID {userId} to see what vehicles they own.\n" +
@@ -58,7 +88,16 @@ namespace GD1.Api.Controllers
                         $"5. When presenting parking lot options, list them beautifully. For each lot, display its Name, Address, Price, and ALWAYS include a clean Markdown link button like: `[View Details](/property/{{id}})` so they can click to visit the detailed page.\n" +
                         $"6. Keep responses friendly, helpful, and in plain conversational English."
                     );
-                    history.AddUserMessage(request.Message);
+
+                    // Add historical conversation flow to Semantic Kernel
+                    foreach (var msg in messages)
+                    {
+                        if (msg.Role == "user") chatHistory.AddUserMessage(msg.Content);
+                        else if (msg.Role == "assistant") chatHistory.AddAssistantMessage(msg.Content);
+                    }
+
+                    // Add current message
+                    chatHistory.AddUserMessage(request.Message);
 
 #pragma warning disable SKEXP0001
                     var settings = new OpenAIPromptExecutionSettings
@@ -68,10 +107,21 @@ namespace GD1.Api.Controllers
 #pragma warning restore SKEXP0001
 
                     var result = await chatService.GetChatMessageContentAsync(
-                        history,
+                        chatHistory,
                         executionSettings: settings,
                         kernel: _kernel
                     );
+
+                    // Save updated context back to Redis
+                    messages.Add(new RedisChatMessage { Role = "user", Content = request.Message });
+                    messages.Add(new RedisChatMessage { Role = "assistant", Content = result.Content ?? string.Empty });
+                    
+                    // Keep history tidy (last 20 messages / 10 turns max)
+                    if (messages.Count > 20)
+                    {
+                        messages = messages.Skip(messages.Count - 20).ToList();
+                    }
+                    await db.StringSetAsync(redisKey, JsonSerializer.Serialize(messages), TimeSpan.FromHours(1));
 
                     var actions = await BuildActionsFromSearchAsync(request.Message);
 
@@ -82,7 +132,23 @@ namespace GD1.Api.Controllers
                     });
                 }
 
-                return await HandleRagAsync(request.Message);
+                // Fall back to general RAG knowledge base for general questions
+                var ragResult = await HandleRagAsync(request.Message);
+                
+                if (ragResult is OkObjectResult okResult)
+                {
+                    // Serialize RAG response to history too
+                    using var doc = JsonDocument.Parse(JsonSerializer.Serialize(okResult.Value));
+                    if (doc.RootElement.TryGetProperty("reply", out var replyProp))
+                    {
+                        messages.Add(new RedisChatMessage { Role = "user", Content = request.Message });
+                        messages.Add(new RedisChatMessage { Role = "assistant", Content = replyProp.GetString() ?? string.Empty });
+                        if (messages.Count > 20) messages = messages.Skip(messages.Count - 20).ToList();
+                        await db.StringSetAsync(redisKey, JsonSerializer.Serialize(messages), TimeSpan.FromHours(1));
+                    }
+                }
+
+                return ragResult;
             }
             catch (Exception ex)
             {
@@ -329,5 +395,11 @@ namespace GD1.Api.Controllers
     public class ChatRequest
     {
         public string Message { get; set; }
+    }
+
+    public class RedisChatMessage
+    {
+        public string Role { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
     }
 }
