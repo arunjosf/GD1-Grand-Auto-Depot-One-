@@ -152,6 +152,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                     b.Status != BookingStatus.AgreementDeclined && 
                     b.Status != BookingStatus.AdminRejected && 
                     b.Status != BookingStatus.AwaitingAgreement &&
+                    b.Status != BookingStatus.Pending &&
                     b.Status != BookingStatus.Completed);
 
                 bool hasSlotOverlap = slotBookings.Any(b => 
