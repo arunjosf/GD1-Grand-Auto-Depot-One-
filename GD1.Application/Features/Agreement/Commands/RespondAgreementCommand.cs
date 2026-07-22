@@ -58,13 +58,11 @@ namespace GD1.Application.Features.AgreementFeature.Commands
             if (agreement.UserId != request.UserId)
                 return BaseResponse<string>.Fail("Unauthorized.");
 
-            // Check removed to allow re-responding to the agreement.
 
             agreement.Status = request.Response == AgreementResponse.Approve ? AgreementStatus.Accepted : AgreementStatus.Rejected;
             agreement.AcceptedAt = request.Response == AgreementResponse.Approve ? DateTime.UtcNow : null;
             await _agreementRepo.UpdateAsync(agreement);
 
-            // Handle side-effects based on AgreementType
             bool isAccepted = request.Response == AgreementResponse.Approve;
             switch (agreement.Type)
             {
@@ -85,7 +83,6 @@ namespace GD1.Application.Features.AgreementFeature.Commands
             var booking = await _bookingRepo.GetByIdAsync(agreement.ReferenceId);
             if (booking == null) return BaseResponse<string>.Fail("Booking not found.");
 
-            // Remove related notifications for the vehicle owner
             var notifs = await _notificationRepo.FindAsync(n => n.UserId == booking.OwnerId && (n.ActionUrl == $"/agreement/{booking.Id}" || n.ActionUrl == "/user/bookings"));
             foreach (var n in notifs) { await _notificationRepo.DeleteAsync(n); }
 
@@ -94,6 +91,20 @@ namespace GD1.Application.Features.AgreementFeature.Commands
                 booking.Status = GD1.Domain.Entities.Enums.BookingStatus.Confirmed;
                 booking.IsAgreementSigned = 1;
                 await _bookingRepo.UpdateAsync(booking);
+
+                try
+                {
+                    var connectionString = Environment.GetEnvironmentVariable("Azure__ServiceBusConnectionString");
+                    await using var client = new Azure.Messaging.ServiceBus.ServiceBusClient(connectionString);
+                    var sender = client.CreateSender("pdf-queue");
+                    var message = new Azure.Messaging.ServiceBus.ServiceBusMessage(
+                        System.Text.Json.JsonSerializer.Serialize(new { AgreementId = agreement.Id }));
+                    await sender.SendMessageAsync(message);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Queue Error: {ex.Message}");
+                }
                 return BaseResponse<string>.Ok("Agreement Accepted. Booking has been confirmed.");
             }
             else

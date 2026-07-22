@@ -63,8 +63,7 @@ namespace GD1.Application.Features.LotBooking.Commands
 
                 try
                 {
-                    var connectionString = Environment.GetEnvironmentVariable("Azure__ServiceBusConnectionString")
-                        ?? "Your_Connection_String";
+                    var connectionString = Environment.GetEnvironmentVariable("Azure__ServiceBusConnectionString");
                     await using var client = new Azure.Messaging.ServiceBus.ServiceBusClient(connectionString);
                     var sender = client.CreateSender("pdf-queue");
                     var message = new Azure.Messaging.ServiceBus.ServiceBusMessage(
