@@ -36,13 +36,27 @@ namespace GD1.Api.Controllers
 
                 if (intent == "SEARCH_LOTS")
                 {
+                    long userId = 0;
+                    var userIdClaim = User?.FindFirst("userId")?.Value 
+                        ?? User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                        ?? User?.FindFirst("sub")?.Value;
+                    if (long.TryParse(userIdClaim, out var parsedId)) {
+                        userId = parsedId;
+                    }
+
                     var chatService = _kernel.GetRequiredService<IChatCompletionService>();
 
                     var history = new ChatHistory();
+                    
+                    // We feed the user ID directly into the system message instructions
                     history.AddSystemMessage(
-                        "You are Lara, GD1's assistant. When the user asks to find parking or lots, " +
-                        "call the search_lots function and summarise the results in a friendly way. " +
-                        "Always respond in plain conversational English."
+                        $"You are Lara, GD1's virtual assistant. Your job is to help users find suitable parking spaces.\n\n" +
+                        $"1. Crucial: The logged-in user's ID is {userId}.\n" +
+                        $"2. If the user wants to search parking but hasn't specified their vehicle, use the `get_user_vehicles` tool with user ID {userId} to see what vehicles they own.\n" +
+                        $"3. If they have registered vehicles, list them (e.g. 'I see you have a Porsche 911 (ID: X) and a Honda Civic (ID: Y). Which one are you parking today?') and wait for them to answer before calling `search_lots`.\n" +
+                        $"4. If they have no registered vehicles, or you are running a generic search, call `search_lots` with just the location.\n" +
+                        $"5. When presenting parking lot options, list them beautifully. For each lot, display its Name, Address, Price, and ALWAYS include a clean Markdown link button like: `[View Details](/property/{{id}})` so they can click to visit the detailed page.\n" +
+                        $"6. Keep responses friendly, helpful, and in plain conversational English."
                     );
                     history.AddUserMessage(request.Message);
 
