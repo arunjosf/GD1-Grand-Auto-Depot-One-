@@ -22,17 +22,20 @@ namespace GD1.Infrastructure.Services
         private readonly IConfiguration _config;
         private readonly IEmailService _email;
         private readonly ILogger<AuthService> _logger;
+        private readonly IRedisOtpStore _redisOtpStore;
 
         public AuthService(
             AppDbContext db,
             IConfiguration config,
             IEmailService email,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IRedisOtpStore redisOtpStore)
         {
             _db = db;
             _config = config;
             _email = email;
             _logger = logger;
+            _redisOtpStore = redisOtpStore;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest req)
@@ -251,26 +254,15 @@ namespace GD1.Infrastructure.Services
             if (user.IsEmailVerified)
                 throw new InvalidOperationException("Email already verified.");
 
-            if (user.EmailOtp is null || user.EmailOtpExpiry is null)
-                throw new InvalidOperationException(
-                    "No OTP found. Request a new one.");
-
-            if (user.EmailOtpExpiry < DateTime.UtcNow)
-                throw new InvalidOperationException(
-                    "OTP has expired. Request a new one.");
-
             var submittedOtp = (req.Otp ?? "").Trim();
-            _logger.LogInformation("Attempting to verify OTP for {Email}. Length: {Length}", user.Email, submittedOtp.Length);
-
-            if (!BCrypt.Net.BCrypt.Verify(submittedOtp, user.EmailOtp))
-            {
-                _logger.LogWarning("Invalid OTP attempt for {Email}.", user.Email);
+            var storedHash = await _redisOtpStore.GetOtpAsync(user.Email);
+            if (storedHash is null)
+                throw new InvalidOperationException("OTP has expired or was never sent. Request a new one.");
+            if (!BCrypt.Net.BCrypt.Verify(submittedOtp, storedHash))
                 throw new UnauthorizedAccessException("Incorrect OTP.");
-            }
+            await _redisOtpStore.DeleteOtpAsync(user.Email);
 
             user.IsEmailVerified = true;
-            user.EmailOtp = null;
-            user.EmailOtpExpiry = null;
 
             await _db.SaveChangesAsync();
 
@@ -552,10 +544,8 @@ namespace GD1.Infrastructure.Services
         {
             var plainOtp = new Random().Next(100000, 999999).ToString();
 
-            user.EmailOtp = BCrypt.Net.BCrypt.HashPassword(plainOtp);
-            user.EmailOtpExpiry = DateTime.UtcNow.AddMinutes(10);
-            await _db.SaveChangesAsync();
-
+            var hash = BCrypt.Net.BCrypt.HashPassword(plainOtp);
+            await _redisOtpStore.StoreOtpAsync(user.Email, hash, TimeSpan.FromMinutes(10));
             var subject = "GD1 — Verify Your Email";
             var body = $@"
 <!DOCTYPE html>

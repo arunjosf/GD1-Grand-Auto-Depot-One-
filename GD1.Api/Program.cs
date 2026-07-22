@@ -20,28 +20,28 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Data;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Google;
+using StackExchange.Redis;
+using System.Data;
+using System.IdentityModel.Tokens.Jwt;
+using StackExchange.Redis;
+using Microsoft.SemanticKernel;
+using System.Text;
 #pragma warning disable SKEXP0070 
 #pragma warning disable SKEXP0020
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ Add this — prevents BrowserRefresh from crashing on file picker open
 builder.WebHost.UseSetting("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES", "");
 
-// CRITICAL: In .NET 8, a background service exception stops the entire host by default.
-// This prevents ANY background service crash from taking down the backend.
+
 builder.Services.Configure<HostOptions>(options =>
 {
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
 });
 
 
-// Clear default claim mapping to use standard names
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -54,7 +54,6 @@ builder.Services.AddScoped<IDbConnection>(sp =>
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// Register Dapper Enum Handlers
 SqlMapper.AddTypeHandler(new DapperEnumHandler<FranchiseStatus>());
 SqlMapper.AddTypeHandler(new DapperEnumHandler<InspectionDecision>());
 SqlMapper.AddTypeHandler(new DapperEnumHandler<MaintenanceTaskType>());
@@ -76,13 +75,31 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 
+var redisConnection = builder.Configuration["Redis:ConnectionString"];
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnection)
+);
+builder.Services.AddScoped<IRedisOtpStore, RedisOtpStore>();
+
+#pragma warning disable SKEXP0010
+var groqKey = builder.Configuration["AI:GroqApiKey"];
+var kernelBuilder = Kernel.CreateBuilder();
+
+kernelBuilder.AddOpenAIChatCompletion(
+    modelId: "llama-3.1-8b-instant",
+    apiKey: groqKey,
+    endpoint: new Uri("https://api.groq.com/openai/v1/")
+);
+
+var kernel = kernelBuilder.Build();
+builder.Services.AddSingleton(kernel);
+
 builder.Services.AddHttpClient<ISmsService, SmsService>();
-builder.Services.AddHttpClient(); // Registers IHttpClientFactory globally
+builder.Services.AddHttpClient(); 
 builder.Services.AddHttpClient<GD1.Application.Interfaces.IGeocodingService, GD1.Infrastructure.Services.GeocodingService>();
 builder.Services.AddScoped<GD1.Application.Interfaces.Services.IPdfGeneratorService, GD1.Infrastructure.Services.PdfGeneratorService>();
 builder.Services.AddHostedService<UnverifiedUserCleanupService>();
 builder.Services.AddHostedService<BookingCleanupService>();
-//builder.Services.AddHostedService<GD1.Infrastructure.Services.WeeklyMaintenanceService>();
 
 builder.Services.AddScoped<GD1.Application.Interfaces.Services.INotificationService, GD1.Api.Services.NotificationService>();
 
@@ -131,15 +148,14 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddCors(opt =>
     opt.AddPolicy("Frontend", policy =>
-        policy.SetIsOriginAllowed(_ => true) // Allow any origin for easier testing
+        policy.SetIsOriginAllowed(_ => true) 
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()));
 
-// Increase file upload limit (100 MB)
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 104857600; // 100 MB
+    options.Limits.MaxRequestBodySize = 104857600; 
 });
 
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
@@ -208,7 +224,6 @@ builder.Services.AddSwaggerGen(opt =>
 
         var app = builder.Build();
 
-    // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
