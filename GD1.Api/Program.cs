@@ -241,8 +241,7 @@ builder.Services.AddSwaggerGen(opt =>
 
 kernel.Plugins.AddFromObject(
     new GD1.Api.Plugins.SearchLotsPlugin(
-        app.Services.GetRequiredService<IHttpClientFactory>(),
-        builder.Configuration
+        app.Services.GetRequiredService<IMediator>()
     ),
     "SearchLots"
 );

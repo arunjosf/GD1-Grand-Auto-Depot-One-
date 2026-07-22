@@ -1,19 +1,20 @@
-﻿using Microsoft.SemanticKernel;
+﻿using GD1.Application.Features.GD1Admin.Queries;
+using GD1.Application.Features.LotBooking.Queries;
+using MediatR;
+using Microsoft.SemanticKernel;
 using System.ComponentModel;
 using System.Text.Json;
-using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace GD1.Api.Plugins
 {
     public class SearchLotsPlugin
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IConfiguration _config;
+        private readonly IMediator _mediator;
 
-        public SearchLotsPlugin(IHttpClientFactory httpClientFactory, IConfiguration config)
+        public SearchLotsPlugin(IMediator mediator)
         {
-            _httpClientFactory = httpClientFactory;
-            _config = config;
+            _mediator = mediator;
         }
 
         [KernelFunction("search_lots")]
@@ -21,14 +22,15 @@ namespace GD1.Api.Plugins
         public async Task<string> SearchLotsAsync(
             [Description("The city or area name to search for parking")] string location)
         {
-            var client = _httpClientFactory.CreateClient();
-            var baseUrl = _config["App:BaseUrl"] ?? "https://gd1-grand-auto-depot-one-9ms1.onrender.com";
-            var response = await client.GetAsync($"{baseUrl}/api/lotbooking/partnered-lots?city={location}");
-
-            if (!response.IsSuccessStatusCode)
-                return JsonSerializer.Serialize(new { error = "Could not fetch lots right now." });
-
-            return await response.Content.ReadAsStringAsync();
+            try
+            {
+                var result = await _mediator.Send(new GetAllStoragePropertyQuery { City = location });
+                return JsonSerializer.Serialize(result);
+            }
+            catch (System.Exception ex)
+            {
+                return JsonSerializer.Serialize(new { error = $"Could not fetch lots: {ex.Message}" });
+            }
         }
     }
 }
