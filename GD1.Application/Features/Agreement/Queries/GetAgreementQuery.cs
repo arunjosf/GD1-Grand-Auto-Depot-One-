@@ -45,7 +45,6 @@ namespace GD1.Application.Features.AgreementFeature.Queries
             {
                 agreement = await _repo.GetByIdAsync(request.AgreementId.Value);
                 
-                // Fallback for cases where BookingId was passed instead of AgreementId
                 if (agreement == null)
                 {
                     var agreements = await _repo.FindAsync(a => a.ReferenceId == request.AgreementId.Value && a.Type == AgreementType.LotBooking);

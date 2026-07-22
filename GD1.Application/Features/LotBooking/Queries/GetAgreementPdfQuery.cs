@@ -40,12 +40,17 @@ namespace GD1.Application.Features.LotBooking.Queries
 
             var agreements = await _agreementRepo.FindAsync(a => a.BookingId == request.BookingId);
             var agreement = System.Linq.Enumerable.FirstOrDefault(agreements);
-            
+
             if (agreement == null)
                 return BaseResponse<byte[]>.Fail("Agreement not found.");
 
-            var pdfBytes = _pdfService.GenerateFromHtml(agreement.Content);
-            return BaseResponse<byte[]>.Ok(pdfBytes, "PDF generated.");
+            if (string.IsNullOrEmpty(agreement.PdfUrl))
+                return BaseResponse<byte[]>.Fail("PDF is still generating in the background. Please try again in 5 seconds.");
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            var pdfBytes = await httpClient.GetByteArrayAsync(agreement.PdfUrl);
+
+            return BaseResponse<byte[]>.Ok(pdfBytes, "PDF successfully fetched from cloud.");
         }
     }
 }

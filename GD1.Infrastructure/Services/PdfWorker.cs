@@ -1,4 +1,4 @@
-﻿using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus;
 using GD1.Application.Interfaces.Services;
 using GD1.Domain.Entities;
 using GD1.Domain.Interfaces;
@@ -40,7 +40,7 @@ namespace GD1.Infrastructure.Services
             _processor = _client.CreateProcessor("pdf-queue", new ServiceBusProcessorOptions
             {
                 AutoCompleteMessages = false,
-                MaxConcurrentCalls = 1 // Process one PDF at a time to save server memory
+                MaxConcurrentCalls = 1 
             });
 
             _processor.ProcessMessageAsync += MessageHandler;
@@ -59,8 +59,6 @@ namespace GD1.Infrastructure.Services
             {
                 var payload = JsonSerializer.Deserialize<PdfQueuePayload>(body);
 
-                // Because this is a singleton BackgroundService, we must create a scope 
-                // to use scoped services like the Database Repository
                 using var scope = _serviceProvider.CreateScope();
                 var agreementRepo = scope.ServiceProvider.GetRequiredService<IGenericRepository<Agreement>>();
                 var pdfService = scope.ServiceProvider.GetRequiredService<IPdfGeneratorService>();
@@ -69,16 +67,32 @@ namespace GD1.Infrastructure.Services
 
                 if (agreement != null)
                 {
-                    // Do the heavy lifting in the background!
                     var pdfBytes = pdfService.GenerateFromHtml(agreement.Content);
-
                     _logger.LogInformation("Successfully generated PDF for Agreement {Id}", agreement.Id);
 
-                    // In a real scenario, you would upload pdfBytes to AWS S3 here 
-                    // and save the URL to the agreement record.
+                    var userRepo = scope.ServiceProvider.GetRequiredService<IGenericRepository<User>>();
+                    var user = await userRepo.GetByIdAsync(agreement.UserId);
+
+                    if (user != null)
+                    {
+                        var emailService = scope.ServiceProvider.GetRequiredService<GD1.Application.Interfaces.IEmailService>();
+                        
+                        string emailSubject = "Your Official Parking Agreement";
+                        string emailBody = $@"
+                            Hello {user.FullName},
+
+                            Thank you for confirming your booking! Your legally binding agreement has been generated.
+                            (Once the cloud upload is complete, the download link will appear here.)
+
+                            Thanks,
+                            The Grand Auto Depot Team
+                        ";
+                        
+                        await emailService.SendAsync(user.Email, emailSubject, emailBody);
+                        _logger.LogInformation("Successfully emailed Agreement Notification to {Email}", user.Email);
+                    }
                 }
 
-                // Delete the message from the queue so it isn't processed again
                 await args.CompleteMessageAsync(args.Message);
             }
             catch (Exception ex)

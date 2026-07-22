@@ -61,6 +61,21 @@ namespace GD1.Application.Features.LotBooking.Commands
                 booking.IsAgreementSigned = 1;
                 await _bookingRepo.UpdateAsync(booking);
 
+                try
+                {
+                    var connectionString = Environment.GetEnvironmentVariable("Azure__ServiceBusConnectionString")
+                        ?? "Your_Connection_String";
+                    await using var client = new Azure.Messaging.ServiceBus.ServiceBusClient(connectionString);
+                    var sender = client.CreateSender("pdf-queue");
+                    var message = new Azure.Messaging.ServiceBus.ServiceBusMessage(
+                        System.Text.Json.JsonSerializer.Serialize(new { AgreementId = agreement.Id }));
+                    await sender.SendMessageAsync(message);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Queue Error: {ex.Message}");
+                }
+
                 return BaseResponse<string>.Ok(string.Empty, "Agreement accepted successfully. Your booking is now confirmed.");
             }
             else
@@ -68,7 +83,6 @@ namespace GD1.Application.Features.LotBooking.Commands
                 agreement.Status = AgreementStatus.Rejected;
                 await _agreementRepo.UpdateAsync(agreement);
 
-                // Update booking instead of deleting
                 booking.Status = BookingStatus.AgreementDeclined;
                 booking.IsAgreementSigned = 2;
                 booking.RejectionReason = cmd.RejectionReason;
