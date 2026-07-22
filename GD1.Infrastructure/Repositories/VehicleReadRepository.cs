@@ -18,6 +18,7 @@ namespace GD1.Infrastructure.Repositories
         public async Task<IEnumerable<VehicleDto>> GetByOwnerIdAsync(long ownerId, long? vehicleId = null)
         {
             var query = _db.Vehicles
+                .AsSplitQuery()
                 .Where(v => v.OwnerId == ownerId && !v.IsDeleted);
 
             if (vehicleId.HasValue)
