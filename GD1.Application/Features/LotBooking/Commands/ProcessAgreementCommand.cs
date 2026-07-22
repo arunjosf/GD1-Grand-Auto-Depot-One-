@@ -73,7 +73,7 @@ namespace GD1.Application.Features.LotBooking.Commands
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Queue Error: {ex.Message}");
+                    throw new Exception($"AZURE QUEUE FAILED: {ex.Message}");
                 }
 
                 return BaseResponse<string>.Ok(string.Empty, "Agreement accepted successfully. Your booking is now confirmed.");
