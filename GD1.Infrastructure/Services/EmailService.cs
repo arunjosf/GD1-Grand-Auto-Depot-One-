@@ -1,6 +1,7 @@
 using GD1.Application.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Azure.Amqp.Framing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MimeKit;
@@ -71,6 +72,41 @@ namespace GD1.Infrastructure.Services
                     "SMTP failure sending to {To} using account {Sender}. Verify Email credentials in appsettings.", to, sender);
 
                 throw new Exception($"SMTP failure (Account: {sender}): {ex.Message}");
+            }
+        }
+
+        public async Task SendWithAttachmentAsync(string to, string subject, string body, byte[] attachment, string attachmentFileName)
+        {
+            var host = _config["Email:Host"] ?? "smtp.gmail.com";
+            var port = int.Parse(_config["Email:Port"] ?? "587");
+            var sender = (_config["Email:SenderEmail"] ?? "").Trim();
+            var user = (_config["Email:User"] ?? sender).Trim();
+            var name = _config["Email:SenderName"] ?? "GD1";
+            var password = (_config["Email:Password"] ?? "").Replace(" ", "");
+
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(name, sender));
+            message.To.Add(MailboxAddress.Parse(to));
+            message.Subject = subject;
+
+            var bodyBuilder = new BodyBuilder { HtmlBody = body };
+            bodyBuilder.Attachments.Add(attachmentFileName, attachment, new MimeKit.ContentType("application", "pdf"));
+            message.Body = bodyBuilder.ToMessageBody();
+
+            try
+            {
+                using var client = new SmtpClient();
+                client.CheckCertificateRevocation = false;
+                await client.ConnectAsync(host, port, SecureSocketOptions.Auto);
+                await client.AuthenticateAsync(user, password);
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+                _logger.LogInformation("Agreement PDF emailed successfully to {To}", to);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SMTP failure sending PDF attachment to {To}", to);
+                throw new Exception($"SMTP failure: {ex.Message}");
             }
         }
     }

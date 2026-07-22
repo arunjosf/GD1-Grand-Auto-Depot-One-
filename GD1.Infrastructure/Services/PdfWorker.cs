@@ -77,19 +77,15 @@ namespace GD1.Infrastructure.Services
                     {
                         var emailService = scope.ServiceProvider.GetRequiredService<GD1.Application.Interfaces.IEmailService>();
                         
-                        string emailSubject = "Your Official Parking Agreement";
-                        string emailBody = $@"
-                            Hello {user.FullName},
+                   
 
-                            Thank you for confirming your booking! Your legally binding agreement has been generated.
-                            (Once the cloud upload is complete, the download link will appear here.)
-
-                            Thanks,
-                            The Grand Auto Depot Team
-                        ";
-                        
-                        await emailService.SendAsync(user.Email, emailSubject, emailBody);
-                        _logger.LogInformation("Successfully emailed Agreement Notification to {Email}", user.Email);
+                        await emailService.SendWithAttachmentAsync(
+                         user.Email,
+                        "Your Official Parking Agreement",
+                         $"Hello {user.FullName}, please find your signed agreement attached.",
+                        pdfBytes,
+                        $"Agreement_{agreement.Id}.pdf"
+  );
                     }
                 }
 
