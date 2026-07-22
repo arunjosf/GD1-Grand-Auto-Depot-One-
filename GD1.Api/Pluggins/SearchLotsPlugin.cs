@@ -23,7 +23,7 @@ namespace GD1.Api.Plugins
         {
             var client = _httpClientFactory.CreateClient();
             var baseUrl = _config["App:BaseUrl"] ?? "https://gd1-grand-auto-depot-one-9ms1.onrender.com";
-            var response = await client.GetAsync($"{baseUrl}/api/franchise/search?location={location}&pageSize=5");
+            var response = await client.GetAsync($"{baseUrl}/api/lotbooking/partnered-lots?city={location}");
 
             if (!response.IsSuccessStatusCode)
                 return JsonSerializer.Serialize(new { error = "Could not fetch lots right now." });
