@@ -87,7 +87,7 @@ namespace GD1.Api.Controllers
                     if (userId > 0)
                     {
                         var vehicleResponse = await _mediator.Send(new GetMyVehiclesQuery { OwnerId = userId });
-                        if (vehicleResponse.IsSuccess && vehicleResponse.Data != null)
+                        if (vehicleResponse.Success && vehicleResponse.Data != null)
                         {
                             var vehicles = vehicleResponse.Data.ToList();
                             hasVehicles = vehicles.Any();
