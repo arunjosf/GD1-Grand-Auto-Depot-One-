@@ -145,9 +145,14 @@ namespace GD1.Api.Controllers
                         kernel: _kernel
                     );
 
+                    // Strip any leaked Semantic Kernel function call tags (e.g. <function=...>...</function>)
+                    var cleanedReply = System.Text.RegularExpressions.Regex
+                        .Replace(result.Content ?? "", @"<function=[^>]+>[\s\S]*?</function>", string.Empty)
+                        .Trim();
+
                     // Save updated context back to Redis
                     messages.Add(new RedisChatMessage { Role = "user", Content = request.Message });
-                    messages.Add(new RedisChatMessage { Role = "assistant", Content = result.Content ?? string.Empty });
+                    messages.Add(new RedisChatMessage { Role = "assistant", Content = cleanedReply });
                     
                     // Keep history tidy (last 20 messages / 10 turns max)
                     if (messages.Count > 20)
@@ -160,7 +165,7 @@ namespace GD1.Api.Controllers
 
                     return Ok(new
                     {
-                        reply = result.Content,
+                        reply = cleanedReply,
                         actions = actions
                     });
                 }
