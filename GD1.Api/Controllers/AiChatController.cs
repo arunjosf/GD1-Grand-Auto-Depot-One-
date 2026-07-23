@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.Json;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using MediatR;
+using GD1.Application.Features.Vehicle.Queries;
 
 namespace GD1.Api.Controllers
 {
@@ -17,17 +19,20 @@ namespace GD1.Api.Controllers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
         private readonly StackExchange.Redis.IConnectionMultiplexer _redis;
+        private readonly IMediator _mediator;
 
         public AiChatController(
             Kernel kernel, 
             IHttpClientFactory httpClientFactory, 
             IConfiguration configuration,
-            StackExchange.Redis.IConnectionMultiplexer redis)
+            StackExchange.Redis.IConnectionMultiplexer redis,
+            IMediator mediator)
         {
             _kernel = kernel;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _redis = redis;
+            _mediator = mediator;
         }
 
         [HttpPost("ask")]
@@ -76,23 +81,45 @@ namespace GD1.Api.Controllers
 
                 if (intent == "SEARCH_LOTS")
                 {
+                    // Fetch user's registered vehicles directly to avoid tool-calling failure/leaks
+                    var vehiclesList = new List<string>();
+                    bool hasVehicles = false;
+                    if (userId > 0)
+                    {
+                        var vehicleResponse = await _mediator.Send(new GetMyVehiclesQuery { OwnerId = userId });
+                        if (vehicleResponse.IsSuccess && vehicleResponse.Data != null)
+                        {
+                            var vehicles = vehicleResponse.Data.ToList();
+                            hasVehicles = vehicles.Any();
+                            vehiclesList = vehicles.Select(v => $"{v.Brand} {v.Model} (ID: {v.Id})").ToList();
+                        }
+                    }
+
+                    var vehiclesContext = hasVehicles 
+                        ? string.Join(", ", vehiclesList) 
+                        : "None (The user has no registered vehicles)";
+
                     var chatService = _kernel.GetRequiredService<IChatCompletionService>();
                     var chatHistory = new ChatHistory();
                     
                     chatHistory.AddSystemMessage(
                         $"You are Lara, GD1's warm and professional virtual assistant. Your job is to help users find suitable parking spaces.\n\n" +
+                        $"USER VEHICLES CONTEXT:\n" +
+                        $"The logged-in user owns the following vehicles: {vehiclesContext}.\n\n" +
                         $"RULES:\n" +
-                        $"1. The logged-in user's ID is {userId}.\n" +
-                        $"2. NEVER mention the word 'ID' (e.g., 'user ID' or 'vehicle ID') to the user. Talk like a real human. Instead of asking for a vehicle ID, ask conversational questions like: 'What is your vehicle's make and model?' or 'Which of your registered cars are you parking today?'\n" +
-                        $"3. If the user hasn't specified their vehicle, use the `get_user_vehicles` tool with user ID {userId} to see what vehicles they own.\n" +
-                        $"4. If they have no registered vehicles, politely tell them you couldn't find any registered cars in their profile, and ask them for their vehicle type (e.g., sedan, SUV) and target location so you can search generally.\n" +
-                        $"5. When presenting parking lot options, NEVER print raw URLs, brackets containing links, or HTML tags like '<details>'. Instead, ALWAYS format the property's name itself as a Markdown link. Example:\n" +
-                        $"   - **[1. EcoSafe Kochi Storage](/property/1)**\n" +
-                        $"     - *Address:* 12 MG Road, Kochi, Kerala\n" +
-                        $"     - *Price:* ₹450.00/day\n" +
-                        $"     - *Rating:* 4.80/5\n" +
-                        $"     - *Available Slots:* A-101, B-201\n" +
-                        $"6. Ensure the properties are listed in a clean, neat bulleted format exactly like the example above. Do not dump raw tool outputs."
+                        $"1. NEVER mention the word 'ID' (e.g., 'vehicle ID' or 'user ID') to the user. Talk like a real human.\n" +
+                        $"2. If the user has no registered vehicles (context is 'None'), politely tell them you couldn't find any registered cars in their profile. Inform them they need to add a vehicle first, and ALWAYS format the link to add a vehicle as a Markdown link: **[Add a Vehicle](/add-vehicle)**.\n" +
+                        $"3. If they do have registered vehicles, list them conversationally (e.g. 'I see you have a Porsche 911 registered. Would you like to park this car today?') and wait for their confirmation before calling the `search_lots` tool.\n" +
+                        $"4. When presenting parking lot options:\n" +
+                        $"   - If the user HAS NO registered vehicles, the property names MUST link to the add-vehicle page: '**[Property Name](/add-vehicle)**'.\n" +
+                        $"   - If the user HAS registered vehicles, the property names MUST link to the detailed page: '**[Property Name](/property/{{id}})**'.\n" +
+                        $"5. NEVER output any XML-like tags, '<details>' elements, or raw URL links. Present the search results strictly using the following bulleted format:\n" +
+                        $"   - **[1. Safe Park Kakkanchery](/property/10)** (or `/add-vehicle` if no vehicles)\n" +
+                        $"     - *Address:* Opposite Puthanathani Temple, Kakkanchery, Kerala\n" +
+                        $"     - *Price:* ₹250.00/day\n" +
+                        $"     - *Rating:* 4.50/5\n" +
+                        $"     - *Available Slots:* A-201, B-202\n" +
+                        $"6. Keep responses clean, warm, and professional. Avoid raw technical dumps."
                     );
 
                     // Add historical conversation flow to Semantic Kernel
